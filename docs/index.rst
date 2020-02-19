@@ -10,6 +10,8 @@ Welcome to pe's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   specification
+
 
 
 Indices and tables

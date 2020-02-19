@@ -21,16 +21,16 @@ from pe.common import (
 
 
 grammar = '''
-Start    = _* Value _*
-Value    = Object | Array | String | Number | "true" | "false" | "nil"
-Object   = "{" _* ((String) _* ":" _* (Value)){:COMMA} _* "}"
-Array    = "[" _* vals=(Value){:COMMA} _* "]"
-String   = '"' ('\\' . | !'"' .)* '"'
-Number   = Integer | Float
-Integer  = "-"? (?: "0" | [1-9] [0-9]*)
-Float    = Integer Fraction? Exponent?
-Fraction = "." [0-9]+
-Exponent = [eE] [-+]? [0-9]+
+Start    <- _* Value _*
+Value    <- Object | Array | String | Number | TRUE | FALSE | NIL
+Object   <- "{" _* ((String) _* ":" _* (Value)){:COMMA} _* "}"
+Array    <- "[" _* (Value){:COMMA} _* "]"
+String   <- '"' (?: '\\' . | !'"' . )* '"'
+Number   <- INTEGER | FLOAT
+INTEGER  = "-"? (?: "0" | [1-9] [0-9]*)
+FLOAT    = INTEGER FRACTION? EXPONENT?
+FRACTION = "." [0-9]+
+EXPONENT = [eE] [-+]? [0-9]+
 TRUE     = "true"
 FALSE    = "false"
 NULL     = "null"

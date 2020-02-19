@@ -1,17 +1,14 @@
 
-from pe.scanners import (
+from pe.terms import (
     Dot,
     Class,
-    Run,
-    Option,
-    Until,
-    Pattern,
-    Branch
 )
-from pe.combinators import (
+from pe.expressions import (
     Sequence,
     Choice,
     Repeat,
+    Until,
+    Optional,
 )
 
 dot = Dot()
@@ -19,27 +16,26 @@ dot = Dot()
 # Numbers
 
 digit = Class('0-9')
-digits = Run(digit)
+digits = Repeat(digit)
 
-unsigned_integer = Branch('0', Pattern(Class('1-9'), digits))
-integer = Pattern(Option(Class('-+')), unsigned_integer)
-signed_integer = Pattern(Class('-+'), unsigned_integer)
+unsigned_integer = Choice('0', Sequence(Class('1-9'), digits))
+integer = Sequence(Optional(Class('-+')), unsigned_integer)
+signed_integer = Sequence(Class('-+'), unsigned_integer)
 
-float_fraction = Pattern('.', digits)
-float_exponent = Pattern(Class('eE'), integer)
-float = Pattern(integer, Option(float_fraction), Option(float_exponent))
+float_fraction = Sequence('.', digits)
+float_exponent = Sequence(Class('eE'), integer)
+float = Sequence(integer, Optional(float_fraction), Optional(float_exponent))
 
 # Strings
+dqstring = Sequence('"', Until(Class('"\n'), escape='\\'), '"')
+sqstring = Sequence("'", Until(Class('"\n'), escape='\\'), '"')
 
-dqstring = Pattern('"', Until(Class('"\n'), escape='\\'), '"')
-sqstring = Pattern("'", Until(Class('"\n'), escape='\\'), '"')
-
-dq3string = Pattern('"""', Until('"""', escape='\\'), '"""')
-sq3string = Pattern("'''", Until("'''", escape='\\'), "'''")
+dq3string = Sequence('"""', Until('"""', escape='\\'), '"""')
+sq3string = Sequence("'''", Until("'''", escape='\\'), "'''")
 
 
 # Whitespace
 
 Space = Class('\t\n\v\f\r ')
-Spaces = Run(Space, min=1)
-Spacing = Run(Space)
+Spaces = Repeat(Space, min=1)
+Spacing = Repeat(Space)

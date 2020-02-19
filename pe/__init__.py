@@ -1,18 +1,19 @@
 
-from pe.scanners import (
+from pe._exceptions import Error
+from pe.terms import (
     Dot,
     Literal,
     Class,
-    Run,
-    Option,
-    Until,
-    Pattern,
-    Branch,
+    Regex,
 )
-from pe.combinators import (
+from pe.expressions import (
     Sequence,
     Choice,
     Repeat,
+    Until,
+    Optional,
+    Ahead,
+    NotAhead,
     Group,
     Grammar,
 )

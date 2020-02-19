@@ -13,12 +13,12 @@
 # comments follow # characters
 # whitespace is not significant
 
-# primitive expressions
-.        # any single character
-"abc"    # literal
-'abc'    # literal
-[abc]    # character class
-[^abc]   # negated character class
+# basic terms
+.           # any single character
+"abc"       # literal
+'abc'       # literal
+[abc]       # character class
+[^abc]      # negated character class
 
 # repeating expressions
 e           # exactly one
@@ -46,17 +46,19 @@ name = ...  # define a rule named 'name'
 ## Capturing Groups and the Value of Expressions
 
 If an expression has no capturing groups, its value is the substring
-it matches. If it has one or more capturing groups, its value is a
-list of the values of each group, and anything not in a group is
-discarded. Nesting or repeating groups provides even more options for
-shaping the value.
+it matches. If it has one or more capturing groups, the expression's
+value is a list of the values of each group, and anything not in a
+group is discarded. Nesting or repeating groups provides even more
+options for shaping the value.
 
 
 | Expression                  | Input    | Value                    |
 | --------------------------- | -------- | ------------------------ |
 | `"-"? [1-9] [0-9]*`         | `'-123'` | `'-123'`                 |
+| `("-"? [1-9] [0-9]*)`       | `'-123'` | `['-123']`               |
 | `("-")? [1-9] [0-9]*`       | `'-123'` | `['-']`                  |
 | `("-")? [1-9] [0-9]*`       | `'123'`  | `[]`                     |
+| `("-"?) [1-9] [0-9]*`       | `'123'`  | `['']`                   |
 | `"-"? ([1-9] [0-9]*)`       | `'-123'` | `['123']`                |
 | `"-"? ([1-9]) ([0-9]*)`     | `'-123'` | `['1', '23']`            |
 | `"-"? ([1-9]) ([0-9])*`     | `'-123'` | `['1', '2'. '3']`        |
