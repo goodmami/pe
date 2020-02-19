@@ -3,7 +3,7 @@ from typing import Dict, Callable, Optional as OptionalType
 import re
 
 from pe.core import Match, Term, Expression
-from pe.terms import Dot, Literal
+from pe.terms import Dot, Literal, Class
 
 # class Until(Term):
 #     __slots__ = 'terminus', 'escape',
@@ -57,8 +57,15 @@ class Sequence(Expression):
         self.capturing = any(m.capturing for m in self.expressions)
 
         if all(e._re for e in self.expressions):
-            self._re = re.compile(
-                ''.join(e._re.pattern for e in self.expressions))
+            if len(self.expressions) == 1:
+                self._re = self.expressions[0]._re
+            else:
+                self._re = re.compile(
+                    '(?:{})'.format(
+                        ''.join(e._re.pattern for e in self.expressions)))
+
+    def __str__(self):
+        return 'Sequence({})'.format(', '.join(map(str, self.expressions)))
 
     def match(self, s: str, pos: int = 0):
         matches = []
@@ -84,6 +91,9 @@ class Choice(Expression):
             self._re = re.compile(
                 '(?:{})'.format(
                     '|'.join(e._re.pattern for e in self.expressions)))
+
+    def __str__(self):
+        return 'Choice({})'.format(', '.join(map(str, self.expressions)))
 
     def match(self, s: str, pos: int = 0):
         m = None
@@ -117,12 +127,19 @@ class Repeat(Expression):
         _re = self.expression._re
         if max == 0:
             self._re = re.compile('')
-        elif _re and (not delimiter or delimiter._re):
-            delim = delimiter._re if delimiter else ''
-            max2 = '' if max < 0 else max - 1
-        self._re = re.compile(
-            f'{_re.pattern}(?:{delim}{_re.pattern}){{{min},{max2}}}')
+        elif _re:
+            if delimiter and delimiter._re and max != 1:
+                max2 = '' if max < 0 else max - 1
+                self._re = re.compile(
+                    f'{_re.pattern}(?:{delim}{_re.pattern}){{{min},{max2}}}')
+            elif max == 1 or not delimiter:
+                max2 = '' if max < 0 else max
+                self._re = re.compile(
+                    f'{_re.pattern}{{{self.min},{max2}}}')
 
+    def __str__(self):
+        return (f'Repeat({self.expression!s}, min={self.min}, '
+                f'max={self.max}, delimiter={self.delimiter!s})')
 
     def match(self, s: str, pos: int = 0):
         expression = self.expression
@@ -161,7 +178,10 @@ def Optional(expression: Expression):
 
 
 def Until(terminus: Expression, escape: Expression = None):
-    run = Repeat(Sequence(NotAhead(terminus), Dot()))
+    if isinstance(terminus, Class):
+        run = Repeat(Class(terminus.clsstr, not terminus.negated))
+    else:
+        run = Repeat(Sequence(NotAhead(terminus), Dot()))
     if escape:
         return Sequence(run, Repeat(Choice(escape, run)))
     else:
@@ -175,6 +195,9 @@ class Ahead(Expression):
         super().__init__()
         self.expression = _validate(expression)
         self._re = self.expression._re
+
+    def __str__(self):
+        return f'Ahead({self.expression!s})'
 
     def match(self, s: str, pos: int = 0):
         m = self.expression.match(s, pos=pos)
@@ -192,7 +215,10 @@ class NotAhead(Expression):
         # TODO: avoid use of lookahead?
         _re = self.expression._re
         if _re:
-            self._re = re.compile(r'(?!{_re.pattern})')
+            self._re = re.compile(f'(?!{_re.pattern})')
+
+    def __str__(self):
+        return f'NotAhead({self.expression!s})'
 
     def match(self, s: str, pos: int = 0):
         m = self.expression.match(s, pos=pos)
@@ -211,6 +237,9 @@ class Group(Expression):
         self.capturing = True
         self._re = self.expression._re
 
+    def __str__(self):
+        return f'Group({self.expression!s}, action={self.action!s})'
+
     def match(self, s: str, pos: int = 0):
         m = self.expression.match(s, pos=pos)
         if m:
@@ -225,6 +254,9 @@ class Nonterminal(Expression):
         super().__init__()
         self.name = name
         self.rules = rules
+
+    def __str__(self):
+        return f'Nonterminal({self.name}, rules=...)'
 
     def match(self, s: str, pos: int = 0):
         return self.rules[self.name].match(s, pos=pos)

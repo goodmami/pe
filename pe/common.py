@@ -11,31 +11,31 @@ from pe.expressions import (
     Optional,
 )
 
-dot = Dot()
+DOT = Dot()
 
 # Numbers
 
-digit = Class('0-9')
-digits = Repeat(digit)
+DIGIT = Class('0-9')
+DIGITS = Repeat(DIGIT, min=1)
+UNSIGNED_INTEGER = Choice('0', Sequence(Class('1-9'), Repeat(DIGIT)))
+INTEGER = Sequence(Optional(Class('-+')), UNSIGNED_INTEGER)
+SIGNED_INTEGER = Sequence(Class('-+'), UNSIGNED_INTEGER)
 
-unsigned_integer = Choice('0', Sequence(Class('1-9'), digits))
-integer = Sequence(Optional(Class('-+')), unsigned_integer)
-signed_integer = Sequence(Class('-+'), unsigned_integer)
-
-float_fraction = Sequence('.', digits)
-float_exponent = Sequence(Class('eE'), integer)
-float = Sequence(integer, Optional(float_fraction), Optional(float_exponent))
+FLOAT_FRACTION = Sequence('.', DIGITS)
+FLOAT_EXPONENT = Sequence(Class('eE'), INTEGER)
+FLOAT = Sequence(INTEGER, Optional(FLOAT_FRACTION), Optional(FLOAT_EXPONENT))
 
 # Strings
-dqstring = Sequence('"', Until(Class('"\n'), escape='\\'), '"')
-sqstring = Sequence("'", Until(Class('"\n'), escape='\\'), '"')
+ESCAPE = Sequence('\\', DOT)
+DQSTRING = Sequence('"', Until(Class('"\n'), escape=ESCAPE), '"')
+SQSTRING = Sequence("'", Until(Class("'\n"), escape=ESCAPE), "'")
 
-dq3string = Sequence('"""', Until('"""', escape='\\'), '"""')
-sq3string = Sequence("'''", Until("'''", escape='\\'), "'''")
+DQ3STRING = Sequence('"""', Until('"""', escape=ESCAPE), '"""')
+SQ3STRING = Sequence("'''", Until("'''", escape=ESCAPE), "'''")
 
 
 # Whitespace
 
-Space = Class('\t\n\v\f\r ')
-Spaces = Repeat(Space, min=1)
-Spacing = Repeat(Space)
+SPACE = Class('\t\n\v\f\r ')
+SPACES = Repeat(SPACE, min=1)
+SPACING = Repeat(SPACE)

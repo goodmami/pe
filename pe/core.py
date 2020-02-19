@@ -1,6 +1,5 @@
 
-from typing import List, NamedTuple, Any
-import re
+from typing import List, NamedTuple, Any, Pattern
 
 from pe import Error
 from pe.constants import NOMATCH
@@ -30,7 +29,7 @@ class Expression:
     __slots__ = '_re', 'capturing',
 
     def __init__(self):
-        self._re: re.Pattern = None
+        self._re: Pattern = None
         self.capturing: bool = False
 
     def scan(self, s: str, pos: int = 0) -> int:
