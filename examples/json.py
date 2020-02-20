@@ -4,19 +4,17 @@ import timeit
 import pe
 from pe import (
     Class,
-    Pattern,
-    Option,
-    Run,
     Sequence,
     Choice,
     Repeat,
+    Optional,
     Group,
     Grammar,
 )
 from pe.common import (
-    unsigned_integer,
-    float as float_scanner,
-    dqstring,
+    UNSIGNED_INTEGER,
+    FLOAT,
+    DQSTRING,
 )
 
 
@@ -38,17 +36,17 @@ COMMA    = _* "," _*
 _        = [\t\n\r ]
 '''
 
-WS = Run(Class('\t\n\f\r '))
-LBRACE = Pattern('{', WS)
-RBRACE = Pattern(WS, '}')
-LBRACKET = Pattern('[', WS)
-RBRACKET = Pattern(WS, ']')
-COLON = Pattern(WS, ':', WS)
-COMMA = Pattern(WS, ',', WS)
+WS = Repeat(Class('\t\n\f\r '))
+LBRACE = Sequence('{', WS)
+RBRACE = Sequence(WS, '}')
+LBRACKET = Sequence('[', WS)
+RBRACKET = Sequence(WS, ']')
+COLON = Sequence(WS, ':', WS)
+COMMA = Sequence(WS, ',', WS)
 
-String = Group(dqstring, action=lambda s: s[1:-1])
-Integer = Group(Pattern(Option('-'), unsigned_integer), action=int)
-Float = Group(float_scanner, action=float)
+String = Group(DQSTRING, action=lambda s: s[1:-1])
+Integer = Group(Sequence(Optional('-'), UNSIGNED_INTEGER), action=int)
+Float = Group(FLOAT, action=float)
 TRUE = Group('true', action=lambda _: True)
 FALSE = Group('false', action=lambda _: False)
 NULL = Group('null', action=lambda _: None)

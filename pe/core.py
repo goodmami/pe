@@ -3,20 +3,21 @@ from typing import List, NamedTuple, Any, Pattern
 
 from pe import Error
 from pe.constants import NOMATCH
+from pe._re import set_re
 
 
 class Match(NamedTuple):
     string: str
     pos: int
-    endpos: int
+    end: int
     pe: 'Expression'
     matches: List['Match']
 
     def value(self) -> Any:
-        string, pos, endpos, pe, matches = self
+        string, pos, end, pe, matches = self
         matches = [m for m in matches if m.pe.capturing]
         if not matches:
-            value = string[pos:endpos]
+            value = string[pos:end]
         else:
             value = [m.value() for m in matches]
         action = getattr(pe, 'action', None)
@@ -28,9 +29,10 @@ class Match(NamedTuple):
 class Expression:
     __slots__ = '_re', 'capturing',
 
-    def __init__(self):
+    def __init__(self, capturing: bool = False):
         self._re: Pattern = None
-        self.capturing: bool = False
+        self.capturing: bool = capturing
+        set_re(self)
 
     def scan(self, s: str, pos: int = 0) -> int:
         if self._re is None:

@@ -12,6 +12,14 @@ Welcome to pe's documentation!
 
    specification
 
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
+   api/pe
+   api/pe.core
+   api/pe.expressions
+   api/pe.terms
 
 
 Indices and tables

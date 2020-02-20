@@ -8,7 +8,7 @@ def test_Match():
     m = a.match('abc')
     assert m.string == 'abc'
     assert m.pos == 0
-    assert m.endpos == 1
+    assert m.end == 1
     assert m.pe is a
     assert m.matches == []
     assert m.value() == 'a'
@@ -17,7 +17,7 @@ def test_Match():
     m = b.match('abc', pos=1)
     assert m.string == 'abc'
     assert m.pos == 1
-    assert m.endpos == 2
+    assert m.end == 2
     assert m.pe is b
     assert len(m.matches) == 1
     assert m.value() == 'b'
@@ -26,7 +26,7 @@ def test_Match():
     m = ab.match('abc')
     assert m.string == 'abc'
     assert m.pos == 0
-    assert m.endpos == 2
+    assert m.end == 2
     assert m.pe is ab
     assert len(m.matches) == 2
     assert m.value() == ['b']

@@ -55,6 +55,32 @@ Expressions
    Name     # Non-terminal named 'Name'
    Name = e # Grammar rule mapping 'Name' to an expression
 
+
+Repeat
+''''''
+
+Repetition in **pe** expands the notion from regular expressions to
+allow for two new features:
+
+- Delimiter expressions -- repeat if expression succeeds
+- Escape expressions -- accept before or after repetitions
+
+Thus, including the minimum and maximum, the :class:`~pe.Repeat`
+expression has five fields.
+
+==============  =====================================
+Shorthand       Equivalent
+==============  =====================================
+``e{1}``        ``e``
+``e{2}``        ``e e`` (etc.)
+``e?``          ``e{,1}``
+``e*``          ``e{,}``
+``e+``          ``e{1,}``
+``e{1,:d}``     ``e (?: d e )*``
+``e{:,x}``      ``(?: x* e x*)*`` or ``(?: x | e )*``
+``e{1,3:d,x}``  ``x* e x* (?: d x* e x* ){,2}``
+==============  =====================================
+
 ..
   .           # any single character
   "abc"       # literal

@@ -7,8 +7,8 @@ from pe.expressions import (
     Sequence,
     Choice,
     Repeat,
-    Until,
     Optional,
+    NotAhead,
 )
 
 DOT = Dot()
@@ -25,13 +25,17 @@ FLOAT_FRACTION = Sequence('.', DIGITS)
 FLOAT_EXPONENT = Sequence(Class('eE'), INTEGER)
 FLOAT = Sequence(INTEGER, Optional(FLOAT_FRACTION), Optional(FLOAT_EXPONENT))
 
-# Strings
 ESCAPE = Sequence('\\', DOT)
-DQSTRING = Sequence('"', Until(Class('"\n'), escape=ESCAPE), '"')
-SQSTRING = Sequence("'", Until(Class("'\n"), escape=ESCAPE), "'")
+_DQCONT = Repeat(Class(r'^"\n\\'))
+_SQCONT = Repeat(Class(r"^'\n\\"))
+DQSTRING = Sequence('"', Repeat(_DQCONT, escape=ESCAPE), '"')
+DQSTRING = Sequence('"', _DQCONT, Repeat(Choice(ESCAPE, _DQCONT)), '"')
+SQSTRING = Sequence("'", Repeat(_SQCONT, escape=ESCAPE), "'")
 
-DQ3STRING = Sequence('"""', Until('"""', escape=ESCAPE), '"""')
-SQ3STRING = Sequence("'''", Until("'''", escape=ESCAPE), "'''")
+_DQ3CONT = Sequence(NotAhead('"""'), DOT)
+_SQ3CONT = Sequence(NotAhead("'''"), DOT)
+DQ3STRING = Sequence('"""', Repeat(_DQ3CONT, escape=ESCAPE), '"""')
+SQ3STRING = Sequence("'''", Repeat(_SQ3CONT, escape=ESCAPE), "'''")
 
 
 # Whitespace

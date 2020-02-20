@@ -4,9 +4,7 @@ from pe.terms import (
     Dot,
     Literal,
     Class,
-    # Run,
-    # Until,
-    # Pattern,
+    Regex,
 )
 
 
@@ -35,10 +33,15 @@ def test_Class():
     assert Class('ab').scan('b') == 1
     assert Class('ab').scan('a', pos=1) == NOMATCH
     assert Class('ab').scan('ab', pos=1) == 2
-    assert Class('ab', negate=True).scan('ab') == NOMATCH
-    assert Class('ab', negate=True).scan('c') == 1
-    assert Class('ab', negate=True).scan('a', pos=1) == NOMATCH
+    assert Class('^ab').scan('ab') == NOMATCH
+    assert Class('^ab').scan('c') == 1
+    assert Class('^ab').scan('a', pos=1) == NOMATCH
 
+
+def test_Regex():
+    assert Regex('a').scan('a') == 1
+    assert Regex('a*').scan('aaa') == 3
+    assert Regex('a|b').scan('b') == 1
 
 # def test_Run():
 #     assert Run(Literal('a')).scan('a') == 1

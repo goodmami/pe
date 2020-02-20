@@ -25,20 +25,18 @@ class Literal(Term):
 
 
 class Class(Term):
-    __slots__ = 'clsstr', 'negated',
+    __slots__ = 'string',
 
-    def __init__(self, clsstr: str, negate: bool = False):
-        self.clsstr = clsstr
-        self.negated = negate
-        neg = '^' if negate else ''
-        cls = clsstr.replace('[', '\\[').replace(']', '\\]')
-        self._re = re.compile(f'[{neg}{cls}]')
+    def __init__(self, string: str):
+        self.string = string
+        self._re = re.compile(f'[{string}]')
+
+    @property
+    def negated(self):
+        return self.string.startswith('^')
 
     def __str__(self):
-        if self.negated:
-            return f'Class({self.clsstr!r}, negate=True)'
-        else:
-            return f'Class({self.clsstr!r})'
+        return f'Class({self.string!r})'
 
 
 class Regex(Term):

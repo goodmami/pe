@@ -1,42 +1,12 @@
 
-from typing import Dict, Callable, Optional as OptionalType
+from typing import Union, Dict, Callable, Optional as OptionalType
 import re
 
 from pe.core import Match, Term, Expression
 from pe.terms import Dot, Literal, Class
 
-# class Until(Term):
-#     __slots__ = 'terminus', 'escape',
 
-#     def __init__(self,
-#                  terminus: Primitive,
-#                  escape: str = None):
-#         self.terminus = _validate(terminus)
-#         self.escape = escape
-
-#         if isinstance(self.terminus, Literal):
-#             cs = list(map(re.escape, self.terminus.string))
-#         elif isinstance(self.terminus, Class):
-#             if self.terminus.negated:
-#                 raise ValueError('negated Class instances are not supported')
-#             cs = [self.terminus._re.pattern[1:-1]]
-#         else:
-#             raise TypeError('not a Literal or Class instance')
-
-#         alts = []
-#         if not escape:
-#             e = ''
-#         elif len(escape) > 1:
-#             raise ValueError(f'escape character is not length 1: {escape!r}')
-#         else:
-#             e = re.escape(escape)
-#             alts.append(f'{e}.[^{cs[0]}{e}]*')
-
-#         for i in range(1, len(cs)):
-#             alts.append(f'{cs[:i]}[^{cs[i:i+1]}]')
-#         etc = f'(?:{"|".join(alts)})*'
-
-#         self._re = re.compile(f'[^{cs[0]}{e}]*{etc}')
+_NiceExpr = Union[str, Expression]
 
 
 def _validate(arg):
@@ -51,30 +21,27 @@ def _validate(arg):
 class Sequence(Expression):
     __slots__ = 'expressions',
 
-    def __init__(self, *expressions):
-        super().__init__()
+    def __init__(self, *expressions: _NiceExpr):
         self.expressions = list(map(_validate, expressions))
-        self.capturing = any(m.capturing for m in self.expressions)
-
-        if all(e._re for e in self.expressions):
-            if len(self.expressions) == 1:
-                self._re = self.expressions[0]._re
-            else:
-                self._re = re.compile(
-                    '(?:{})'.format(
-                        ''.join(e._re.pattern for e in self.expressions)))
+        super().__init__(capturing=any(m.capturing for m in self.expressions))
 
     def __str__(self):
         return 'Sequence({})'.format(', '.join(map(str, self.expressions)))
 
     def match(self, s: str, pos: int = 0):
+        if not self.capturing and self._re:
+            m = self._re.match(s, pos)
+            if not m:
+                return None
+            return Match(s, pos, m.end(), self, [])
+
         matches = []
         start = pos
         for expression in self.expressions:
             m = expression.match(s, pos=pos)
             if not m:
                 return None
-            pos = m.endpos
+            pos = m.end
             matches.append(m)
         return Match(s, start, pos, self, matches)
 
@@ -82,124 +49,147 @@ class Sequence(Expression):
 class Choice(Expression):
     __slots__ = 'expressions',
 
-    def __init__(self, *expressions):
-        super().__init__()
+    def __init__(self, *expressions: _NiceExpr):
         self.expressions = list(map(_validate, expressions))
-        self.capturing = any(m.capturing for m in self.expressions)
-
-        if all(e._re for e in self.expressions):
-            self._re = re.compile(
-                '(?:{})'.format(
-                    '|'.join(e._re.pattern for e in self.expressions)))
+        super().__init__(capturing=any(m.capturing for m in self.expressions))
 
     def __str__(self):
         return 'Choice({})'.format(', '.join(map(str, self.expressions)))
 
     def match(self, s: str, pos: int = 0):
+        if not self.capturing and self._re:
+            m = self._re.match(s, pos)
+            if not m:
+                return None
+            return Match(s, pos, m.end(), self, [])
+
         m = None
         for expression in self.expressions:
+            print(expression, s, pos)
+            print(expression._re)
             m = expression.match(s, pos=pos)
+            print(m)
             if m:
-                break
-        return Match(s, pos, m.endpos, self, [m])
+                return Match(s, pos, m.end, self, [m])
+        return None
+
+
+def _match_escape(s, pos, escape, matches):
+    x = escape.match(s, pos=pos)
+    while x is not None and pos != x.end:
+        pos = x.end
+        matches.append(x)
+        x = escape.match(s, pos=pos)
+    return pos
 
 
 class Repeat(Expression):
-    __slots__ = 'expression', 'min', 'max', 'delimiter',
+    __slots__ = 'expression', 'min', 'max', 'delimiter', 'escape',
 
     def __init__(self,
-                 expression: Expression,
+                 expression: _NiceExpr,
                  min: int = 0,
                  max: int = -1,
-                 delimiter: Expression = None):
-        super().__init__()
-        if max >= 0 and max < min:
-            raise Error('max must be -1 or >= min')
+                 delimiter: _NiceExpr = None,
+                 escape: _NiceExpr = None):
+        if min < 0:
+            raise ValueError('min must be >= 0')
+        if max != -1 and max < min:
+            raise ValueError('max must be -1 (unlimited) or >= min')
         self.expression: Expression = _validate(expression)
         self.min = min
         self.max = max
         if delimiter:
             delimiter = _validate(delimiter)
         self.delimiter: OptionalType[Expression] = delimiter
-        self.capturing = (expression.capturing
-                          or (delimiter and delimiter.capturing))
-
-        _re = self.expression._re
-        if max == 0:
-            self._re = re.compile('')
-        elif _re:
-            if delimiter and delimiter._re and max != 1:
-                max2 = '' if max < 0 else max - 1
-                self._re = re.compile(
-                    f'{_re.pattern}(?:{delim}{_re.pattern}){{{min},{max2}}}')
-            elif max == 1 or not delimiter:
-                max2 = '' if max < 0 else max
-                self._re = re.compile(
-                    f'{_re.pattern}{{{self.min},{max2}}}')
+        if escape:
+            escape = _validate(escape)
+        self.escape: OptionalType[Expression] = escape
+        super().__init__(
+            capturing=(self.expression.capturing
+                       or (delimiter and delimiter.capturing)
+                       or (escape and escape.capturing)))
 
     def __str__(self):
-        return (f'Repeat({self.expression!s}, min={self.min}, '
-                f'max={self.max}, delimiter={self.delimiter!s})')
+        return (f'Repeat({self.expression!s}, '
+                f'min={self.min}, max={self.max}, '
+                f'delimiter={self.delimiter!s}, '
+                f'escape={self.escape!s})')
 
     def match(self, s: str, pos: int = 0):
+        if not self.capturing and self._re:
+            m = self._re.match(s, pos)
+            if not m:
+                return None
+            return Match(s, pos, m.end(), self, [])
+
         expression = self.expression
         delimiter = self.delimiter
+        escape = self.escape
         min = self.min
         max = self.max
         start: int = pos
         matches = []
         count: int = 0
 
+        if escape:
+            pos = _match_escape(s, pos, escape, matches)
+
         # TODO: walrus
         m = expression.match(s, pos=pos)
-        while m is not None and count != max:
-            pos = m.endpos
+        while m is not None and count != max and pos != m.end:
+            pos = m.end
             matches.append(m)
             count += 1
+
+            if escape:
+                pos = _match_escape(s, pos, escape, matches)
+
             if delimiter:
                 d = delimiter.match(s, pos=pos)
-                if d:
+                if not d:
                     break
-                m = expression.match(s, pos=d.endpos)
-                if m:
+
+                if escape:
+                    pos = _match_escape(s, pos, escape, matches)
+
+                m = expression.match(s, pos=d.end)
+                if not m:
                     break
                 matches.extend((d, m))
-                pos = m.endpos
+                pos = m.end
             else:
                 m = expression.match(s, pos=pos)
+
+        if escape:
+            pos = _match_escape(s, pos, escape, matches)
 
         if count < min:
             return None
         return Match(s, start, pos, self, matches)
 
 
-def Optional(expression: Expression):
+def Optional(expression: _NiceExpr):
     return Repeat(expression, max=1)
-
-
-def Until(terminus: Expression, escape: Expression = None):
-    if isinstance(terminus, Class):
-        run = Repeat(Class(terminus.clsstr, not terminus.negated))
-    else:
-        run = Repeat(Sequence(NotAhead(terminus), Dot()))
-    if escape:
-        return Sequence(run, Repeat(Choice(escape, run)))
-    else:
-        return run
 
 
 class Ahead(Expression):
     __slots__ = 'expression',
 
-    def __init__(self, expression: Expression):
-        super().__init__()
+    def __init__(self, expression: _NiceExpr):
         self.expression = _validate(expression)
-        self._re = self.expression._re
+        super().__init__(caputuring=False)
 
     def __str__(self):
         return f'Ahead({self.expression!s})'
 
     def match(self, s: str, pos: int = 0):
+        if self._re:
+            m = self._re.match(s, pos)
+            if not m:
+                return None
+            return Match(s, pos, pos, self, [])
+
         m = self.expression.match(s, pos=pos)
         if m:
             return Match(s, pos, pos, self, [])
@@ -209,18 +199,20 @@ class Ahead(Expression):
 class NotAhead(Expression):
     __slots__ = 'expression',
 
-    def __init__(self, expression: Expression):
-        super().__init__()
+    def __init__(self, expression: _NiceExpr):
         self.expression = _validate(expression)
-        # TODO: avoid use of lookahead?
-        _re = self.expression._re
-        if _re:
-            self._re = re.compile(f'(?!{_re.pattern})')
+        super().__init__(capturing=False)
 
     def __str__(self):
         return f'NotAhead({self.expression!s})'
 
     def match(self, s: str, pos: int = 0):
+        if self._re:
+            m = self._re.match(s, pos)
+            if not m:
+                return None
+            return Match(s, pos, pos, self, [])
+
         m = self.expression.match(s, pos=pos)
         if m:
             return None
@@ -230,12 +222,10 @@ class NotAhead(Expression):
 class Group(Expression):
     __slots__ = 'expression', 'action',
 
-    def __init__(self, expression: Expression, action: Callable = None):
-        super().__init__()
+    def __init__(self, expression: _NiceExpr, action: Callable = None):
         self.expression = _validate(expression)
         self.action = action
-        self.capturing = True
-        self._re = self.expression._re
+        super().__init__(capturing=True)
 
     def __str__(self):
         return f'Group({self.expression!s}, action={self.action!s})'
@@ -243,7 +233,7 @@ class Group(Expression):
     def match(self, s: str, pos: int = 0):
         m = self.expression.match(s, pos=pos)
         if m:
-            return Match(s, pos, m.endpos, self, [m])
+            return Match(s, pos, m.end, self, [m])
         return None
 
 
@@ -251,9 +241,9 @@ class Nonterminal(Expression):
     __slots__ = 'name', 'rules',
 
     def __init__(self, name: str, rules: Dict[str, Expression]):
-        super().__init__()
         self.name = name
         self.rules = rules
+        super().__init__(capturing=False)
 
     def __str__(self):
         return f'Nonterminal({self.name}, rules=...)'
@@ -266,13 +256,13 @@ class Grammar(Expression):
     __slots__ = 'rules', 'actions',
 
     def __init__(self, rules=None, actions=None):
-        super().__init__()
         self.rules = {}
         self.actions = actions or {}
         if rules:
             for name, expression in rules.items():
                 expression = _validate(expression)
                 self.rules[name] = expression
+        super().__init__(capturing=False)
 
     def __setitem__(self, name: str, expression: Expression):
         self.rules[name] = _validate(expression)
