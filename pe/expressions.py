@@ -2,7 +2,13 @@
 from typing import Union, Dict, Callable, Optional as OptionalType
 import re
 
-from pe.core import Match, Term, Expression
+from pe.constants import NOMATCH
+from pe.core import (
+    Match,
+    Expression,
+    Lookahead,
+    Error,
+)
 from pe.terms import Dot, Literal, Class
 
 
@@ -19,31 +25,51 @@ def _validate(arg):
 
 
 class Sequence(Expression):
-    __slots__ = 'expressions',
+    __slots__ = 'expressions', '_val_modes'
 
     def __init__(self, *expressions: _NiceExpr):
         self.expressions = list(map(_validate, expressions))
-        super().__init__(capturing=any(m.capturing for m in self.expressions))
+        super().__init__(
+            structured=any(e.structured for e in self.expressions),
+            filtered=any(e.filtered for e in self.expressions))
 
     def __str__(self):
         return 'Sequence({})'.format(', '.join(map(str, self.expressions)))
 
-    def match(self, s: str, pos: int = 0):
-        if not self.capturing and self._re:
+    def scan(self, s: str, pos: int = 0):
+        if self._re:
+            m = self._re.match(s, pos)
+            end = NOMATCH if not m else m.end()
+        else:
+            end = pos
+            for e in self.expressions:
+                end = e.scan(s, pos=end)
+                if end < 0:
+                    break
+        return end
+
+    def _match(self, s: str, pos: int = 0):
+        if not self.structured and self._re:
             m = self._re.match(s, pos)
             if not m:
-                return None
-            return Match(s, pos, m.end(), self, [])
+                return NOMATCH, None
+            return m.end(), m.group()
 
-        matches = []
+        unfiltered = not self.filtered
+        value = []
         start = pos
         for expression in self.expressions:
-            m = expression.match(s, pos=pos)
-            if not m:
-                return None
-            pos = m.end
-            matches.append(m)
-        return Match(s, start, pos, self, matches)
+            end, _value = expression._match(s, pos=pos)
+            if end < 0:
+                return NOMATCH, None
+            pos = end
+            if unfiltered:
+                value.append(_value)
+            elif expression.filtered:
+                value.extend(_value)
+        if not self.structured:
+            value = ''.join(value)
+        return pos, value
 
 
 class Choice(Expression):
@@ -51,35 +77,64 @@ class Choice(Expression):
 
     def __init__(self, *expressions: _NiceExpr):
         self.expressions = list(map(_validate, expressions))
-        super().__init__(capturing=any(m.capturing for m in self.expressions))
+        super().__init__(
+            structured=any(m.structured for m in self.expressions),
+            filtered=any(m.filtered for m in self.expressions))
 
     def __str__(self):
         return 'Choice({})'.format(', '.join(map(str, self.expressions)))
 
-    def match(self, s: str, pos: int = 0):
-        if not self.capturing and self._re:
+    def scan(self, s: str, pos: int = 0):
+        if self._re:
+            m = self._re.match(s, pos)
+            end = NOMATCH if not m else m.end()
+        else:
+            end = NOMATCH
+            for e in self.expressions:
+                end = e.scan(s, pos=pos)
+                if end >= 0:
+                    break
+        return end
+
+    def _match(self, s: str, pos: int = 0):
+        if not self.structured and self._re:
             m = self._re.match(s, pos)
             if not m:
-                return None
-            return Match(s, pos, m.end(), self, [])
+                return NOMATCH, None
+            return m.end(), [m.group()]
 
-        m = None
+        struct = self.structured
+        end = NOMATCH
         for expression in self.expressions:
-            print(expression, s, pos)
-            print(expression._re)
-            m = expression.match(s, pos=pos)
-            print(m)
-            if m:
-                return Match(s, pos, m.end, self, [m])
-        return None
+            end, groups = expression._match(s, pos=pos)
+            if end >= 0:
+                if struct and not expression.structured:
+                    groups = []
+                return end, groups
+        return end, None
 
 
-def _match_escape(s, pos, escape, matches):
-    x = escape.match(s, pos=pos)
-    while x is not None and pos != x.end:
-        pos = x.end
-        matches.append(x)
-        x = escape.match(s, pos=pos)
+def _scan_with_escape(s, pos, expr, esc):
+    if esc:
+        end = esc.scan(s, pos)
+        if end >= pos:
+            pos = end
+    pos = expr.scan(s, pos)
+    if pos >= 0 and esc:
+        end = esc.scan(s, pos)
+        if end >= pos:
+            pos = end
+    return pos
+
+
+def _match_escape(s, pos, escape, accumulate):
+    # TODO: not correct; consider a{:(?:" "? (delim))*}
+    end, _value = escape._match(s, pos=pos)
+    while end > pos:
+        pos = end
+        if accumulate:
+            accumulate(_value)
+        end, _value = escape._match(s, pos=pos)
     return pos
 
 
@@ -106,9 +161,12 @@ class Repeat(Expression):
             escape = _validate(escape)
         self.escape: OptionalType[Expression] = escape
         super().__init__(
-            capturing=(self.expression.capturing
-                       or (delimiter and delimiter.capturing)
-                       or (escape and escape.capturing)))
+            structured=(self.expression.structured
+                        or (delimiter and delimiter.structured)
+                        or (escape and escape.structured)),
+            filtered=(self.expression.filtered
+                      or (delimiter and delimiter.filtered)
+                      or (escape and escape.filtered)))
 
     def __str__(self):
         return (f'Repeat({self.expression!s}, '
@@ -116,12 +174,47 @@ class Repeat(Expression):
                 f'delimiter={self.delimiter!s}, '
                 f'escape={self.escape!s})')
 
-    def match(self, s: str, pos: int = 0):
-        if not self.capturing and self._re:
+    def scan(self, s: str, pos: int = 0):
+        if self._re:
+            m = self._re.match(s, pos)
+            return NOMATCH if not m else m.end()
+        else:
+            min = self.min
+            max = self.max
+            expr = self.expression
+            delim = self.delimiter
+            esc = self.escape
+            if max == 0:
+                if esc:
+                    end = esc.scan(s, pos)
+                    if end >= pos:
+                        pos = end
+                return pos
+            else:
+                pos = _scan_with_escape(s, pos, expr, esc)
+                count = 1
+                while pos >= 0 and count != max:
+                    if delim:
+                        end = delim.scan(s, pos=pos)
+                        if end < 0:
+                            break
+                        end = _scan_with_escape(s, end, expr, esc)
+                    else:
+                        end = _scan_with_escape(s, end, expr, esc)
+                    if end < 0:
+                        break
+                    pos = end
+                    count += 1
+            if count < min:
+                return NOMATCH
+            return pos
+
+    def _match(self, s: str, pos: int = 0):
+        if not self.structured and self._re:
             m = self._re.match(s, pos)
             if not m:
-                return None
-            return Match(s, pos, m.end(), self, [])
+                return NOMATCH, None
+            return m.end(), [m.group()]
 
         expression = self.expression
         delimiter = self.delimiter
@@ -129,146 +222,175 @@ class Repeat(Expression):
         min = self.min
         max = self.max
         start: int = pos
-        matches = []
-        count: int = 0
+
+        value = []
+        if self.filtered:
+            acc = value.extend if expression.filtered else None
+            dacc = value.extend if delimiter and delimiter.filtered else None
+            eacc = value.extend if escape and escape.filtered else None
+        else:
+            acc = dacc = eacc = value.append
 
         if escape:
-            pos = _match_escape(s, pos, escape, matches)
+            pos = _match_escape(s, pos, escape, eacc)
+
+        count: int = 0
+        end: int = NOMATCH
+        # first instance, pre-delimiter
+        if max != 0:
+            end, _value = expression._match(s, pos=pos)
+            if end >= pos and acc:
+                acc(_value)
+                pos = end
+                count += 1
 
         # TODO: walrus
-        m = expression.match(s, pos=pos)
-        while m is not None and count != max and pos != m.end:
-            pos = m.end
-            matches.append(m)
-            count += 1
-
+        while count != max:
             if escape:
-                pos = _match_escape(s, pos, escape, matches)
-
+                pos = _match_escape(s, pos, escape, eacc)
             if delimiter:
-                d = delimiter.match(s, pos=pos)
-                if not d:
+                end, dvalue = delimiter._match(s, pos=pos)
+                if end < 0:
                     break
-
                 if escape:
-                    pos = _match_escape(s, pos, escape, matches)
-
-                m = expression.match(s, pos=d.end)
-                if not m:
-                    break
-                matches.extend((d, m))
-                pos = m.end
+                    end = _match_escape(s, end, escape, eacc)
+                end, _value = expression._match(s, pos=end)
+                if end >= pos and dacc:
+                    dacc(dvalue)
             else:
-                m = expression.match(s, pos=pos)
+                end, _value = expression._match(s, pos=pos)
+
+            if end < 0:
+                break
+            if acc:
+                acc(_value)
+            pos = end
 
         if escape:
-            pos = _match_escape(s, pos, escape, matches)
+            pos = _match_escape(s, pos, escape, eacc)
 
         if count < min:
-            return None
-        return Match(s, start, pos, self, matches)
+            return NOMATCH, None
+        return pos, value
 
 
 def Optional(expression: _NiceExpr):
     return Repeat(expression, max=1)
 
 
-class Ahead(Expression):
-    __slots__ = 'expression',
-
-    def __init__(self, expression: _NiceExpr):
-        self.expression = _validate(expression)
-        super().__init__(caputuring=False)
-
-    def __str__(self):
-        return f'Ahead({self.expression!s})'
-
-    def match(self, s: str, pos: int = 0):
-        if self._re:
-            m = self._re.match(s, pos)
-            if not m:
-                return None
-            return Match(s, pos, pos, self, [])
-
-        m = self.expression.match(s, pos=pos)
-        if m:
-            return Match(s, pos, pos, self, [])
-        return None
+def Ahead(expression):
+    return Lookahead(_validate(expression), True)
 
 
-class NotAhead(Expression):
-    __slots__ = 'expression',
-
-    def __init__(self, expression: _NiceExpr):
-        self.expression = _validate(expression)
-        super().__init__(capturing=False)
-
-    def __str__(self):
-        return f'NotAhead({self.expression!s})'
-
-    def match(self, s: str, pos: int = 0):
-        if self._re:
-            m = self._re.match(s, pos)
-            if not m:
-                return None
-            return Match(s, pos, pos, self, [])
-
-        m = self.expression.match(s, pos=pos)
-        if m:
-            return None
-        return Match(s, pos, pos, self, [])
+def NotAhead(expression):
+    return Lookahead(_validate(expression), False)
 
 
 class Group(Expression):
     __slots__ = 'expression', 'action',
 
-    def __init__(self, expression: _NiceExpr, action: Callable = None):
+    def __init__(self, expression: _NiceExpr):
         self.expression = _validate(expression)
-        self.action = action
-        super().__init__(capturing=True)
+        super().__init__(structured=True, filtered=True)
 
     def __str__(self):
-        return f'Group({self.expression!s}, action={self.action!s})'
+        return f'Group({self.expression!s})'
 
-    def match(self, s: str, pos: int = 0):
-        m = self.expression.match(s, pos=pos)
-        if m:
-            return Match(s, pos, m.end, self, [m])
-        return None
+    def scan(self, s: str, pos: int = 0):
+        return self.expression.scan(s, pos=pos)
+
+    def _match(self, s: str, pos: int = 0):
+        end, value = self.expression._match(s, pos=pos)
+        if end < 0:
+            return end, None
+        return end, [value]
 
 
-class Nonterminal(Expression):
-    __slots__ = 'name', 'rules',
-
-    def __init__(self, name: str, rules: Dict[str, Expression]):
+class _DeferredLookup(Expression):
+    def __init__(self, name: str, table: Dict[str, OptionalType[Expression]]):
         self.name = name
-        self.rules = rules
-        super().__init__(capturing=False)
+        self.table = table
+        self.structured = True  # until it is knowable
+        self.filtered = False  # until it is knowable
+        self._re = None
 
     def __str__(self):
-        return f'Nonterminal({self.name}, rules=...)'
+        return f'_DeferredLookup({self.name})'
 
-    def match(self, s: str, pos: int = 0):
-        return self.rules[self.name].match(s, pos=pos)
+    def scan(self, s: str, pos: int = 0):
+        expr = self.table[self.name]
+        if expr is None:
+            raise Error(f'expression not defined: {self.name}')
+        return expr.scan(s, pos=pos)
+
+    def _match(self, s: str, pos: int = 0):
+        expr = self.table[self.name]
+        if expr is None:
+            raise Error(f'expression not defined: {self.name}')
+        return expr._match(s, pos=pos)
+
+
+class Rule(Expression):
+    __slots__ = 'expression', 'name', 'action',
+
+    def __init__(self,
+                 expression: Expression,
+                 name: str = None,
+                 action: Callable = None):
+        self.expression = _validate(expression)
+        self.name = name
+        self.action = action
+        super().__init__(structured=action is not None,
+                         filtered=self.expression.filtered)
+
+    def __str__(self):
+        return (f'Rule({self.expression!s}, '
+                f'name={self.name!r}, '
+                f'action={self.action})')
+
+    def scan(self, s: str, pos: int = 0):
+        return self.expression.scan(s, pos=pos)
+
+    def _match(self, s: str, pos: int = 0):
+        end, value = self.expression._match(s, pos=pos)
+        if end < 0:
+            return end, None
+        if self.action:
+            value = self.action(value)
+        return end, value
 
 
 class Grammar(Expression):
-    __slots__ = 'rules', 'actions',
+    __slots__ = 'rules', 'actions', 'start',
 
-    def __init__(self, rules=None, actions=None):
-        self.rules = {}
+    def __init__(self, rules=None, actions=None, start='Start'):
+        self.rules = rules or {}
         self.actions = actions or {}
+        self.start = start
         if rules:
             for name, expression in rules.items():
                 expression = _validate(expression)
                 self.rules[name] = expression
-        super().__init__(capturing=False)
+        super().__init__(structured=True)
 
     def __setitem__(self, name: str, expression: Expression):
         self.rules[name] = _validate(expression)
 
-    def lookup(self, name: str) -> Expression:
-        return Nonterminal(name, self.rules)
+    def __getitem__(self, name: str) -> Expression:
+        # TODO: walrus
+        expr = self.rules.get(name)
+        if expr:
+            return expr
+        else:
+            return _DeferredLookup(name, self.rules)
 
-    def match(self, s: str, pos: int = 0):
-        return self.rules['Start'].match(s, pos=pos)
+    def __contains__(self, name: str) -> bool:
+        return name in self.rules
+
+    def scan(self, s: str, pos: int = 0):
+        if self.start not in self:
+            raise Error(f'start rule not defined')
+        return self[self.start].scan(s, pos=pos)
+
+    def _match(self, s: str, pos: int = 0):
+        return self.rules[self.start]._match(s, pos=pos)

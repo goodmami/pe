@@ -1,5 +1,5 @@
 
-from pe._exceptions import Error
+from pe.core import Error
 from pe.terms import (
     Dot,
     Literal,
@@ -14,5 +14,6 @@ from pe.expressions import (
     Ahead,
     NotAhead,
     Group,
+    Rule,
     Grammar,
 )

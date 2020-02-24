@@ -22,7 +22,7 @@ INTEGER = Sequence(Optional(Class('-+')), UNSIGNED_INTEGER)
 SIGNED_INTEGER = Sequence(Class('-+'), UNSIGNED_INTEGER)
 
 FLOAT_FRACTION = Sequence('.', DIGITS)
-FLOAT_EXPONENT = Sequence(Class('eE'), INTEGER)
+FLOAT_EXPONENT = Sequence(Class('eE'), Optional(Class('-+')), Repeat(DIGIT))
 FLOAT = Sequence(INTEGER, Optional(FLOAT_FRACTION), Optional(FLOAT_EXPONENT))
 
 ESCAPE = Sequence('\\', DOT)

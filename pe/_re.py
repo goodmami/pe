@@ -28,7 +28,7 @@ def set_re(expr) -> None:
     if name == 'Dot':
         expr._re = re.compile('.')
     elif name == 'Literal':
-        expr._re = re.compile(re.escape(string))
+        expr._re = re.compile(re.escape(expr.string))
     elif name == 'Class':
         expr._re = re.compile(f'[{expr.string}]')
     elif name == 'Regex':
@@ -39,18 +39,16 @@ def set_re(expr) -> None:
         _set_choice_re(expr)
     elif name == 'Repeat':
         _set_repeat_re(expr)
-    elif name == 'Ahead':
-        set_re(expr.expression)
-        expr._re = expr.expression._re
-    elif name == 'NotAhead':
-        _set_notahead_re(expr)
+    elif name == 'Lookahead':
+        _set_lookahead_re(expr)
     elif name == 'Group':
         set_re(expr.expression)
         expr._re = expr.expression._re
-    elif name == 'Nonterminal':
-        pass
-    elif name == 'Grammar':
-        pass
+    elif name == 'Rule':
+        set_re(expr.expression)
+        expr._re = expr.expression._re
+    elif name == 'Grammar' and expr.start in expr and expr[expr.start]._re:
+        expr._re = expr[expr.start]._re
 
 
 def _set_sequence_re(expr):
@@ -134,9 +132,10 @@ def _set_repeat_re(expr):
             expr._re = re.compile(f'{pattern}{rpt}')
 
 
-def _set_notahead_re(expr):
-    # TODO: avoid use of lookahead?
+def _set_lookahead_re(expr):
+    # TODO: avoid use of regex lookahead?
     set_re(expr.expression)
     _re = expr.expression._re
     if _re:
-        expr._re = re.compile(f'(?!{_re.pattern})')
+        op = '=' if expr.polarity else '!'
+        expr._re = re.compile(f'(?{op}{_re.pattern})')

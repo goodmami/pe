@@ -1,6 +1,10 @@
 
-Parsing Expressions Specification
-=================================
+=============
+Specification
+=============
+
+Expressions
+===========
 
 This document defines the expressions available to **pe**.
 
@@ -36,8 +40,14 @@ Character Class
 ``[^abc]``
 
 
-Expressions
------------
+Regex
+'''''
+
+``/abc/``
+
+
+Combining Expressions
+---------------------
 
 .. code::
 
@@ -76,10 +86,20 @@ Shorthand       Equivalent
 ``e?``          ``e{,1}``
 ``e*``          ``e{,}``
 ``e+``          ``e{1,}``
+``e{:d}``       ``(?: e (?: d e )* )?``
 ``e{1,:d}``     ``e (?: d e )*``
-``e{:,x}``      ``(?: x* e x*)*`` or ``(?: x | e )*``
-``e{1,3:d,x}``  ``x* e x* (?: d x* e x* ){,2}``
+``e{::x}``      ``x* (?: e x*)*``
+``e{3,5:d:x}``  ``x* e (?: x* d x* e){2,4} x*``
 ==============  =====================================
+
+Here are some examples:
+
+.. code::
+
+   [-+]? (?: "0" | [1-9] [0-9]* )  # integer
+   ([^,]*){:","}                   # comma-separated values
+   ([^,\\]{::"\\" .}){:","}        # comma-separated values with escapes
+   '"' [^"\n\\]{::"\\" .} '"'      # double-quoted strings with escapes
 
 ..
   .           # any single character
@@ -109,3 +129,85 @@ Shorthand       Equivalent
   # grammars
   name = ...  # define a rule named 'name'
   ... = name  # refer to rule named 'name'
+
+
+Group
+'''''
+
+``(e)``
+
+``(?:e)``
+
+A group expression has two variants: capturing and non-capturing. Both
+are used to create subexpressions for, e.g., choice alternatives or
+repetition. Capturing groups additionally aid with filtering and
+structuring values.
+
+==============  =========  =============
+Capability      Capturing  Non-capturing
+==============  =========  =============
+Basic Grouping  ✔          ✔
+Filtering       ✔
+Structuring     ✔
+==============  =========  =============
+
+
+Value Transformations
+=====================
+
+.. code::
+
+   # Grammar                        Input  ->  Value
+   # -------------------------------------------------------
+   Start <- [0-9]                   '3'    ->  '3'
+   # -------------------------------------------------------
+   Start <- [0-9]         >>> int   '3'    ->  3
+   # -------------------------------------------------------
+   Start <- ([0-9])                 '3'    ->  ['3']
+   # -------------------------------------------------------
+   Start <- ([0-9])       >>> int   '3'    ->  *error*
+   # -------------------------------------------------------
+   Start <- Digit                   '3'    ->  '3'
+   Digit <- [0-9]
+   # -------------------------------------------------------
+   Start <- Digit                   '3'    ->  3
+   Digit <- [0-9]         >>> int
+   # -------------------------------------------------------
+   Start <- Digit                   '3'    ->  ['3']
+   Digit <- ([0-9])
+   # -------------------------------------------------------
+   Start <- (Digit)                 '3'    ->  ['3']
+   Digit <- [0-9]
+   # -------------------------------------------------------
+   Start <- (Digit)                 '3'    ->  [3]
+   Digit <- [0-9]         >>> int
+
+
+.. code::
+
+   # Grammar                        Input  ->  Value
+   Start <- "-"? [0-9]              '-3'   ->  '-3'
+   # -------------------------------------------------------
+   Start <- "-"? [0-9]    >>> int   '-3'  ->  -3
+   # -------------------------------------------------------
+   Start <- "-" ([0-9])             '-3'  ->  ['3']
+   # -------------------------------------------------------
+   Start <- "-" ([0-9])   >>> int   '-3'  ->  *error*
+   # -------------------------------------------------------
+   Start <- "-" Digit               '-3'  ->  '-3'
+   Digit <- [0-9]
+   # -------------------------------------------------------
+   Start <- "-" Digit               '-3'  ->  ['-', 3]
+   Digit <- [0-9]         >>> int
+   # -------------------------------------------------------
+   Start <- "-" Digit               '-3'  ->  ['-', ['3']]
+   Digit <- ([0-9])
+   # -------------------------------------------------------
+   Start <- "-" (Digit)             '-3'  ->  ['3']
+   Digit <- [0-9]
+   # -------------------------------------------------------
+   Start <- ("-") (Digit)           '-3'  ->  ['-', ['3']]
+   Digit <- ([0-9])
+   # -------------------------------------------------------
+   Start <- ("-") Digit             '-3'  ->  ['-']
+   Digit <- ([0-9])

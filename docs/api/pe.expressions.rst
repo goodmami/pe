@@ -30,7 +30,7 @@ pe.expressions
    :show-inheritance:
    :members:
 
-.. autoclass:: Nonterminal
+.. autoclass:: Rule
    :show-inheritance:
    :members:
 
