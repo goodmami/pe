@@ -18,13 +18,9 @@ pe.expressions
 
 .. autofunction:: Optional
 
-.. autoclass:: Ahead
-   :show-inheritance:
-   :members:
+.. autofunction:: Ahead
 
-.. autoclass:: NotAhead
-   :show-inheritance:
-   :members:
+.. autofunction:: NotAhead
 
 .. autoclass:: Group
    :show-inheritance:
