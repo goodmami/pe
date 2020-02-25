@@ -19,12 +19,12 @@ from pe.common import (
 
 grammar = '''
 Start    = _* (Value) _*
-Value    = Object | Array | String | Number | TRUE | FALSE | NIL
+Value    = Object / Array / String / Number / TRUE / FALSE / NIL
 Object   = "{" _* ((String) _* ":" _* (Value)){:COMMA} _* "}"
 Array    <- "[" _* (Value){:COMMA} _* "]"
-String   <- '"' (?: '\\' . | !'"' . )* '"'
-Number   <- INTEGER | FLOAT
-INTEGER  <- "-"? (?: "0" | [1-9] [0-9]*)
+String   <- '"' (?: '\\' . / !'"' . )* '"'
+Number   <- INTEGER / FLOAT
+INTEGER  <- "-"? (?: "0" / [1-9] [0-9]*)
 FLOAT    <- INTEGER FRACTION? EXPONENT?
 FRACTION <- "." [0-9]+
 EXPONENT <- [eE] [-+]? [0-9]+

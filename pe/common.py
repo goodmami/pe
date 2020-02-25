@@ -8,7 +8,7 @@ from pe.expressions import (
     Choice,
     Repeat,
     Optional,
-    NotAhead,
+    Not,
 )
 
 DOT = Dot()
@@ -32,8 +32,8 @@ DQSTRING = Sequence('"', Repeat(_DQCONT, escape=ESCAPE), '"')
 DQSTRING = Sequence('"', _DQCONT, Repeat(Choice(ESCAPE, _DQCONT)), '"')
 SQSTRING = Sequence("'", Repeat(_SQCONT, escape=ESCAPE), "'")
 
-_DQ3CONT = Sequence(NotAhead('"""'), DOT)
-_SQ3CONT = Sequence(NotAhead("'''"), DOT)
+_DQ3CONT = Sequence(Not('"""'), DOT)
+_SQ3CONT = Sequence(Not("'''"), DOT)
 DQ3STRING = Sequence('"""', Repeat(_DQ3CONT, escape=ESCAPE), '"""')
 SQ3STRING = Sequence("'''", Repeat(_SQ3CONT, escape=ESCAPE), "'''")
 

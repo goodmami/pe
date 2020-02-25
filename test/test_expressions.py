@@ -8,8 +8,8 @@ from pe.expressions import (
     Choice,
     Repeat,
     Optional,
-    Ahead,
-    NotAhead,
+    Peek,
+    Not,
     Group,
     Rule,
     Grammar,
@@ -108,14 +108,14 @@ def test_scan_Optional():
     assert Optional(abc).scan('a') == 1
 
 
-def test_scan_Ahead():
-    assert Ahead(abc).scan('a') == 0
-    assert Ahead(abc).scan('d') == NOMATCH
+def test_scan_Peek():
+    assert Peek(abc).scan('a') == 0
+    assert Peek(abc).scan('d') == NOMATCH
 
 
-def test_scan_NotAhead():
-    assert NotAhead(abc).scan('a') == NOMATCH
-    assert NotAhead(abc).scan('d') == 0
+def test_scan_Not():
+    assert Not(abc).scan('a') == NOMATCH
+    assert Not(abc).scan('d') == 0
 
 
 def test_scan_Group():

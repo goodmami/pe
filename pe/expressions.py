@@ -278,11 +278,11 @@ def Optional(expression: _NiceExpr):
     return Repeat(expression, max=1)
 
 
-def Ahead(expression):
+def Peek(expression):
     return Lookahead(_validate(expression), True)
 
 
-def NotAhead(expression):
+def Not(expression):
     return Lookahead(_validate(expression), False)
 
 

@@ -12,8 +12,8 @@ pe
 .. autoclass:: Choice
 .. autoclass:: Repeat
 .. autofunction:: Optional
-.. autofunction:: Ahead
-.. autofunction:: NotAhead
+.. autofunction:: Peek
+.. autofunction:: Not
 .. autoclass:: Group
 .. autoclass:: Rule
 .. autoclass:: Grammar

@@ -79,61 +79,61 @@ from pe import (
     Repeat,
     Optional,
     Group,
-    Ahead,
-    NotAhead,
+    Peek,
+    Not,
     Rule,
     Grammar,
 )
 
 G = Grammar()
 
-_DOT = Dot()
-G['EndOfFile']  = NotAhead(Dot())
-G['EndOfLine']  = Choice(r'\r\n', r'\r', r'\n')
-_RestOfLine = Repeat(Sequence(NotAhead(G['EndOfLine']), _DOT))
-G['Comment']    = Sequence('#', _RestOfLine, G['EndOfLine'])
-G['Space']      = Choice(' ', r'\t', G['EndOfLine'])
-G['Spacing']    = Repeat(Choice(G['Space'], G['Comment']))
+DOT = Dot()
 
-G['LEFTARROW']  = Sequence('<-', G['Spacing'])
-G['SLASH']      = Sequence('/', G['Spacing'])
-G['AND']        = Sequence('&', G['Spacing'])
-G['NOT']        = Sequence('!', G['Spacing'])
-G['QUESTION']   = Sequence('?', G['Spacing'])
-G['STAR']       = Sequence('*', G['Spacing'])
-G['PLUS']       = Sequence('+', G['Spacing'])
-_GroupType = Optional(Sequence('?', _DOT))
-G['OPEN']       = Sequence('(', Group(_GroupType), G['Spacing'])
-G['CLOSE']      = Sequence(')', G['Spacing'])
-G['DOT']        = Sequence('.', G['Spacing'])
+# Lexical expressions
 
-_ESC = Sequence('\\', _DOT)
+EndOfFile  = Not(DOT)
+EndOfLine  = Choice(r'\r\n', r'\r', r'\n')
+Comment    = Sequence('#', Repeat(Sequence(Not(EndOfLine), DOT)), EndOfLine)
+Space      = Choice(' ', r'\t', EndOfLine)
+Spacing    = Repeat(Choice(Space, Comment))
 
-G['Class']      = Rule(
-    Sequence('[', Repeat(Class(r'^\]\\'), escape=_ESC), ']'),
-    action=lambda s: Class(s[1:-1]))
+LEFTARROW  = Sequence('<-', Spacing)
+SLASH      = Sequence('/', Spacing)
+AND        = Sequence('&', Spacing)
+NOT        = Sequence('!', Spacing)
+QUESTION   = Sequence('?', Spacing)
+STAR       = Sequence('*', Spacing)
+PLUS       = Sequence('+', Spacing)
+_GroupType = Optional(Sequence('?', DOT))
+OPEN       = Sequence('(', Group(_GroupType), Spacing)
+CLOSE      = Sequence(')', Spacing)
+DOT        = Sequence('.', Spacing)
 
-G['Literal']    = Rule(
-    Choice(Sequence("'", Repeat(Class(r"^'\\"), escape=_ESC), "'"),
-           Sequence("'", Repeat(Class(r'^"\\'), escape=_ESC), '"')),
-           action=lambda s: Literal(s[1:-1]))
+_ESC = Sequence('\\', DOT)  # Generic escape sequence
 
-G['IdentStart'] = Class('a-zA-Z_')
-G['IdentCont']  = Choice(G['IdentStart'], Class('0-9'))
-G['Identifier'] = Sequence(
-    G['IdentStart'], Repeat(G['IdentCont']), G['Spacing'])
+CLASS      = Sequence('[', Repeat(Class(r'^\]\\'), escape=_ESC), ']')
+LITERAL    = Choice(Sequence("'", Repeat(Class(r"^'\\"), escape=_ESC), "'"),
+                    Sequence("'", Repeat(Class(r'^"\\'), escape=_ESC), '"'))
 
-G['RuleName']   = Rule(
-    Sequence(G['Identifier'], NotAhead(G['LEFTARROW'])),
-    action=lambda s: ('Name', s))
+IdentStart = Class('a-zA-Z_')
+IdentCont  = Choice(IdentStart, Class('0-9'))
+Identifier = Sequence(
+    IdentStart, Repeat(IdentCont), Spacing)
+
+RULENAME   = Sequence(Identifier, Not(LEFTARROW)),
+
+G['Class']      = Rule(CLASS, action=lambda s: Class(s[1:-1]))
+G['Literal']    = Rule(LITERAL, action=lambda s: Literal(s[1:-1]))
+
+G['RuleName']   = Rule(RULENAME, action=lambda s: ('Name', s))
 G['Group']      = Rule(
-    Sequence(G['OPEN'], Group(G['Expression']), G['CLOSE']),
+    Sequence(OPEN, Group(G['Expression']), CLOSE),
     action=lambda xs: ('Group', *xs))
 G['Term']       = Rule(Choice(G['Literal'], G['Class']),
                        action=lambda t: ('Term', t))
 G['Primary']    = Choice(G['RuleName'], G['Group'], G['Term'])
 
-G['Quantifier'] = Choice(G['QUESTION'], G['STAR'], G['PLUS'], G['))
+G['Quantifier'] = Choice(G['QUESTION'], G['STAR'], G['PLUS'], G[''])
 G['Suffix']     = Sequence(G['Primary'], G['Quantifier'])
 G['Prefix']     = Sequence(
     Optional(Choice(G['AND'], G['NOT'])), G['Suffix'])

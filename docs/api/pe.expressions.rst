@@ -18,9 +18,9 @@ pe.expressions
 
 .. autofunction:: Optional
 
-.. autofunction:: Ahead
+.. autofunction:: Peek
 
-.. autofunction:: NotAhead
+.. autofunction:: Not
 
 .. autoclass:: Group
    :show-inheritance:
