@@ -114,6 +114,14 @@ def test_objects():
     }''').value() == {'key': [1, 2]})
 
 
+def test_recursion():
+    try:
+        for i in range(50,1000,10):
+            Json.match(('[' * i) + (']' * i))
+    except RecursionError:
+        assert False, f'failed at recursion depth {i}'
+
+
 if __name__ == '__main__':
     s = '''{
         "bool": [
