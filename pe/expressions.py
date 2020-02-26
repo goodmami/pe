@@ -326,25 +326,22 @@ class _DeferredLookup(Expression):
 
 
 class Rule(Expression):
-    __slots__ = 'expression', 'name', 'action',
+    __slots__ = 'expression', 'action',
 
     def __init__(self,
                  expression: Expression,
-                 name: str = None,
                  action: Callable = None):
         self.expression = _validate(expression)
-        self.name = name
         self.action = action
         super().__init__(structured=action is not None,
                          filtered=self.expression.filtered)
 
     def __repr__(self):
         return (f'Rule({self.expression!s}, '
-                f'name={self.name!r}, '
                 f'action={self.action})')
 
     def __str__(self):
-        return f'{self.name} <- {self.expression!s}'
+        return f'{self.expression!s}'
 
     def scan(self, s: str, pos: int = 0):
         return self.expression.scan(s, pos=pos)
@@ -372,7 +369,10 @@ class Grammar(Expression):
         super().__init__(structured=True)
 
     def __str__(self):
-        return '\n'.join(map(str, self.rules.values()))
+        width = max(len(name) for name in self.rules) + 1
+        defs = [f'{name:<{width}}<- {expr!s}'
+                for name, expr in self.rules.items()]
+        return '\n'.join(defs)
 
     def __setitem__(self, name: str, expression: Expression):
         self.rules[name] = _validate(expression)

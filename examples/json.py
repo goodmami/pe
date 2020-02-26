@@ -50,12 +50,12 @@ Json = pe.compile(
 # INTEGER  = Sequence(Optional('-'), UNSIGNED_INTEGER)
 
 # # basic values
-# Integer  = Rule(INTEGER, name='Integer', action=int)
-# Float    = Rule(FLOAT, name='Float', action=float)
-# String   = Rule(DQSTRING, name='String', action=lambda s: s[1:-1])
-# TRUE     = Rule('true', name='TRUE', action=lambda _: True)
-# FALSE    = Rule('false', name='FALSE', action=lambda _: False)
-# NULL     = Rule('null', name='NULL', action=lambda _: None)
+# Integer  = Rule(INTEGER, action=int)
+# Float    = Rule(FLOAT, action=float)
+# String   = Rule(DQSTRING, action=lambda s: s[1:-1])
+# TRUE     = Rule('true', action=lambda _: True)
+# FALSE    = Rule('false', action=lambda _: False)
+# NULL     = Rule('null', action=lambda _: None)
 
 # # placeholder for recursive type
 # Json     = Grammar()
@@ -64,10 +64,10 @@ Json = pe.compile(
 # # recursive patterns
 # Member   = Sequence(Group(String), COLON, Group(Value))
 # Members  = Repeat(Group(Member), delimiter=COMMA)
-# Object   = Rule(Sequence(LBRACE, Members, RBRACE), name='Object', action=dict)
+# Object   = Rule(Sequence(LBRACE, Members, RBRACE), action=dict)
 
 # Items    = Repeat(Group(Value), delimiter=COMMA)
-# Array    = Rule(Sequence(LBRACKET, Items, RBRACKET), name='Array', action=list)
+# Array    = Rule(Sequence(LBRACKET, Items, RBRACKET), action=list)
 
 # # now fill in Value
 # Json['Value'] = Choice(

@@ -130,17 +130,17 @@ IdentCont  = Choice(IdentStart, Class('0-9'))
 Identifier = Sequence(
     IdentStart, Repeat(IdentCont), Spacing)
 
-RULENAME   = Sequence(Identifier, Not(LEFTARROW)),
+RULENAME   = Sequence(Identifier, Not(LEFTARROW))
 GROUP      = Sequence(OPEN, Group(G['Expression']), CLOSE)
 
 Integer    = Choice('0', Sequence(Class('1-9'), Repeat(Class('0-9'))))
 Span       = Choice(Sequence(Optional(Integer), COMMA, Optional(Integer)),
                     Integer)
 
-G['Class']      = Rule('Class', CLASS, action=lambda s: Class(s[1:-1]))
-G['Literal']    = Rule('Literal', LITERAL, action=lambda s: Literal(s[1:-1]))
-G['Name']       = Rule('Name', RULENAME, action=lambda s: ('Name', s))
-G['Group']      = Rule('Group', GROUP, action=lambda xs: ('Group', *xs))
+G['Class']      = Rule(CLASS, action=lambda s: Class(s[1:-1]))
+G['Literal']    = Rule(LITERAL, action=lambda s: Literal(s[1:-1]))
+G['Name']       = Rule(RULENAME, action=lambda s: ('Name', s))
+G['Group']      = Rule(GROUP, action=lambda xs: ('Group', *xs))
 G['Term']       = Rule(Choice(G['Literal'], G['Class']),
                        action=lambda t: ('Term', t))
 G['Primary']    = Choice(G['RuleName'], G['Group'], G['Term'])
@@ -153,7 +153,7 @@ G['Sequence']   = Repeat(G['Prefix'])
 G['Expression'] = Repeat(G['Sequence'], delimiter=G['SLASH'])
 
 G['Definition'] = Sequence(G['Identifier'], G['LEFTARROW'], G['Expression'])
-G['Grammar']    = Rule('Definition', Repeat(G['Definition'], min=1))
+G['Grammar']    = Rule(Repeat(G['Definition'], min=1))
 G['Start']      = Sequence(
     G['Spacing'], Group(Choice(G['Expression'], G['Grammar'])), G['EndOfFile'])
 
