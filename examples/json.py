@@ -1,77 +1,81 @@
 
+from operator import itemgetter
+
 import pe
-from pe import (
-    Class,
-    Sequence,
-    Choice,
-    Repeat,
-    Optional,
-    Group,
-    Rule,
-    Grammar,
+
+
+first = itemgetter(0)
+
+Json = pe.compile(
+    '''
+    Start    <- _* (Value) _*
+    Value    <- Object / Array / String / Number / Constant
+    Object   <- "{" _* (Member){:COMMA} _* "}"
+    Member   <- (String) _* ":" _* (Value)
+    Array    <- "[" _* (Value){:COMMA} _* "]"
+    String   <- '"' (?: '\\' . / !'"' . )* '"'
+    Number   <- INTEGER / FLOAT
+    Constant <- TRUE / FALSE / NIL
+    INTEGER  <- "-"? (?: "0" / [1-9] [0-9]*)
+    FLOAT    <- INTEGER FRACTION? EXPONENT?
+    FRACTION <- "." [0-9]+
+    EXPONENT <- [eE] [-+]? [0-9]+
+    TRUE     <- "true"
+    FALSE    <- "false"
+    NULL     <- "null"
+    COMMA    <- _* "," _*
+    _        <- [\t\n\f\r ]
+    ''',
+    actions={
+        'Start': first,
+        'Object': dict,
+        'Array': list,
+        'String': lambda s: s[1:-1],
+        'INTEGER': int,
+        'FLOAT': float,
+        'TRUE': lambda: True,
+        'FALSE': lambda: False,
+        'NULL': lambda: None,
+    }
 )
-from pe.common import (
-    UNSIGNED_INTEGER,
-    FLOAT,
-    DQSTRING,
-)
 
+# # lexical patterns
+# WS       = Repeat(Class('\t\n\f\r '))
+# LBRACE   = Sequence('{', WS)
+# RBRACE   = Sequence(WS, '}')
+# LBRACKET = Sequence('[', WS)
+# RBRACKET = Sequence(WS, ']')
+# COLON    = Sequence(WS, ':', WS)
+# COMMA    = Sequence(WS, ',', WS)
+# INTEGER  = Sequence(Optional('-'), UNSIGNED_INTEGER)
 
-grammar = '''
-Start    = _* (Value) _*
-Value    = Object / Array / String / Number / TRUE / FALSE / NIL
-Object   = "{" _* ((String) _* ":" _* (Value)){:COMMA} _* "}"
-Array    <- "[" _* (Value){:COMMA} _* "]"
-String   <- '"' (?: '\\' . / !'"' . )* '"'
-Number   <- INTEGER / FLOAT
-INTEGER  <- "-"? (?: "0" / [1-9] [0-9]*)
-FLOAT    <- INTEGER FRACTION? EXPONENT?
-FRACTION <- "." [0-9]+
-EXPONENT <- [eE] [-+]? [0-9]+
-TRUE     <- "true"
-FALSE    <- "false"
-NULL     <- "null"
-COMMA    <- _* "," _*
-_        <- [\t\n\f\r ]
-'''
+# # basic values
+# Integer  = Rule(INTEGER, name='Integer', action=int)
+# Float    = Rule(FLOAT, name='Float', action=float)
+# String   = Rule(DQSTRING, name='String', action=lambda s: s[1:-1])
+# TRUE     = Rule('true', name='TRUE', action=lambda _: True)
+# FALSE    = Rule('false', name='FALSE', action=lambda _: False)
+# NULL     = Rule('null', name='NULL', action=lambda _: None)
 
-# lexical patterns
-WS       = Repeat(Class('\t\n\f\r '))
-LBRACE   = Sequence('{', WS)
-RBRACE   = Sequence(WS, '}')
-LBRACKET = Sequence('[', WS)
-RBRACKET = Sequence(WS, ']')
-COLON    = Sequence(WS, ':', WS)
-COMMA    = Sequence(WS, ',', WS)
-INTEGER  = Sequence(Optional('-'), UNSIGNED_INTEGER)
+# # placeholder for recursive type
+# Json     = Grammar()
+# Value    = Json['Value']
 
-# basic values
-Integer  = Rule(INTEGER, name='Integer', action=int)
-Float    = Rule(FLOAT, name='Float', action=float)
-String   = Rule(DQSTRING, name='String', action=lambda s: s[1:-1])
-TRUE     = Rule('true', name='TRUE', action=lambda _: True)
-FALSE    = Rule('false', name='FALSE', action=lambda _: False)
-NULL     = Rule('null', name='NULL', action=lambda _: None)
+# # recursive patterns
+# Member   = Sequence(Group(String), COLON, Group(Value))
+# Members  = Repeat(Group(Member), delimiter=COMMA)
+# Object   = Rule(Sequence(LBRACE, Members, RBRACE), name='Object', action=dict)
 
-# placeholder for recursive type
-Json     = Grammar()
-Value    = Json['Value']
+# Items    = Repeat(Group(Value), delimiter=COMMA)
+# Array    = Rule(Sequence(LBRACKET, Items, RBRACKET), name='Array', action=list)
 
-# recursive patterns
-Member   = Sequence(Group(String), COLON, Group(Value))
-Members  = Repeat(Group(Member), delimiter=COMMA)
-Object   = Rule(Sequence(LBRACE, Members, RBRACE), name='Object', action=dict)
+# # now fill in Value
+# Json['Value'] = Choice(
+#     Object, Array, String, Float, Integer, TRUE, FALSE, NULL)
 
-Items    = Repeat(Group(Value), delimiter=COMMA)
-Array    = Rule(Sequence(LBRACKET, Items, RBRACKET), name='Array', action=list)
-
-# now fill in Value
-Json['Value'] = Choice(
-    Object, Array, String, Float, Integer, TRUE, FALSE, NULL)
-
-Json['Start'] = Rule(Sequence(WS, Value, WS),
-                     name='Start',
-                     action=lambda xs: xs[1])
+# Json['Start'] = Rule(Sequence(WS, Value, WS),
+#                      name='Start',
+#                      action=lambda xs: xs[1])
 
 def test_numbers():
     assert Json.match('0').value() == 0

@@ -1,6 +1,7 @@
 
 from pe.core import Match
-from pe import Literal, Group, Sequence
+from pe.terms import Literal
+from pe.expressions import Group, Sequence
 
 
 def test_Match_no_group():

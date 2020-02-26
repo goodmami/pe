@@ -4,4 +4,7 @@ pe.grammar
 
 .. automodule:: pe.grammar
 
-.. autofunction:: compile
+.. data:: PEG
+
+   A :class:`pe.expressions.Grammar` instance that recognizes **pe**'s
+   extended PEG grammar notation.

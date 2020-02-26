@@ -73,9 +73,11 @@ The syntax is defined as follows::
 """
 
 from pe.core import Expression
-from pe import (
+from pe.terms import (
     Dot,
     Class,
+)
+from pe.expressions import (
     Sequence,
     Choice,
     Repeat,
@@ -110,6 +112,10 @@ _GroupType = Optional(Sequence('?', DOT))
 OPEN       = Sequence('(', Group(_GroupType), Spacing)
 CLOSE      = Sequence(')', Spacing)
 DOT        = Sequence('.', Spacing)
+LBRACE     = Sequence('{', Spacing)
+RBRACE     = Sequence('}', Spacing)
+COMMA      = Sequence(',', Spacing)
+COLON      = Sequence(':', Spacing)
 
 _ESC = Sequence('\\', DOT)  # Generic escape sequence
 
@@ -126,6 +132,10 @@ Identifier = Sequence(
 
 RULENAME   = Sequence(Identifier, Not(LEFTARROW)),
 GROUP      = Sequence(OPEN, Group(G['Expression']), CLOSE)
+
+Integer    = Choice('0', Sequence(Class('1-9'), Repeat(Class('0-9'))))
+Span       = Choice(Sequence(Optional(Integer), COMMA, Optional(Integer)),
+                    Integer)
 
 G['Class']      = Rule('Class', CLASS, action=lambda s: Class(s[1:-1]))
 G['Literal']    = Rule('Literal', LITERAL, action=lambda s: Literal(s[1:-1]))
@@ -147,7 +157,6 @@ G['Grammar']    = Rule('Definition', Repeat(G['Definition'], min=1))
 G['Start']      = Sequence(
     G['Spacing'], Group(Choice(G['Expression'], G['Grammar'])), G['EndOfFile'])
 
-def compile(source) -> Expression:
-    """Compile the parsing expression or grammar in *source*."""
-    m = G.match(source)
-    return m.value()
+# Rename the variable
+PEG = G
+del G

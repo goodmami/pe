@@ -1,5 +1,12 @@
 
-from pe.grammar import compile as _pe_compile
+from pe.core import Expression
+from pe.grammar import PEG
+
+
+def compile(source) -> Expression:
+    """Compile the parsing expression or grammar in *source*."""
+    m = PEG.match(source)
+    return m.value()
 
 
 def match(pattern: str, string: str):
@@ -10,5 +17,5 @@ def match(pattern: str, string: str):
         >>> pe.match(r'"-"? [1-9] [0-9]*', '-12345').value()
         '-12345'
     """
-    expr = _pe_compile(pattern)
+    expr = compile(pattern)
     return expr.match(string)

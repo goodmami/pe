@@ -39,7 +39,7 @@ def set_re(expr) -> None:
         _set_choice_re(expr)
     elif name == 'Repeat':
         _set_repeat_re(expr)
-    elif name == 'Lookahead':
+    elif name in ('Lookahead', 'Peek', 'Not'):
         _set_lookahead_re(expr)
     elif name == 'Group':
         set_re(expr.expression)
