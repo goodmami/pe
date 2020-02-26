@@ -79,17 +79,18 @@ class Lookahead(Expression):
         self.polarity = polarity
         super().__init__()
 
-    def __str__(self):
-        return f'Lookahead({self.expression!s}, {self.polarity})'
+    def __repr__(self):
+        clsname = type(self).__name__
+        return f'{clsname}({self.expression!s}, {self.polarity})'
 
-    def _match(self, s: str, pos: int = 0):
+    def _match(self, s: str, pos: int):
         if self._re:
             m = self._re.match(s, pos)
             if m:
                 return pos, ''
             return NOMATCH, None
 
-        end, _ = self.expression._match(s, pos=pos)
+        end, _ = self.expression._match(s, pos)
         if self.polarity ^ (end < 0):
             return NOMATCH, None
         return pos, ''
@@ -109,7 +110,7 @@ class Term(Expression):
             return NOMATCH
         return m.end()
 
-    def _match(self, s: str, pos: int = 0):
+    def _match(self, s: str, pos: int):
         end = self.scan(s, pos=pos)
         if end < 0:
             return end, None

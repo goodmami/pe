@@ -62,46 +62,6 @@ def test_scan_Repeat_delimited():
     assert Repeat(abc, max=2, delimiter=com).scan('a,a,a') == 3
 
 
-def test_scan_Repeat_escaped():
-    rpt = Repeat(neg, escape=esc)
-    assert rpt.scan('') == 0
-    assert rpt.scan('a') == 0
-    assert rpt.scan('z') == 1
-    assert rpt.scan('zz') == 2
-    assert rpt.scan('\\az') == 3
-    assert rpt.scan('z\\aa') == 3
-
-
-def test_scan_Repeat_delimited_escaped():
-    rpt = Repeat(abc, delimiter=com, escape=esc)
-    assert rpt.scan('') == 0
-    assert rpt.scan('a') == 1
-    assert rpt.scan('aa') == 1
-    assert rpt.scan('a\\a') == 3
-    assert rpt.scan('a\\,a') == 3
-    assert rpt.scan('a\\a,a') == 5
-    assert rpt.scan('\\d') == 2
-    assert rpt.scan('\\d,a') == 2
-    assert rpt.scan('\\da,d') == 3
-    assert rpt.scan('\\,a') == 3
-    rpt = Repeat(abc, min=1, delimiter=com, escape=esc)
-    assert rpt.scan('') == NOMATCH
-    assert rpt.scan('a') == 1
-    assert rpt.scan('a\\d') == 3
-    assert rpt.scan('\\da') == 3
-    assert rpt.scan('\\d') == NOMATCH
-    assert rpt.scan('\\da\\d,\\da') == 9
-
-
-def test_scan_Repeat_escaped():
-    assert Repeat(neg, escape=esc).scan('') == 0
-    assert Repeat(neg, escape=esc).scan('a') == 0
-    assert Repeat(neg, escape=esc).scan('z') == 1
-    assert Repeat(neg, escape=esc).scan('zz') == 2
-    assert Repeat(neg, escape=esc).scan('\\az') == 3
-    assert Repeat(neg, escape=esc).scan('z\\aa') == 3
-
-
 def test_scan_Optional():
     assert Optional(abc).scan('') == 0
     assert Optional(abc).scan('d') == 0

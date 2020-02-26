@@ -9,8 +9,11 @@ class Dot(Term):
     def __init__(self):
         self._re = re.compile('.')
 
-    def __str__(self):
+    def __repr__(self):
         return 'Dot()'
+
+    def __str__(self):
+        return '.'
 
 
 class Literal(Term):
@@ -20,8 +23,11 @@ class Literal(Term):
         self.string = string
         self._re = re.compile(re.escape(string))
 
-    def __str__(self):
+    def __repr__(self):
         return f'Literal({self.string!r})'
+
+    def __str__(self):
+        return repr(self.string)
 
 
 class Class(Term):
@@ -35,8 +41,11 @@ class Class(Term):
     def negated(self):
         return self.string.startswith('^')
 
-    def __str__(self):
+    def __repr__(self):
         return f'Class({self.string!r})'
+
+    def __str__(self):
+        return f'[{self.string}]'
 
 
 class Regex(Term):
@@ -46,5 +55,5 @@ class Regex(Term):
         # re.compile() works even if the pattern is a regex object
         self._re = re.compile(pattern, flags=flags)
 
-    def __str__(self):
+    def __repr__(self):
         return f'Regex({self.pattern!r}, flags={self.flags})'

@@ -102,34 +102,20 @@ def _set_repeat_re(expr):
     if clsname(expr.expression) in ('Sequence', 'Choice'):
         pattern = f'(?:{pattern})'
 
-    escape = expr.escape
-    set_re(escape)
-    if escape and escape._re:
-        if clsname(escape) in ('Sequence', 'Choice'):
-            esc = f'(?:{escape._re.pattern})*'
-        else:
-            esc = f'{escape._re.pattern}*'
-    else:
-        esc = ''
-
     delimiter = expr.delimiter
     set_re(delimiter)
     if delimiter and delimiter._re and max != 1:
         delim = delimiter._re.pattern
         rpt = _quantifier_re(min - 1 if min > 0 else 0,
                              -1 if max == -1 else max - 1)
-        # TODO: can this method of escaping be optimized
-        pre_re = f'{pattern}(?:{esc}{delim}{esc}{pattern}){rpt}'
+        pre_re = f'{pattern}(?:{delim}{pattern}){rpt}'
         if min == 0:
-            expr._re = re.compile(f'{esc}(?:{pre_re}{esc})?')
+            expr._re = re.compile(f'(?:{pre_re})?')
         else:
-            expr._re = re.compile(f'{esc}{pre_re}{esc}')
+            expr._re = re.compile(pre_re)
     elif max == 1 or not delimiter:
         rpt = _quantifier_re(min, max)
-        if esc:
-            expr._re = re.compile(f'{esc}(?:{pattern}{esc}){rpt}')
-        else:
-            expr._re = re.compile(f'{pattern}{rpt}')
+        expr._re = re.compile(f'{pattern}{rpt}')
 
 
 def _set_lookahead_re(expr):

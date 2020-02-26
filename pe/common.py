@@ -28,14 +28,14 @@ FLOAT = Sequence(INTEGER, Optional(FLOAT_FRACTION), Optional(FLOAT_EXPONENT))
 ESCAPE = Sequence('\\', DOT)
 _DQCONT = Repeat(Class(r'^"\n\\'))
 _SQCONT = Repeat(Class(r"^'\n\\"))
-DQSTRING = Sequence('"', Repeat(_DQCONT, escape=ESCAPE), '"')
 DQSTRING = Sequence('"', _DQCONT, Repeat(Choice(ESCAPE, _DQCONT)), '"')
-SQSTRING = Sequence("'", Repeat(_SQCONT, escape=ESCAPE), "'")
+print(DQSTRING)
+SQSTRING = Sequence("'", _SQCONT, Repeat(Choice(ESCAPE, _SQCONT)), "'")
 
 _DQ3CONT = Sequence(Not('"""'), DOT)
 _SQ3CONT = Sequence(Not("'''"), DOT)
-DQ3STRING = Sequence('"""', Repeat(_DQ3CONT, escape=ESCAPE), '"""')
-SQ3STRING = Sequence("'''", Repeat(_SQ3CONT, escape=ESCAPE), "'''")
+DQ3STRING = Sequence('"""', Repeat(_DQ3CONT, delimiter=Repeat(ESCAPE)), '"""')
+SQ3STRING = Sequence("'''", Repeat(_SQ3CONT, delimiter=Repeat(ESCAPE)), "'''")
 
 
 # Whitespace

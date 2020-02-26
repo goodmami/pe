@@ -1,18 +1,21 @@
 # <img src="docs/_static/logo.png" width="60" alt="pe logo" /> Parsing Expressions
 
-## Features
+**pe** is a library for parsing expressions, including parsing
+expression grammars (PEGs). It aims to join the expressive power of
+parsing expressions with the familiarity of regular expressions.
+For example:
 
-- Scanners match input text
-- Combinators
-- Parsers
-
+``` python
+>>> import pe
+>>> m = pe.match(r''' '"' (!["\\] . / '\\' .)* '"' ''',
+...              '"escaped \\"string\\"" ...')
+>>> m.value()
+'"escaped \\"string\\""'
+```
 
 ## Syntax Quick Reference
 
 ```regex
-# comments follow # characters
-# whitespace is not significant
-
 # basic terms
 .           # any single character
 "abc"       # literal
@@ -25,8 +28,12 @@ e           # exactly one
 e?          # zero or one (optional)
 e*          # zero or more
 e+          # one or more
-e{2:d}      # exactly two delimited by d (delimiter optional)
-e{2,5:d}    # between two and five delimited by d (all parameters optional)
+
+# extended repetition
+e{2}        # exactly two
+e{2,5}      # between two and five
+e{2:d}      # exactly two delimited by d
+e{2,5:d}    # between two and five delimited by d
 
 # combining expressions
 e1 e2       # sequence of e1 and e2
@@ -39,8 +46,8 @@ e1 | e2     # ordered choice of e1 and e2
 !e          # negative lookahead
 
 # grammars
-name = ...  # define a rule named 'name'
-... = name  # refer to rule named 'name'
+Name = ...  # define a rule named 'Name'
+... = Name  # refer to rule named 'Name'
 ```
 
 ## Capturing Groups and the Value of Expressions
@@ -65,8 +72,10 @@ options for shaping the value.
 | `("-")? (([1-9]) ([0-9])*)` | `'-123'` | `['-', ['1', '2', '3']]` |
 
 
-## Related Projects
+## Similar Projects
 
 - [Lark](https://github.com/lark-parser/lark) (Python)
 - [nom](https://github.com/Geal/nom) (Rust)
 - [Parsimonious](https://github.com/erikrose/parsimonious) (Python)
+- [Rosie](https://rosie-lang.org/) (Multiple bindings)
+- [TatSu](https://tatsu.readthedocs.io/en/stable/) (Python)
