@@ -2,16 +2,31 @@
 r"""
 Self-hosted parser for pe's grammar format.
 
-The grammar syntax is a superset of Bryan Ford's PEG syntax, which
-is shown below::
+The grammar syntax, shown below, is a superset of Bryan Ford's PEG
+syntax. It extends the original syntax with the following features:
+
+* **anonymous expressions:** a full grammar is not necessary if one
+  wants to match a single expression.
+
+* **capturing groups:** used to filter and structure matches
+
+* **extended repetition:** repetition with explicit bounds or
+  interstitial expressions
+
+
+The syntax is defined as follows::
 
   # Hierarchical syntax
-  Grammar    <- Spacing Definition+ EndOfFile
+  Start      <- Spacing (Expression / Grammar) EndOfFile
+  Grammar    <- Definition+
   Definition <- Identifier LEFTARROW Expression
   Expression <- Sequence (SLASH Sequence)*
   Sequence   <- Prefix*
   Prefix     <- (AND / NOT)? Suffix
-  Suffix     <- Primary (QUESTION / STAR / PLUS)?
+  Suffix     <- Primary Quantifier?
+  Quantifier <- QUESTION / STAR / PLUS / Repetition
+  Repetition <- LBRACE (Delimiter / Span Delimiter?) RBRACE
+  Delimiter  <- COLON Expression?
   Primary    <- Identifier !LEFTARROW
               / OPEN Expression CLOSE
               / Literal
@@ -32,6 +47,9 @@ is shown below::
               / '\\' [0-7] [0-7]?
               / !'\\' .
 
+  Span       <- Integer? COMMA Integer? / Integer
+  Integer    <- '0' / [1-9] [0-9]*
+
   LEFTARROW  <- '<-'  Spacing
   SLASH      <- '/' Spacing
   AND        <- '&' Spacing
@@ -39,35 +57,19 @@ is shown below::
   QUESTION   <- '?' Spacing
   STAR       <- '*' Spacing
   PLUS       <- '+' Spacing
-  OPEN       <- '(' Spacing
+  OPEN       <- '(' ('?' .)? Spacing
   CLOSE      <- ')' Spacing
   DOT        <- '.' Spacing
+  LBRACE     <- '{' Spacing
+  RBRACE     <- '}' Spacing
+  COMMA      <- ',' Spacing
+  COLON      <- ':' Spacing
 
   Spacing    <- (Space / Comment)*
   Comment    <- '#' (!EndOfLine .)* EndOfLine
   Space      <- ' ' / '\t' / EndOfLine
   EndOfLine  <- '\r\n' / '\n' / '\r'
   EndOfFile  <- !.
-
-Changes to the syntax are as follows::
-
-  # Expanded quantification
-  Suffix     <- Primary Quantifier?
-  Quantifier <- QUESTION / STAR / PLUS / Repetition
-  Repetition <- LBRACE Span? Delimiter Escape? RBRACE
-              / LBRACE Span RBRACE
-  Span       <- Integer? COMMA Integer? / Integer
-  Integer    <- '0' / [1-9] [0-9]*
-  Delimiter  <- COLON Expression?
-  Escape     <- COLON Expression?
-
-  LBRACE     <- '{' Spacing
-  RBRACE     <- '}' Spacing
-  COMMA      <- ',' Spacing
-  COLON      <- ':' Spacing
-
-  # Optional group modifier
-  OPEN       <- '(' ('?' .)? Spacing
 """
 
 from pe.core import Expression
@@ -111,9 +113,11 @@ DOT        = Sequence('.', Spacing)
 
 _ESC = Sequence('\\', DOT)  # Generic escape sequence
 
-CLASS      = Sequence('[', Repeat(Class(r'^\]\\'), escape=_ESC), ']')
-LITERAL    = Choice(Sequence("'", Repeat(Class(r"^'\\"), escape=_ESC), "'"),
-                    Sequence("'", Repeat(Class(r'^"\\'), escape=_ESC), '"'))
+CLASS      = Sequence(
+        '[', Repeat(Class(r'^\]\\'), delimiter=Repeat(_ESC)), ']')
+LITERAL    = Choice(
+    Sequence("'", Repeat(Class(r"^'\\"), delimiter=Repeat(_ESC)), "'"),
+    Sequence("'", Repeat(Class(r'^"\\'), delimiter=Repeat(_ESC)), '"'))
 
 IdentStart = Class('a-zA-Z_')
 IdentCont  = Choice(IdentStart, Class('0-9'))
@@ -121,19 +125,17 @@ Identifier = Sequence(
     IdentStart, Repeat(IdentCont), Spacing)
 
 RULENAME   = Sequence(Identifier, Not(LEFTARROW)),
+GROUP      = Sequence(OPEN, Group(G['Expression']), CLOSE)
 
-G['Class']      = Rule(CLASS, action=lambda s: Class(s[1:-1]))
-G['Literal']    = Rule(LITERAL, action=lambda s: Literal(s[1:-1]))
-
-G['RuleName']   = Rule(RULENAME, action=lambda s: ('Name', s))
-G['Group']      = Rule(
-    Sequence(OPEN, Group(G['Expression']), CLOSE),
-    action=lambda xs: ('Group', *xs))
+G['Class']      = Rule('Class', CLASS, action=lambda s: Class(s[1:-1]))
+G['Literal']    = Rule('Literal', LITERAL, action=lambda s: Literal(s[1:-1]))
+G['Name']       = Rule('Name', RULENAME, action=lambda s: ('Name', s))
+G['Group']      = Rule('Group', GROUP, action=lambda xs: ('Group', *xs))
 G['Term']       = Rule(Choice(G['Literal'], G['Class']),
                        action=lambda t: ('Term', t))
 G['Primary']    = Choice(G['RuleName'], G['Group'], G['Term'])
 
-G['Quantifier'] = Choice(G['QUESTION'], G['STAR'], G['PLUS'], G[''])
+G['Quantifier'] = Choice(G['QUESTION'], G['STAR'], G['PLUS'], G['Repetition'])
 G['Suffix']     = Sequence(G['Primary'], G['Quantifier'])
 G['Prefix']     = Sequence(
     Optional(Choice(G['AND'], G['NOT'])), G['Suffix'])
@@ -141,9 +143,11 @@ G['Sequence']   = Repeat(G['Prefix'])
 G['Expression'] = Repeat(G['Sequence'], delimiter=G['SLASH'])
 
 G['Definition'] = Sequence(G['Identifier'], G['LEFTARROW'], G['Expression'])
-G['Grammar']    = Sequence(
-    G['Spacing'], Repeat(G['Definition'], min=1), G['EndOfFile'])
-
+G['Grammar']    = Rule('Definition', Repeat(G['Definition'], min=1))
+G['Start']      = Sequence(
+    G['Spacing'], Group(Choice(G['Expression'], G['Grammar'])), G['EndOfFile'])
 
 def compile(source) -> Expression:
-    pass
+    """Compile the parsing expression or grammar in *source*."""
+    m = G.match(source)
+    return m.value()

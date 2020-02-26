@@ -17,3 +17,5 @@ from pe.expressions import (
     Rule,
     Grammar,
 )
+from pe.grammar import compile
+from pe._functions import match

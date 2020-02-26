@@ -29,7 +29,6 @@ ESCAPE = Sequence('\\', DOT)
 _DQCONT = Repeat(Class(r'^"\n\\'))
 _SQCONT = Repeat(Class(r"^'\n\\"))
 DQSTRING = Sequence('"', _DQCONT, Repeat(Choice(ESCAPE, _DQCONT)), '"')
-print(DQSTRING)
 SQSTRING = Sequence("'", _SQCONT, Repeat(Choice(ESCAPE, _SQCONT)), "'")
 
 _DQ3CONT = Sequence(Not('"""'), DOT)
