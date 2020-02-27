@@ -91,13 +91,13 @@ from pe.expressions import (
 
 G = Grammar()
 
-DOT = Dot()
+_DOT = Dot()
 
 # Lexical expressions
 
-EndOfFile  = Not(DOT)
+EndOfFile  = Not(_DOT)
 EndOfLine  = Choice(r'\r\n', r'\r', r'\n')
-Comment    = Sequence('#', Repeat(Sequence(Not(EndOfLine), DOT)), EndOfLine)
+Comment    = Sequence('#', Repeat(Sequence(Not(EndOfLine), _DOT)), EndOfLine)
 Space      = Choice(' ', r'\t', EndOfLine)
 Spacing    = Repeat(Choice(Space, Comment))
 
@@ -108,7 +108,7 @@ NOT        = Sequence('!', Spacing)
 QUESTION   = Sequence('?', Spacing)
 STAR       = Sequence('*', Spacing)
 PLUS       = Sequence('+', Spacing)
-_GroupType = Optional(Sequence('?', DOT))
+_GroupType = Optional(Sequence('?', _DOT))
 OPEN       = Sequence('(', Group(_GroupType), Spacing)
 CLOSE      = Sequence(')', Spacing)
 DOT        = Sequence('.', Spacing)
@@ -117,7 +117,7 @@ RBRACE     = Sequence('}', Spacing)
 COMMA      = Sequence(',', Spacing)
 COLON      = Sequence(':', Spacing)
 
-_ESC = Sequence('\\', DOT)  # Generic escape sequence
+_ESC = Sequence('\\', _DOT)  # Generic escape sequence
 
 CLASS      = Sequence(
         '[', Repeat(Class(r'^\]\\'), delimiter=Repeat(_ESC)), ']')
@@ -137,11 +137,12 @@ Integer    = Choice('0', Sequence(Class('1-9'), Repeat(Class('0-9'))))
 Span       = Choice(Sequence(Optional(Integer), COMMA, Optional(Integer)),
                     Integer)
 
-G['Class']      = Rule(CLASS, action=lambda s: Class(s[1:-1]))
-G['Literal']    = Rule(LITERAL, action=lambda s: Literal(s[1:-1]))
+G['Dot']        = Rule(DOT, action=lambda: ('Dot', _DOT))
+G['Class']      = Rule(CLASS, action=lambda s: ('Class', Class(s[1:-1])))
+G['Literal']    = Rule(LITERAL, action=lambda s: ('Literal', Literal(s[1:-1])))
 G['Name']       = Rule(RULENAME, action=lambda s: ('Name', s))
 G['Group']      = Rule(GROUP, action=lambda xs: ('Group', *xs))
-G['Term']       = Rule(Choice(G['Literal'], G['Class']),
+G['Term']       = Rule(Choice(G['Literal'], G['Class'], G['Dot']),
                        action=lambda t: ('Term', t))
 G['Primary']    = Choice(G['RuleName'], G['Group'], G['Term'])
 

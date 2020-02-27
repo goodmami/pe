@@ -61,23 +61,23 @@ class Sequence(Expression):
         if not self.structured and self._re:
             m = self._re.match(s, pos)
             if not m:
-                return NOMATCH, None
-            return m.end(), m.group()
+                return NOMATCH, None, None
+            return m.end(), m.group(), None
 
         unfiltered = not self.filtered
-        value = []
+        args = []
         for expression in self.expressions:
-            end, _value = expression._match(s, pos)
+            end, _args, _kwargs = expression._match(s, pos)
             if end < 0:
-                return NOMATCH, None
+                return NOMATCH, None, None
             pos = end
             if unfiltered:
-                value.append(_value)
+                args.append(_args)
             elif expression.filtered:
-                value.extend(_value)
+                args.extend(_args)
         if not self.structured:
-            value = ''.join(value)
-        return pos, value
+            args = ''.join(args)
+        return pos, args, None
 
 
 class Choice(Expression):
@@ -111,18 +111,18 @@ class Choice(Expression):
         if not self.structured and self._re:
             m = self._re.match(s, pos)
             if not m:
-                return NOMATCH, None
-            return m.end(), [m.group()]
+                return NOMATCH, None, None
+            return m.end(), [m.group()], None
 
         struct = self.structured
         end = NOMATCH
         for expression in self.expressions:
-            end, groups = expression._match(s, pos)
+            end, args, kwargs = expression._match(s, pos)
             if end >= 0:
                 if struct and not expression.structured:
-                    groups = []
-                return end, groups
-        return end, None
+                    args = []
+                return end, args, None
+        return end, None, None
 
 
 class Repeat(Expression):
@@ -204,52 +204,52 @@ class Repeat(Expression):
         if not self.structured and self._re:
             m = self._re.match(s, pos)
             if not m:
-                return NOMATCH, None
-            return m.end(), [m.group()]
+                return NOMATCH, None, None
+            return m.end(), [m.group()], None
         elif self.max == 0:
-            return pos
+            return pos, [], None
 
         expression = self.expression
         delimiter = self.delimiter
         min = self.min
         max = self.max
 
-        value = []
+        args = []
         if self.filtered:
-            acc = value.extend if expression.filtered else None
-            dacc = value.extend if delimiter and delimiter.filtered else None
+            acc = args.extend if expression.filtered else None
+            dacc = args.extend if delimiter and delimiter.filtered else None
         else:
-            acc = dacc = value.append
+            acc = dacc = args.append
 
         count: int = 0
-        end, _value = expression._match(s, pos)
+        end, _args = expression._match(s, pos)
         if end >= pos:
             pos = end
             count += 1
             if acc:
-                acc(_value)
+                acc(_args)
 
             # TODO: walrus
             while count != max:
                 if delimiter:
-                    end, dvalue = delimiter._match(s, pos)
+                    end, dargs = delimiter._match(s, pos)
                     if end >= 0:
-                        end, _value = expression._match(s, end)
+                        end, _args = expression._match(s, end)
                         if end >= 0 and dacc:
-                            dacc(dvalue)
+                            dacc(dargs)
                 else:
-                    end, _value = expression._match(s, pos)
+                    end, _args = expression._match(s, pos)
 
                 if end < 0:
                     break
                 if acc:
-                    acc(_value)
+                    acc(_args)
                 pos = end
                 count += 1
 
         if count < min:
-            return NOMATCH, None
-        return pos, value
+            return NOMATCH, None, None
+        return pos, args, None
 
 
 def Optional(expression: _NiceExpr):
@@ -258,7 +258,7 @@ def Optional(expression: _NiceExpr):
 
 class Peek(Lookahead):
     def __init__(self, expression: Expression):
-        super().__init__(expression, True)
+        super().__init__(_validate(expression), True)
 
     def __str__(self):
         e = str(self.expression)
@@ -269,7 +269,7 @@ class Peek(Lookahead):
 
 class Not(Lookahead):
     def __init__(self, expression: Expression):
-        super().__init__(expression, False)
+        super().__init__(_validate(expression), False)
 
     def __str__(self):
         e = str(self.expression)
@@ -295,10 +295,10 @@ class Group(Expression):
         return self.expression.scan(s, pos=pos)
 
     def _match(self, s: str, pos: int):
-        end, value = self.expression._match(s, pos)
+        end, args, kwargs = self.expression._match(s, pos)
         if end < 0:
-            return end, None
-        return end, [value]
+            return end, None, None
+        return end, [value], kwargs
 
 
 class _DeferredLookup(Expression):
@@ -347,12 +347,12 @@ class Rule(Expression):
         return self.expression.scan(s, pos=pos)
 
     def _match(self, s: str, pos: int):
-        end, value = self.expression._match(s, pos)
+        end, args, kwargs = self.expression._match(s, pos)
         if end < 0:
-            return end, None
+            return end, None, None
         if self.action:
-            value = self.action(value)
-        return end, value
+            args = self.action(*args, **(kwargs or {}))
+        return end, args, None
 
 
 class Grammar(Expression):
