@@ -1,5 +1,5 @@
 
-from typing import List, Tuple, Any, Pattern
+from typing import List, Dict, Tuple, Any, Pattern
 
 from pe.constants import NOMATCH
 from pe._re import set_re
@@ -17,8 +17,8 @@ class Match:
                  pos: int,
                  end: int,
                  pe: 'Expression',
-                 _args: Any,
-                 _kwargs: Any):
+                 _args: List = None,
+                 _kwargs: Dict = None):
         self.string = string
         self.pos = pos
         self.end = end
@@ -29,14 +29,11 @@ class Match:
     def __repr__(self):
         return f'<Match object of: {self.pe!s} >'
 
-    def groups(self) -> Tuple[Any]:
-        return tuple(self._args)
+    def groups(self):
+        return tuple(self._args or ())
 
-    def value(self) -> Any:
-        if not self.pe.structured:
-            return self.string[self.pos:self.end]
-        else:
-            return self._args
+    def groupdict(self):
+        return dict(self._kwargs or ())
 
 
 class Expression:
@@ -59,16 +56,13 @@ class Expression:
         return m.end()
 
     def match(self, s: str, pos: int = 0) -> Match:
-        end, a, kw = self._match(s, pos)
+        end, args, kwargs = self._match(s, pos)
         if end == NOMATCH:
             return None
-        return Match(s, pos, end, self, a, kw)
+        return Match(s, pos, end, self, args, kwargs)
 
     def _match(self, s: str, pos: int) -> Tuple[int, Any]:
-        end = self.scan(s, pos=pos)
-        if end < 0:
-            return end, None, None
-        return end, s[pos:end], None
+        raise NotImplementedError()
 
 
 class Lookahead(Expression):
@@ -89,13 +83,13 @@ class Lookahead(Expression):
         if self._re:
             m = self._re.match(s, pos)
             if m:
-                return pos, '', None
+                return pos, None, None
             return NOMATCH, None, None
 
         end, _, _ = self.expression._match(s, pos)
         if self.polarity ^ (end < 0):
             return NOMATCH, None, None
-        return pos, '', None
+        return pos, None, None
 
 
 class Term(Expression):
@@ -116,4 +110,4 @@ class Term(Expression):
         end = self.scan(s, pos=pos)
         if end < 0:
             return end, None, None
-        return end, s[pos:end], None
+        return end, None, None

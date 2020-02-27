@@ -56,12 +56,7 @@ Combining Expressions
    e?       # Optional; 0 or 1 occurrences
    e*       # Repeat of 0 or more occurrences
    e+       # Repeat of 1 or more occurrences
-   e{i}     # Repeat of exactly i occurrences
-   e{i,j}   # Repeat of i to j occurrences
-   e{i:d}   # Repeat of exactly i occurences delimited by d
-   e{i,j:d} # Repeat of i to j occurrences delimited by d
    (e)      # Capturing group
-   (?:e)    # Non-capturing group
    Name     # Non-terminal named 'Name'
    Name = e # Grammar rule mapping 'Name' to an expression
 
@@ -69,37 +64,11 @@ Combining Expressions
 Repeat
 ''''''
 
-Repetition in **pe** expands the notion from regular expressions to
-allow for two new features:
+``e?``
 
-- Delimiter expressions -- repeat if expression succeeds
-- Escape expressions -- accept before or after repetitions
+``e*``
 
-Thus, including the minimum and maximum, the :class:`~pe.Repeat`
-expression has five fields.
-
-==============  =====================================
-Shorthand       Equivalent
-==============  =====================================
-``e{1}``        ``e``
-``e{2}``        ``e e`` (etc.)
-``e?``          ``e{,1}``
-``e*``          ``e{,}``
-``e+``          ``e{1,}``
-``e{:d}``       ``(?: e (?: d e )* )?``
-``e{1,:d}``     ``e (?: d e )*``
-``e{::x}``      ``x* (?: e x*)*``
-``e{3,5:d:x}``  ``x* e (?: x* d x* e){2,4} x*``
-==============  =====================================
-
-Here are some examples:
-
-.. code::
-
-   [-+]? (?: "0" | [1-9] [0-9]* )  # integer
-   ([^,]*){:","}                   # comma-separated values
-   ([^,\\]{::"\\" .}){:","}        # comma-separated values with escapes
-   '"' [^"\n\\]{::"\\" .} '"'      # double-quoted strings with escapes
+``e+``
 
 ..
   .           # any single character
@@ -161,34 +130,39 @@ Value Transformations
    # -------------------------------------------------------
    Start <- [0-9]                   '3'    ->  '3'
    # -------------------------------------------------------
-   Start <- [0-9]         >>> int   '3'    ->  3
+   Start <- [0-9]         >>> int   '3'    ->  0
    # -------------------------------------------------------
-   Start <- ([0-9])                 '3'    ->  ['3']
+   Start <- ([0-9])                 '3'    ->  '3'
    # -------------------------------------------------------
-   Start <- ([0-9])       >>> int   '3'    ->  *error*
+   Start <- ([0-9])       >>> int   '3'    ->  3
+   # -------------------------------------------------------
+   Start <- (([0-9]))     >>> int   '3'    ->  *error*
    # -------------------------------------------------------
    Start <- Digit                   '3'    ->  '3'
    Digit <- [0-9]
    # -------------------------------------------------------
-   Start <- Digit                   '3'    ->  3
+   Start <- Digit                   '3'    ->  0
    Digit <- [0-9]         >>> int
    # -------------------------------------------------------
-   Start <- Digit                   '3'    ->  ['3']
+   Start <- Digit                   '3'    ->  '3'
    Digit <- ([0-9])
    # -------------------------------------------------------
-   Start <- (Digit)                 '3'    ->  ['3']
+   Start <- (Digit)                 '3'    ->  '3'
    Digit <- [0-9]
    # -------------------------------------------------------
-   Start <- (Digit)                 '3'    ->  [3]
+   Start <- (Digit)                 '3'    ->  0
    Digit <- [0-9]         >>> int
+   # -------------------------------------------------------
+   Start <- Digit                   '3'    ->  3
+   Digit <- ([0-9])       >>> int
 
 
 .. code::
 
    # Grammar                        Input  ->  Value
-   Start <- "-"? [0-9]              '-3'   ->  '-3'
+   Start <- "-" [0-9]               '-3'   ->  '-3'
    # -------------------------------------------------------
-   Start <- "-"? [0-9]    >>> int   '-3'  ->  -3
+   Start <- "-" [0-9]     >>> int   '-3'  ->  -3
    # -------------------------------------------------------
    Start <- "-" ([0-9])             '-3'  ->  ['3']
    # -------------------------------------------------------

@@ -6,25 +6,50 @@ import pe
 
 first = itemgetter(0)
 
+
+    # '''
+    # Start    <- _* (Value) _*
+    # Value    <- Object / Array / String / Number / Constant
+    # Object   <- "{" _* (Member){:COMMA} _* "}"
+    # Member   <- (String) _* ":" _* (Value)
+    # Array    <- "[" _* (Value){:COMMA} _* "]"
+    # String   <- '"' (?: '\\' . / !'"' . )* '"'
+    # Number   <- INTEGER / FLOAT
+    # Constant <- TRUE / FALSE / NULL
+    # INTEGER  <- "-"? (?: "0" / [1-9] [0-9]*)
+    # FLOAT    <- INTEGER FRACTION? EXPONENT?
+    # FRACTION <- "." [0-9]+
+    # EXPONENT <- [eE] [-+]? [0-9]+
+    # TRUE     <- "true"
+    # FALSE    <- "false"
+    # NULL     <- "null"
+    # COMMA    <- _* "," _*
+    # _        <- [\t\n\f\r ]
+    # ''',
+
 Json = pe.compile(
     '''
-    Start    <- _* (Value) _*
+    Start    <- :Spacing Value
     Value    <- Object / Array / String / Number / Constant
-    Object   <- "{" _* (Member){:COMMA} _* "}"
-    Member   <- (String) _* ":" _* (Value)
-    Array    <- "[" _* (Value){:COMMA} _* "]"
-    String   <- '"' (?: '\\' . / !'"' . )* '"'
+    Object   <- :LBRACE *(Member *(:COMMA Member)*)? :RBRACE
+    Member   <- *String :COLON Value
+    Array    <- :LBRACK *(Value *(:COMMA Value)*)? :RBRACK
+    String   <- :["] ~(!["] . | '\\' .)* :["]
     Number   <- INTEGER / FLOAT
-    Constant <- TRUE / FALSE / NIL
-    INTEGER  <- "-"? (?: "0" / [1-9] [0-9]*)
-    FLOAT    <- INTEGER FRACTION? EXPONENT?
+    Constant <- TRUE / FALSE / NULL
+    INTEGER  <~ "-"? ("0" / [1-9] [0-9]*)
+    FLOAT    <~ INTEGER FRACTION? EXPONENT?
     FRACTION <- "." [0-9]+
     EXPONENT <- [eE] [-+]? [0-9]+
     TRUE     <- "true"
     FALSE    <- "false"
     NULL     <- "null"
-    COMMA    <- _* "," _*
-    _        <- [\t\n\f\r ]
+    LBRACE   <- "{" Spacing
+    RBRACE   <- "}" Spacing
+    LBRACK   <- "[" Spacing
+    RBRACK   <- "]" Spacing
+    COMMA    <- "," _*
+    Spacing  <- [\t\n\f\r ]*
     ''',
     actions={
         'Start': first,

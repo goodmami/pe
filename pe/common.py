@@ -33,8 +33,8 @@ SQSTRING = Sequence("'", _SQCONT, Repeat(Choice(ESCAPE, _SQCONT)), "'")
 
 _DQ3CONT = Sequence(Not('"""'), DOT)
 _SQ3CONT = Sequence(Not("'''"), DOT)
-DQ3STRING = Sequence('"""', Repeat(_DQ3CONT, delimiter=Repeat(ESCAPE)), '"""')
-SQ3STRING = Sequence("'''", Repeat(_SQ3CONT, delimiter=Repeat(ESCAPE)), "'''")
+DQ3STRING = Sequence('"""', Repeat(Choice(ESCAPE, _DQ3CONT)), '"""')
+SQ3STRING = Sequence("'''", Repeat(Choice(ESCAPE, _SQ3CONT)), "'''")
 
 
 # Whitespace

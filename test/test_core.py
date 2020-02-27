@@ -1,7 +1,58 @@
 
 from pe.core import Match
 from pe.terms import Literal
-from pe.expressions import Group, Sequence
+
+One = Literal('1')
+
+
+def test_Match_no_args():
+    m = Match('123', 0, 1, One)
+    assert m.string == '123'
+    assert m.pos == 0
+    assert m.end == 1
+    assert m.pe is One
+    assert m.groups() == ()
+    assert m.groupdict() == {}
+
+
+def test_Match_with_empty_args():
+    m = Match('123', 0, 1, One, [])
+    assert m.string == '123'
+    assert m.pos == 0
+    assert m.end == 1
+    assert m.pe is One
+    assert m.groups() == ()
+    assert m.groupdict() == {}
+
+
+def test_Match_with_args():
+    m = Match('123', 0, 1, One, [1])
+    assert m.string == '123'
+    assert m.pos == 0
+    assert m.end == 1
+    assert m.pe is One
+    assert m.groups() == (1,)
+    assert m.groupdict() == {}
+
+
+def test_Match_with_kwargs():
+    m = Match('123', 0, 1, One, kwargs={'num': 1})
+    assert m.string == '123'
+    assert m.pos == 0
+    assert m.end == 1
+    assert m.pe is One
+    assert m.groups() == ()
+    assert m.groupdict() == {'num': 1}
+
+
+def test_Match_with_args_and_kwargs():
+    m = Match('123', 0, 1, One)
+    assert m.string == '123'
+    assert m.pos == 0
+    assert m.end == 1
+    assert m.pe is One
+    assert m.groups() == ()
+    assert m.groupdict() == {}
 
 
 def test_Match_no_group():
@@ -11,7 +62,8 @@ def test_Match_no_group():
     assert m.pos == 0
     assert m.end == 1
     assert m.pe is a
-    assert m.value() == 'a'
+    assert m.groups() == ()
+    assert m.groupdict() == {}
 
 
 def test_Match_group():
@@ -21,7 +73,8 @@ def test_Match_group():
     assert m.pos == 1
     assert m.end == 2
     assert m.pe is b
-    assert m.value() == ['b']
+    assert m.groups() == ('b',)
+    assert m.groupdict() == {}
 
 
 def test_Match_sequence_no_group():
@@ -31,7 +84,8 @@ def test_Match_sequence_no_group():
     assert m.pos == 0
     assert m.end == 2
     assert m.pe is ab
-    assert m.value() == 'ab'
+    assert m.groups() == ()
+    assert m.groupdict() == {}
 
 
 def test_Match_sequence_partial_groups():
@@ -41,7 +95,8 @@ def test_Match_sequence_partial_groups():
     assert m.pos == 0
     assert m.end == 2
     assert m.pe is ab
-    assert m.value() == ['b']
+    assert m.groups() == ('b',)
+    assert m.groupdict() == {}
 
 
 def test_Match_sequence_full_groups():
@@ -51,19 +106,19 @@ def test_Match_sequence_full_groups():
     assert m.pos == 0
     assert m.end == 2
     assert m.pe is ab
-    assert m.value() == ['a', 'b']
+    assert m.groups() == ('a', 'b')
+    assert m.groupdict() == {}
 
 
-def test_Match_values():
-    a = Literal('a')
-    b = Literal('b')
-    assert a.match('a').value() == 'a'
-    assert Group(a).match('a').value() == ['a']
-    assert Group(Group(a)).match('a').value() == [['a']]
-    # assert Group(Literal('1'), action=int).match('1').value() == 1
-    assert Sequence(a).match('a').value() == 'a'
-    assert Group(Sequence(a)).match('a').value() == ['a']
-    assert Sequence(Group(a)).match('a').value() == ['a']
-    assert Sequence(a, Group(b)).match('ab').value() == ['b']
-    assert Sequence(Group(a), Group(b)).match('ab').value() == ['a', 'b']
-    assert Sequence(Sequence(Group(a))).match('a').value() == ['a']
+# def test_Match_values():
+#     a = Literal('a')
+#     b = Literal('b')
+#     assert a.match('a').value() == 'a'
+#     assert Group(a).match('a').value() == 'a'
+#     assert Group(Group(a)).match('a').value() == ['a']
+#     assert Sequence(a).match('a').value() == 'a'
+#     assert Group(Sequence(a)).match('a').value() == 'a'
+#     assert Sequence(Group(a)).match('a').value() == 'a'
+#     assert Sequence(a, Group(b)).match('ab').value() == 'b'
+#     assert Sequence(Group(a), Group(b)).match('ab').value() == 'a'
+#     assert Sequence(Sequence(Group(a))).match('a').value() == 'a'

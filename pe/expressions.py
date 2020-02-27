@@ -27,7 +27,7 @@ def _validate(arg):
 class Sequence(Expression):
     __slots__ = 'expressions',
 
-    def __init__(self, *expressions: _NiceExpr):
+    def __init__(self, *expressions: _NiceExpr, raw: bool = False):
         self.expressions = list(map(_validate, expressions))
         super().__init__(
             structured=any(e.structured for e in self.expressions),
@@ -62,7 +62,7 @@ class Sequence(Expression):
             m = self._re.match(s, pos)
             if not m:
                 return NOMATCH, None, None
-            return m.end(), m.group(), None
+            return m.end(), None, None
 
         unfiltered = not self.filtered
         args = []
@@ -76,7 +76,7 @@ class Sequence(Expression):
             elif expression.filtered:
                 args.extend(_args)
         if not self.structured:
-            args = ''.join(args)
+            args = None  # ''.join(args)
         return pos, args, None
 
 
@@ -112,27 +112,26 @@ class Choice(Expression):
             m = self._re.match(s, pos)
             if not m:
                 return NOMATCH, None, None
-            return m.end(), [m.group()], None
+            return m.end(), None, None
 
         struct = self.structured
-        end = NOMATCH
         for expression in self.expressions:
             end, args, kwargs = expression._match(s, pos)
             if end >= 0:
                 if struct and not expression.structured:
                     args = []
                 return end, args, None
-        return end, None, None
+        return NOMATCH, None, None
 
 
 class Repeat(Expression):
-    __slots__ = 'expression', 'min', 'max', 'delimiter',
+    __slots__ = 'expression', 'min', 'max',
 
     def __init__(self,
                  expression: _NiceExpr,
                  min: int = 0,
                  max: int = -1,
-                 delimiter: _NiceExpr = None):
+                 raw: bool = False):
         if min < 0:
             raise ValueError('min must be >= 0')
         if max != -1 and max < min:
@@ -140,33 +139,23 @@ class Repeat(Expression):
         self.expression: Expression = _validate(expression)
         self.min = min
         self.max = max
-        if delimiter:
-            delimiter = _validate(delimiter)
-        self.delimiter: OptionalType[Expression] = delimiter
         super().__init__(
-            structured=(self.expression.structured
-                        or (delimiter and delimiter.structured)),
-            filtered=(self.expression.filtered
-                      or (delimiter and delimiter.filtered)))
+            structured=(self.expression.structured),
+            filtered=(self.expression.filtered))
 
     def __repr__(self):
         return (f'Repeat({self.expression!s}, '
-                f'min={self.min}, max={self.max}, '
-                f'delimiter={self.delimiter!s})')
+                f'min={self.min}, max={self.max})')
 
     def __str__(self):
         qs = {(0, 1): '?', (0, -1): '*', (1, -1): '+'}
         e = str(self.expression)
         if isinstance(self.expression, (Sequence, Choice, Peek, Not)):
             e = f'(?:{e})'
-        if self.delimiter or (self.min, self.max) not in qs:
+        if (self.min, self.max) not in qs:
             min = '' if self.min == 0 else self.min
             max = '' if self.max == -1 else self.max
-            delim = f':{self.delimiter!s}' if self.delimiter else ''
-            if min == '' and max == '' and delim:
-                return f'{e}{{{delim}}}'
-            else:
-                return f'{e}{{{min},{max}{delim}}}'
+            return f'{e}{{{min},{max}}}'
         else:
             q = qs[(self.min, self.max)]
             return f'{e}{q}'
@@ -179,19 +168,13 @@ class Repeat(Expression):
         elif max != 0:
             min = self.min
             expr = self.expression
-            delim = self.delimiter
             end = expr.scan(s, pos)
             count: int = 0
             if end >= 0:
                 pos = end
                 count += 1
                 while count != max:
-                    if delim:
-                        end = delim.scan(s, pos=pos)
-                        if end >= 0:
-                            end = expr.scan(s, end)
-                    else:
-                        end = expr.scan(s, pos)
+                    end = expr.scan(s, pos)
                     if end < 0:
                         break
                     pos = end
@@ -205,24 +188,22 @@ class Repeat(Expression):
             m = self._re.match(s, pos)
             if not m:
                 return NOMATCH, None, None
-            return m.end(), [m.group()], None
+            return m.end(), None, None
         elif self.max == 0:
-            return pos, [], None
+            return pos, None, None
 
         expression = self.expression
-        delimiter = self.delimiter
         min = self.min
         max = self.max
 
         args = []
         if self.filtered:
             acc = args.extend if expression.filtered else None
-            dacc = args.extend if delimiter and delimiter.filtered else None
         else:
-            acc = dacc = args.append
+            acc = args.append
 
         count: int = 0
-        end, _args = expression._match(s, pos)
+        end, _args, _kwargs = expression._match(s, pos)
         if end >= pos:
             pos = end
             count += 1
@@ -231,15 +212,7 @@ class Repeat(Expression):
 
             # TODO: walrus
             while count != max:
-                if delimiter:
-                    end, dargs = delimiter._match(s, pos)
-                    if end >= 0:
-                        end, _args = expression._match(s, end)
-                        if end >= 0 and dacc:
-                            dacc(dargs)
-                else:
-                    end, _args = expression._match(s, pos)
-
+                end, _args, _kwargs = expression._match(s, pos)
                 if end < 0:
                     break
                 if acc:
@@ -298,7 +271,9 @@ class Group(Expression):
         end, args, kwargs = self.expression._match(s, pos)
         if end < 0:
             return end, None, None
-        return end, [value], kwargs
+        if args is None:
+            args = s[pos:end]
+        return end, [args], kwargs
 
 
 class _DeferredLookup(Expression):
@@ -351,7 +326,7 @@ class Rule(Expression):
         if end < 0:
             return end, None, None
         if self.action:
-            args = self.action(*args, **(kwargs or {}))
+            args = [self.action(*args, **(kwargs or {}))]
         return end, args, None
 
 

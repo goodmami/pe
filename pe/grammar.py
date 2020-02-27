@@ -8,65 +8,69 @@ syntax. It extends the original syntax with the following features:
 * **anonymous expressions:** a full grammar is not necessary if one
   wants to match a single expression.
 
-* **capturing groups:** used to filter and structure matches
+* **expression extraction:** subexpressions can be pulled out of a
+  result in order to be discarded or later referred to by name
 
-* **extended repetition:** repetition with explicit bounds or
-  interstitial expressions
+* **generic escapes:** any `\\` escape sequence is allowed in literals
+  and character classes, and their interpretation depends on the
+  action
+
+* **result unpacking:** a `*` before a sequence or repetition will
+  unpack its result list into the current context; otherwise the
+  result is a list
+
+* **raw result:** a `~` before an expression makes its result in the
+  current context only the full matched string and not any
+  intermediate results; this is also allowed as a special rule
+  operator `<~` which returns the raw result of the entire rule
 
 
 The syntax is defined as follows::
 
   # Hierarchical syntax
-  Start      <- Spacing (Expression / Grammar) EndOfFile
+  Start      <- :Spacing (Expression / Grammar) :EndOfFile
   Grammar    <- Definition+
-  Definition <- Identifier LEFTARROW Expression
-  Expression <- Sequence (SLASH Sequence)*
-  Sequence   <- Prefix*
-  Prefix     <- (AND / NOT)? Suffix
-  Suffix     <- Primary Quantifier?
-  Quantifier <- QUESTION / STAR / PLUS / Repetition
-  Repetition <- LBRACE (Delimiter / Span Delimiter?) RBRACE
-  Delimiter  <- COLON Expression?
-  Primary    <- Identifier !LEFTARROW
-              / OPEN Expression CLOSE
-              / Literal
-              / Class
-              / DOT
+  Definition <- Identifier Operator Expression
+  Operator   <- LEFTARROW / RAWARROW
+  Expression <- *(Sequence *(SLASH Sequence)*)
+  Sequence   <- Prefixed*
+  Prefixed   <- Prefix? Quantified
+  Prefix     <- AND / NOT / STAR / TILDE / Extract
+  Extract    <- Name? :COLON
+  Quantified <- Primary Quantifier?
+  Quantifier <- QUESTION / STAR / PLUS
+  Primary    <- Name / Group / Literal / Class / DOT
+  Name       <- Identifier !LEFTARROW
+  Group      <- :OPEN Expression :CLOSE
 
   # Lexical syntax
-  Identifier <- IdentStart IdentCont* Spacing
+  Identifier <- IdentStart IdentCont* :Spacing
   IdentStart <- [a-zA-Z_]
   IdentCont  <- IdentStart / [0-9]
 
-  Literal    <- ['] (!['] Char)* ['] Spacing
-              / ["] (!["] Char)* ["] Spacing
-  Class      <- '[' (!']' Range)* ']' Spacing
+  Literal    <- :['] ~( !['] Char )* :['] :Spacing
+              / :["] ~( !["] Char )* :["] :Spacing
+
+  Class      <- :'[' ~( !']' Range )* :']' :Spacing
   Range      <- Char '-' Char / Char
-  Char       <- '\\' [nrt'"\[\]\\]
-              / '\\' [0-2] [0-7] [0-7]
-              / '\\' [0-7] [0-7]?
-              / !'\\' .
+  Char       <- '\\' . / .
 
-  Span       <- Integer? COMMA Integer? / Integer
-  Integer    <- '0' / [1-9] [0-9]*
-
-  LEFTARROW  <- '<-'  Spacing
+  LEFTARROW  <- '<-' Spacing
+  RAWARROW   <- '<~' Spacing
   SLASH      <- '/' Spacing
   AND        <- '&' Spacing
   NOT        <- '!' Spacing
+  TILDE      <- '~' Spacing
   QUESTION   <- '?' Spacing
   STAR       <- '*' Spacing
   PLUS       <- '+' Spacing
-  OPEN       <- '(' ('?' .)? Spacing
+  OPEN       <- '(' Spacing
   CLOSE      <- ')' Spacing
   DOT        <- '.' Spacing
-  LBRACE     <- '{' Spacing
-  RBRACE     <- '}' Spacing
-  COMMA      <- ',' Spacing
   COLON      <- ':' Spacing
 
-  Spacing    <- (Space / Comment)*
-  Comment    <- '#' (!EndOfLine .)* EndOfLine
+  Spacing    <- (?: Space / Comment)*
+  Comment    <- '#' (?: !EndOfLine .)* EndOfLine
   Space      <- ' ' / '\t' / EndOfLine
   EndOfLine  <- '\r\n' / '\n' / '\r'
   EndOfFile  <- !.
@@ -75,88 +79,95 @@ The syntax is defined as follows::
 from pe.core import Expression
 from pe.terms import (
     Dot,
-    Class,
+    Class as Cls,
 )
 from pe.expressions import (
-    Sequence,
-    Choice,
-    Repeat,
-    Optional,
-    Group,
+    Sequence as Seq,
+    Choice as Chc,
+    Repeat as Rpt,
+    Optional as Opt,
     Peek,
     Not,
     Rule,
     Grammar,
 )
 
+
+def _make_prefixed(*args, **kwargs):
+    prefix, suffix = args
+    primary, quantifier = suffix
+
+
 G = Grammar()
 
 _DOT = Dot()
 
-# Lexical expressions
+# Whitespace and comments
 
 EndOfFile  = Not(_DOT)
-EndOfLine  = Choice(r'\r\n', r'\r', r'\n')
-Comment    = Sequence('#', Repeat(Sequence(Not(EndOfLine), _DOT)), EndOfLine)
-Space      = Choice(' ', r'\t', EndOfLine)
-Spacing    = Repeat(Choice(Space, Comment))
+EndOfLine  = Chc(r'\r\n', r'\n', r'\r')
+Comment    = Seq('#', Rpt(Seq(Not(EndOfLine), _DOT)), EndOfLine)
+Space      = Chc(' ', r'\t', EndOfLine)
+Spacing    = Rpt(Chc(Space, Comment))
 
-LEFTARROW  = Sequence('<-', Spacing)
-SLASH      = Sequence('/', Spacing)
-AND        = Sequence('&', Spacing)
-NOT        = Sequence('!', Spacing)
-QUESTION   = Sequence('?', Spacing)
-STAR       = Sequence('*', Spacing)
-PLUS       = Sequence('+', Spacing)
-_GroupType = Optional(Sequence('?', _DOT))
-OPEN       = Sequence('(', Group(_GroupType), Spacing)
-CLOSE      = Sequence(')', Spacing)
-DOT        = Sequence('.', Spacing)
-LBRACE     = Sequence('{', Spacing)
-RBRACE     = Sequence('}', Spacing)
-COMMA      = Sequence(',', Spacing)
-COLON      = Sequence(':', Spacing)
+# Lexical expressions
 
-_ESC = Sequence('\\', _DOT)  # Generic escape sequence
+LEFTARROW  = Seq('<-', Spacing)
+RAWARROW   = Seq('<~', Spacing)
+SLASH      = Seq('/', Spacing)
+AND        = Seq('&', Spacing)
+NOT        = Seq('!', Spacing)
+TILDE      = Seq('~', Spacing)
+QUESTION   = Seq('?', Spacing)
+STAR       = Seq('*', Spacing)
+PLUS       = Seq('+', Spacing)
+OPEN       = Seq('(', Spacing)
+CLOSE      = Seq(')', Spacing)
+DOT        = Seq('.', Spacing)
+COLON      = Seq(':', Spacing)
 
-CLASS      = Sequence(
-        '[', Repeat(Class(r'^\]\\'), delimiter=Repeat(_ESC)), ']')
-LITERAL    = Choice(
-    Sequence("'", Repeat(Class(r"^'\\"), delimiter=Repeat(_ESC)), "'"),
-    Sequence("'", Repeat(Class(r'^"\\'), delimiter=Repeat(_ESC)), '"'))
+Char       = Chc(Seq('\\', _DOT), _DOT)
+Range      = Chc(Seq(Char, '-', Char), Char)
+Class      = Seq('[', Rpt(Seq(Not(']'), Range)), ']', raw=True)
+Literal    = Chc(
+    Seq("'", Rpt(Seq(Not("'"), Char)), "'", raw=True),
+    Seq('"', Rpt(Seq(Not('"'), Char)), '"', raw=True))
 
-IdentStart = Class('a-zA-Z_')
-IdentCont  = Choice(IdentStart, Class('0-9'))
-Identifier = Sequence(
-    IdentStart, Repeat(IdentCont), Spacing)
+IdentStart = Cls('a-zA-Z_')
+IdentCont  = Chc(IdentStart, Cls('0-9'))
+Identifier = Seq(IdentStart, Rpt(IdentCont), Spacing)
 
-RULENAME   = Sequence(Identifier, Not(LEFTARROW))
-GROUP      = Sequence(OPEN, Group(G['Expression']), CLOSE)
+Name       = Seq(Identifier, Not(LEFTARROW))
+Group      = Seq(OPEN, G['Expression'], CLOSE)
 
-Integer    = Choice('0', Sequence(Class('1-9'), Repeat(Class('0-9'))))
-Span       = Choice(Sequence(Optional(Integer), COMMA, Optional(Integer)),
-                    Integer)
+Quantifier = Chc(QUESTION, STAR, PLUS)
+Extract    = Seq(Opt(Name), COLON)
+Prefix     = Chc(AND, NOT, STAR, TILDE, Extract)
+Operator   = Chc(LEFTARROW, RAWARROW)
 
-G['Dot']        = Rule(DOT, action=lambda: ('Dot', _DOT))
-G['Class']      = Rule(CLASS, action=lambda s: ('Class', Class(s[1:-1])))
-G['Literal']    = Rule(LITERAL, action=lambda s: ('Literal', Literal(s[1:-1])))
-G['Name']       = Rule(RULENAME, action=lambda s: ('Name', s))
-G['Group']      = Rule(GROUP, action=lambda xs: ('Group', *xs))
-G['Term']       = Rule(Choice(G['Literal'], G['Class'], G['Dot']),
-                       action=lambda t: ('Term', t))
-G['Primary']    = Choice(G['RuleName'], G['Group'], G['Term'])
+G['Dot']        = Rule(DOT, action=lambda: ('Dot',))
+G['Class']      = Rule(Class, action=lambda s: ('Class', s[1:-1]))
+G['Literal']    = Rule(Literal, action=lambda s: ('Literal', s[1:-1]))
+G['Name']       = Rule(Name, action=lambda s: ('Name', s))
+G['Group']      = Rule(Group, action=lambda xs: ('Group', xs))
+G['Primary']    = Chc(
+    G['Name'], G['Group'], G['Literal'], G['Class'], G['Dot'])
 
-G['Quantifier'] = Choice(G['QUESTION'], G['STAR'], G['PLUS'], G['Repetition'])
-G['Suffix']     = Sequence(G['Primary'], G['Quantifier'])
-G['Prefix']     = Sequence(
-    Optional(Choice(G['AND'], G['NOT'])), G['Suffix'])
-G['Sequence']   = Repeat(G['Prefix'])
-G['Expression'] = Repeat(G['Sequence'], delimiter=G['SLASH'])
+G['Quantified'] = Seq(G['Primary'], Opt(Quantifier))
+G['Prefixed']   = Rule(Seq(Opt(Prefix), G['Quantified']),
+                       action=_make_prefixed)
+G['Sequence']   = Rule(Rpt(G['Prefixed']),
+                       action=lambda xs: ('Sequence', xs))
+G['Expression'] = Rule(Seq(G['Sequence'], Rpt(Seq(SLASH, G['Sequence']))),
+                       action=lambda xs: ('Choice', xs))
 
-G['Definition'] = Sequence(G['Identifier'], G['LEFTARROW'], G['Expression'])
-G['Grammar']    = Rule(Repeat(G['Definition'], min=1))
-G['Start']      = Sequence(
-    G['Spacing'], Group(Choice(G['Expression'], G['Grammar'])), G['EndOfFile'])
+G['Definition'] = Rule(
+    Seq(Identifier, Operator, G['Expression']),
+    action=lambda xs: ('Rule', *xs))
+G['Grammar']    = Rule(Rpt(G['Definition'], min=1),
+                       action=lambda xs: ('Grammar', xs))
+G['Start']      = Seq(
+    Spacing, Chc(G['Expression'], G['Grammar']), EndOfFile)
 
 # Rename the variable
 PEG = G

@@ -7,7 +7,7 @@ For example:
 
 ``` python
 >>> import pe
->>> m = pe.match(r''' '"' (!["\\] . / '\\' .)* '"' ''',
+>>> m = pe.match(r'["] (!["\\] . / "\\" .)* ["]',
 ...              '"escaped \\"string\\"" ...')
 >>> m.value()
 '"escaped \\"string\\""'
@@ -79,3 +79,5 @@ options for shaping the value.
 - [Parsimonious](https://github.com/erikrose/parsimonious) (Python)
 - [Rosie](https://rosie-lang.org/) (Multiple bindings)
 - [TatSu](https://tatsu.readthedocs.io/en/stable/) (Python)
+- [PEG.js](https://github.com/pegjs/pegjs) (Javascript)
+- [Pegged](https://github.com/PhilippeSigaud/Pegged) (D)
