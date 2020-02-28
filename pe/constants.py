@@ -11,7 +11,7 @@ class Operators(Enum):
     DEF = 0   # (DEF, name,)
     DOT = 1   # (DOT,)
     LIT = 2   # (LIT, string,)
-    CLS = 3   # (CLS, string,)
+    CLS = 3   # (CLS, chars,)
     SEQ = 4   # (SEQ, exprs,)
     CHC = 5   # (CHC, exprs,)
     RPT = 6   # (RPT, expr, min, max)
