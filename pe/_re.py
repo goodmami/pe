@@ -39,7 +39,7 @@ def set_re(expr) -> None:
         _set_choice_re(expr)
     elif name == 'Repeat':
         _set_repeat_re(expr)
-    elif name in ('Lookahead', 'Peek', 'Not'):
+    elif name in ('Lookahead', 'And', 'Not'):
         _set_lookahead_re(expr)
     elif name == 'Group':
         set_re(expr.expression)
@@ -102,6 +102,12 @@ def _set_repeat_re(expr):
     if clsname(expr.expression) in ('Sequence', 'Choice'):
         pattern = f'(?:{pattern})'
 
+    # TODO: use lookaheads to avoid backtracking
+    #
+    #   pattern = f'(?=(?P<x>{pattern}{rpt}))(?P=x)'
+    #
+    # The problem is when patterns get composed, the group name needs
+    # to be made unique.
     rpt = _quantifier_re(min, max)
     expr._re = re.compile(f'{pattern}{rpt}')
 

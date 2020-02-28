@@ -8,16 +8,12 @@ syntax. It extends the original syntax with the following features:
 * **anonymous expressions:** a full grammar is not necessary if one
   wants to match a single expression.
 
-* **expression extraction:** subexpressions can be pulled out of a
-  result in order to be discarded or later referred to by name
+* **expression binding:** subexpressions can be extracted from the
+  result and optionally bound to a name for later reference
 
 * **generic escapes:** any `\\` escape sequence is allowed in literals
   and character classes, and their interpretation depends on the
   action
-
-* **result unpacking:** a `*` before a sequence or repetition will
-  unpack its result list into the current context; otherwise the
-  result is a list
 
 * **raw result:** a `~` before an expression makes its result in the
   current context only the full matched string and not any
@@ -32,11 +28,11 @@ The syntax is defined as follows::
   Grammar    <- Definition+
   Definition <- Identifier Operator Expression
   Operator   <- LEFTARROW / RAWARROW
-  Expression <- *(Sequence *(SLASH Sequence)*)
+  Expression <- Sequence (SLASH Sequence)*
   Sequence   <- Prefixed*
   Prefixed   <- Prefix? Quantified
-  Prefix     <- AND / NOT / STAR / TILDE / Extract
-  Extract    <- Name? :COLON
+  Prefix     <- AND / NOT / STAR / TILDE / Binding
+  Binding    <- Name? :COLON
   Quantified <- Primary Quantifier?
   Quantifier <- QUESTION / STAR / PLUS
   Primary    <- Name / Group / Literal / Class / DOT
@@ -86,9 +82,8 @@ from pe.expressions import (
     Choice as Chc,
     Repeat as Rpt,
     Optional as Opt,
-    Peek,
+    And,
     Not,
-    Rule,
     Grammar,
 )
 
@@ -110,7 +105,7 @@ Comment    = Seq('#', Rpt(Seq(Not(EndOfLine), _DOT)), EndOfLine)
 Space      = Chc(' ', r'\t', EndOfLine)
 Spacing    = Rpt(Chc(Space, Comment))
 
-# Lexical expressions
+# Lexical syntax
 
 LEFTARROW  = Seq('<-', Spacing)
 RAWARROW   = Seq('<~', Spacing)
@@ -128,46 +123,52 @@ COLON      = Seq(':', Spacing)
 
 Char       = Chc(Seq('\\', _DOT), _DOT)
 Range      = Chc(Seq(Char, '-', Char), Char)
-Class      = Seq('[', Rpt(Seq(Not(']'), Range)), ']', raw=True)
+Class      = Seq('[', Rpt(Seq(Not(']'), Range)), ']')
 Literal    = Chc(
-    Seq("'", Rpt(Seq(Not("'"), Char)), "'", raw=True),
-    Seq('"', Rpt(Seq(Not('"'), Char)), '"', raw=True))
+    Seq("'", Rpt(Seq(Not("'"), Char)), "'"),
+    Seq('"', Rpt(Seq(Not('"'), Char)), '"'))
 
 IdentStart = Cls('a-zA-Z_')
 IdentCont  = Chc(IdentStart, Cls('0-9'))
 Identifier = Seq(IdentStart, Rpt(IdentCont), Spacing)
 
-Name       = Seq(Identifier, Not(LEFTARROW))
-Group      = Seq(OPEN, G['Expression'], CLOSE)
-
-Quantifier = Chc(QUESTION, STAR, PLUS)
-Extract    = Seq(Opt(Name), COLON)
-Prefix     = Chc(AND, NOT, STAR, TILDE, Extract)
 Operator   = Chc(LEFTARROW, RAWARROW)
+Name       = Seq(Identifier, Not(Operator))
+Quantifier = Chc(QUESTION, STAR, PLUS)
+Binding    = Seq(Opt(Name), COLON)
+Prefix     = Chc(AND, NOT, STAR, TILDE, Binding)
 
-G['Dot']        = Rule(DOT, action=lambda: ('Dot',))
-G['Class']      = Rule(Class, action=lambda s: ('Class', s[1:-1]))
-G['Literal']    = Rule(Literal, action=lambda s: ('Literal', s[1:-1]))
-G['Name']       = Rule(Name, action=lambda s: ('Name', s))
-G['Group']      = Rule(Group, action=lambda xs: ('Group', xs))
-G['Primary']    = Chc(
-    G['Name'], G['Group'], G['Literal'], G['Class'], G['Dot'])
+G['Dot']        = DOT
+G['Class']      = Class
+G['Literal']    = Literal
+G['Name']       = Name
 
+# Hierarchical syntax
+
+G['Group']      = Seq(OPEN, G['Expression'], CLOSE)
+G['Primary']    = Chc(G['Name'], G['Group'], G['Literal'], G['Class'], G['Dot'])
 G['Quantified'] = Seq(G['Primary'], Opt(Quantifier))
-G['Prefixed']   = Rule(Seq(Opt(Prefix), G['Quantified']),
-                       action=_make_prefixed)
-G['Sequence']   = Rule(Rpt(G['Prefixed']),
-                       action=lambda xs: ('Sequence', xs))
-G['Expression'] = Rule(Seq(G['Sequence'], Rpt(Seq(SLASH, G['Sequence']))),
-                       action=lambda xs: ('Choice', xs))
+G['Prefixed']   = Seq(Opt(Prefix), G['Quantified'])
+G['Sequence']   = Rpt(G['Prefixed'])
+G['Expression'] = Seq(G['Sequence'], Rpt(Seq(SLASH, G['Sequence'])))
+G['Definition'] = Seq(Identifier, Operator, G['Expression'])
+G['Grammar']    = Rpt(G['Definition'], min=1)
+G['Start']      = Seq(Spacing, Chc(G['Expression'], G['Grammar']), EndOfFile)
 
-G['Definition'] = Rule(
-    Seq(Identifier, Operator, G['Expression']),
-    action=lambda xs: ('Rule', *xs))
-G['Grammar']    = Rule(Rpt(G['Definition'], min=1),
-                       action=lambda xs: ('Grammar', xs))
-G['Start']      = Seq(
-    Spacing, Chc(G['Expression'], G['Grammar']), EndOfFile)
+# Semantic actions
+
+G.actions.update({
+    'DOT': lambda: ('Dot',),
+    'Class': lambda s: ('Class', s[1:-1]),
+    'Literal': lambda s: ('Literal', s[1:-1]),
+    'Name': lambda s: ('Name', s),
+    'Group': lambda xs: ('Group', xs),
+    'Prefixed': _make_prefixed,
+    'Sequence': lambda xs: ('Sequence', xs),
+    'Expression': lambda xs: ('Choice', xs),
+    'Definition': lambda xs: ('Rule', *xs),
+    'Grammar': lambda xs: ('Grammar', xs),
+})
 
 # Rename the variable
 PEG = G

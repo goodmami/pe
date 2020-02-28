@@ -6,9 +6,9 @@ from pe.expressions import (
     Choice,
     Repeat,
     Group,
-    Peek,
+    And,
     Not,
-    Rule,
+    # Rule,
     Grammar,
 )
 from pe.grammar import PEG

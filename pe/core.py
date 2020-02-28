@@ -43,7 +43,7 @@ class Expression:
         self._re: Pattern = None
         self.structured = structured
         self.filtered = filtered
-        set_re(self)
+        # set_re        (self)
 
     def scan(self, s: str, pos: int = 0) -> int:
         if self._re is None:

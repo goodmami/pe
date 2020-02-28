@@ -31,14 +31,14 @@ Json = pe.compile(
     '''
     Start    <- :Spacing Value
     Value    <- Object / Array / String / Number / Constant
-    Object   <- :LBRACE *(Member *(:COMMA Member)*)? :RBRACE
+    Object   <- :LBRACE (Member (:COMMA Member)*)? :RBRACE
     Member   <- *String :COLON Value
-    Array    <- :LBRACK *(Value *(:COMMA Value)*)? :RBRACK
-    String   <- :["] ~(!["] . | '\\' .)* :["]
+    Array    <- :LBRACK (Value (:COMMA Value)*)? :RBRACK
+    String   <- :["] (!["] . | '\\' .)* :["]
     Number   <- INTEGER / FLOAT
     Constant <- TRUE / FALSE / NULL
-    INTEGER  <~ "-"? ("0" / [1-9] [0-9]*)
-    FLOAT    <~ INTEGER FRACTION? EXPONENT?
+    INTEGER  <- "-"? ("0" / [1-9] [0-9]*)
+    FLOAT    <- INTEGER FRACTION? EXPONENT?
     FRACTION <- "." [0-9]+
     EXPONENT <- [eE] [-+]? [0-9]+
     TRUE     <- "true"
@@ -48,14 +48,15 @@ Json = pe.compile(
     RBRACE   <- "}" Spacing
     LBRACK   <- "[" Spacing
     RBRACK   <- "]" Spacing
-    COMMA    <- "," _*
+    COMMA    <- "," Spacing
     Spacing  <- [\t\n\f\r ]*
     ''',
     actions={
         'Start': first,
         'Object': dict,
+        'Member': tuple,
         'Array': list,
-        'String': lambda s: s[1:-1],
+        'String': str,
         'INTEGER': int,
         'FLOAT': float,
         'TRUE': lambda: True,

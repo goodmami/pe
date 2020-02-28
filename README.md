@@ -13,6 +13,7 @@ For example:
 '"escaped \\"string\\""'
 ```
 
+
 ## Syntax Quick Reference
 
 ```regex
@@ -29,21 +30,18 @@ e?          # zero or one (optional)
 e*          # zero or more
 e+          # one or more
 
-# extended repetition
-e{2}        # exactly two
-e{2,5}      # between two and five
-e{2:d}      # exactly two delimited by d
-e{2,5:d}    # between two and five delimited by d
-
 # combining expressions
 e1 e2       # sequence of e1 and e2
 e1 | e2     # ordered choice of e1 and e2
-(?:e)       # non-capturing group
-(e)         # capturing group
+(e)         # subexpression
 
 # lookahead
 &e          # positive lookahead
 !e          # negative lookahead
+
+# binding and result structuring
+:e          # discard result after match
+name:e      # bind e to name
 
 # grammars
 Name = ...  # define a rule named 'Name'

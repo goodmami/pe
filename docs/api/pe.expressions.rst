@@ -18,9 +18,13 @@ pe.expressions
 
 .. autofunction:: Optional
 
-.. autofunction:: Peek
+.. autoclass:: And
+   :show-inheritance:
+   :members:
 
-.. autofunction:: Not
+.. autoclass:: Not
+   :show-inheritance:
+   :members:
 
 .. autoclass:: Group
    :show-inheritance:

@@ -27,7 +27,7 @@ def _validate(arg):
 class Sequence(Expression):
     __slots__ = 'expressions',
 
-    def __init__(self, *expressions: _NiceExpr, raw: bool = False):
+    def __init__(self, *expressions: _NiceExpr):
         self.expressions = list(map(_validate, expressions))
         super().__init__(
             structured=any(e.structured for e in self.expressions),
@@ -130,8 +130,7 @@ class Repeat(Expression):
     def __init__(self,
                  expression: _NiceExpr,
                  min: int = 0,
-                 max: int = -1,
-                 raw: bool = False):
+                 max: int = -1):
         if min < 0:
             raise ValueError('min must be >= 0')
         if max != -1 and max < min:
@@ -150,7 +149,7 @@ class Repeat(Expression):
     def __str__(self):
         qs = {(0, 1): '?', (0, -1): '*', (1, -1): '+'}
         e = str(self.expression)
-        if isinstance(self.expression, (Sequence, Choice, Peek, Not)):
+        if isinstance(self.expression, (Sequence, Choice, And, Not)):
             e = f'(?:{e})'
         if (self.min, self.max) not in qs:
             min = '' if self.min == 0 else self.min
@@ -229,7 +228,7 @@ def Optional(expression: _NiceExpr):
     return Repeat(expression, max=1)
 
 
-class Peek(Lookahead):
+class And(Lookahead):
     def __init__(self, expression: Expression):
         super().__init__(_validate(expression), True)
 
@@ -300,34 +299,34 @@ class _DeferredLookup(Expression):
         return expr._match(s, pos)
 
 
-class Rule(Expression):
-    __slots__ = 'expression', 'action',
+# class Rule(Expression):
+#     __slots__ = 'expression', 'action',
 
-    def __init__(self,
-                 expression: Expression,
-                 action: Callable = None):
-        self.expression = _validate(expression)
-        self.action = action
-        super().__init__(structured=action is not None,
-                         filtered=self.expression.filtered)
+#     def __init__(self,
+#                  expression: Expression,
+#                  action: Callable = None):
+#         self.expression = _validate(expression)
+#         self.action = action
+#         super().__init__(structured=action is not None,
+#                          filtered=self.expression.filtered)
 
-    def __repr__(self):
-        return (f'Rule({self.expression!s}, '
-                f'action={self.action})')
+#     def __repr__(self):
+#         return (f'Rule({self.expression!s}, '
+#                 f'action={self.action})')
 
-    def __str__(self):
-        return f'{self.expression!s}'
+#     def __str__(self):
+#         return f'{self.expression!s}'
 
-    def scan(self, s: str, pos: int = 0):
-        return self.expression.scan(s, pos=pos)
+#     def scan(self, s: str, pos: int = 0):
+#         return self.expression.scan(s, pos=pos)
 
-    def _match(self, s: str, pos: int):
-        end, args, kwargs = self.expression._match(s, pos)
-        if end < 0:
-            return end, None, None
-        if self.action:
-            args = [self.action(*args, **(kwargs or {}))]
-        return end, args, None
+#     def _match(self, s: str, pos: int):
+#         end, args, kwargs = self.expression._match(s, pos)
+#         if end < 0:
+#             return end, None, None
+#         if self.action:
+#             args = [self.action(*args, **(kwargs or {}))]
+#         return end, args, None
 
 
 class Grammar(Expression):

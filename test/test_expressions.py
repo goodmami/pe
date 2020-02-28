@@ -8,10 +8,10 @@ from pe.expressions import (
     Choice,
     Repeat,
     Optional,
-    Peek,
+    And,
     Not,
     Group,
-    Rule,
+    # Rule,
     Grammar,
 )
 
@@ -82,14 +82,14 @@ def test_match_Optional():
     assert Optional(abc).match('a').value() == 'a'
 
 
-def test_scan_Peek():
-    assert Peek(abc).scan('a') == 0
-    assert Peek(abc).scan('d') == NOMATCH
+def test_scan_And():
+    assert And(abc).scan('a') == 0
+    assert And(abc).scan('d') == NOMATCH
 
 
-def test_match_Peek():
-    assert Peek(abc).match('a').value() == ''
-    assert Peek(abc).match('d') is None
+def test_match_And():
+    assert And(abc).match('a').value() == ''
+    assert And(abc).match('d') is None
 
 
 def test_scan_Not():
@@ -112,14 +112,14 @@ def test_match_Group():
     assert Group(abc).match('d') is None
 
 
-def test_scan_Rule():
-    assert Rule(abc).scan('a') == 1
-    assert Rule(abc).scan('d') == NOMATCH
+# def test_scan_Rule():
+#     assert Rule(abc).scan('a') == 1
+#     assert Rule(abc).scan('d') == NOMATCH
 
 
-def test_match_Rule():
-    assert Rule(abc).match('a').value() == 'a'
-    assert Rule(abc).match('d') is None
+# def test_match_Rule():
+#     assert Rule(abc).match('a').value() == 'a'
+#     assert Rule(abc).match('d') is None
 
 
 def test_scan_Grammar():
