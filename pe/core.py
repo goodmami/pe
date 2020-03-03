@@ -1,8 +1,7 @@
 
-from typing import List, Dict, Tuple, Any, Pattern
+from typing import Union, List, Dict, Tuple, Callable
 
-from pe.constants import NOMATCH
-from pe._re import set_re
+from pe.constants import FAIL, Operator
 
 
 class Error(Exception):
@@ -17,14 +16,14 @@ class Match:
                  pos: int,
                  end: int,
                  pe: 'Expression',
-                 _args: List = None,
-                 _kwargs: Dict = None):
+                 args: List = None,
+                 kwargs: Dict = None):
         self.string = string
         self.pos = pos
         self.end = end
         self.pe = pe
-        self._args = _args
-        self._kwargs = _kwargs
+        self._args = args
+        self._kwargs = kwargs
 
     def __repr__(self):
         return f'<Match object of: {self.pe!s} >'
@@ -35,79 +34,49 @@ class Match:
     def groupdict(self):
         return dict(self._kwargs or ())
 
+    def value(self):
+        if self._args is None:
+            return self.string[self.pos:self.end]
+        elif self._args:
+            return self._args[0]
+        return None
+
 
 class Expression:
-    __slots__ = '_re', 'structured', 'filtered',
+    __slots__ = 'structured',
 
-    def __init__(self, structured: bool = False, filtered: bool = False):
-        self._re: Pattern = None
+    def __init__(self, structured: bool = True):
         self.structured = structured
-        self.filtered = filtered
-        set_re        (self)
 
     def scan(self, s: str, pos: int = 0) -> int:
-        if self._re is None:
-            raise Error(
-                f'expression cannot be used for scanning: {self}')
-        # TODO: walrus
-        m = self._re.match(s, pos)
-        if not m:
-            return NOMATCH
-        return m.end()
+        raise NotImplementedError()
 
-    def match(self, s: str, pos: int = 0) -> Match:
-        end, args, kwargs = self._match(s, pos)
-        if end == NOMATCH:
-            return None
-        return Match(s, pos, end, self, args, kwargs)
-
-    def _match(self, s: str, pos: int) -> Tuple[int, Any]:
+    def match(self, s: str, pos: int = 0) -> Union[Match, None]:
         raise NotImplementedError()
 
 
-class Lookahead(Expression):
-    """An expression that may match but consumes no input."""
-
-    __slots__ = 'expression', 'polarity',
-
-    def __init__(self, expression: Expression, polarity: bool):
-        self.expression = expression
-        self.polarity = polarity
-        super().__init__()
-
-    def __repr__(self):
-        clsname = type(self).__name__
-        return f'{clsname}({self.expression!s}, {self.polarity})'
-
-    def _match(self, s: str, pos: int):
-        if self._re:
-            m = self._re.match(s, pos)
-            if m:
-                return pos, None, None
-            return NOMATCH, None, None
-
-        end, _, _ = self.expression._match(s, pos)
-        if self.polarity ^ (end < 0):
-            return NOMATCH, None, None
-        return pos, None, None
+Definition = Union[Tuple[Operator],                          # DOT
+                   Tuple[Operator, str],                     # LIT, CLS, NAM
+                   Tuple[Operator, str, int],                # RGX
+                   Tuple[Operator, str, 'Definition'],       # DEF, BND
+                   Tuple[Operator, 'Definition'],            # AND, NOT
+                   Tuple[Operator, 'Definition', Callable],  # RUL
+                   Tuple[Operator, List['Definition']],      # SEQ, CHC
+                   Tuple[Operator, 'Definition', int, int]]  # RPT
 
 
-class Term(Expression):
-    """An atomic expression."""
 
-    __slots__ = ()
-    structured = False
-    filtered = False
+class Grammar:
+    def __init__(self,
+                 definitions: Dict[str, Definition] = None,
+                 actions: Dict[str, Callable] = None,
+                 start: str = 'Start'):
+        self.start = start
+        self.definitions = definitions or {}
+        self.actions = actions or {}
 
-    def scan(self, s: str, pos: int = 0):
-        # TODO: walrus
-        m = self._re.match(s, pos)
-        if not m:
-            return NOMATCH
-        return m.end()
+    def __setitem__(self, name: str, definition: Definition):
+        self.definitions[name] = definition
 
-    def _match(self, s: str, pos: int):
-        end = self.scan(s, pos=pos)
-        if end < 0:
-            return end, None, None
-        return end, None, None
+    def __getitem__(self, name):
+        return self.definitions[name]

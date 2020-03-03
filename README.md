@@ -16,6 +16,9 @@ For example:
 
 ## Syntax Quick Reference
 
+**pe** is backward compatible with standard PEG syntax and it is
+conservative with extensions.
+
 ```regex
 # basic terms
 .           # any single character
@@ -39,7 +42,7 @@ e1 | e2     # ordered choice of e1 and e2
 &e          # positive lookahead
 !e          # negative lookahead
 
-# binding and result structuring
+# (extension) binding
 :e          # discard result after match
 name:e      # bind e to name
 
@@ -48,27 +51,64 @@ Name = ...  # define a rule named 'Name'
 ... = Name  # refer to rule named 'Name'
 ```
 
-## Capturing Groups and the Value of Expressions
+## Matching Inputs with Parsing Expressions
 
-If an expression has no capturing groups, its value is the substring
-it matches. If it has one or more capturing groups, the expression's
-value is a list of the values of each group, and anything not in a
-group is discarded. Nesting or repeating groups provides even more
-options for shaping the value.
+When a parsing expression matches an input, it returns a `Match`
+object, which is similar to those of the
+[`re`](https://docs.python.org/3/library/re.html) module for regular
+expressions. The default value of a match is the substring the
+expression matched.
 
+```python
+>>> e = pe.compile(r'[0-9] [.] [0-9]')
+>>> m = e.match('1.4')
+>>> m.groups()
+['1.4']
+>>> m.groupdict()
+{}
+>>> m.value()
+'1.4'
+```
 
-| Expression                  | Input    | Value                    |
-| --------------------------- | -------- | ------------------------ |
-| `"-"? [1-9] [0-9]*`         | `'-123'` | `'-123'`                 |
-| `("-"? [1-9] [0-9]*)`       | `'-123'` | `['-123']`               |
-| `("-")? [1-9] [0-9]*`       | `'-123'` | `['-']`                  |
-| `("-")? [1-9] [0-9]*`       | `'123'`  | `[]`                     |
-| `("-"?) [1-9] [0-9]*`       | `'123'`  | `['']`                   |
-| `"-"? ([1-9] [0-9]*)`       | `'-123'` | `['123']`                |
-| `"-"? ([1-9]) ([0-9]*)`     | `'-123'` | `['1', '23']`            |
-| `"-"? ([1-9]) ([0-9])*`     | `'-123'` | `['1', '2'. '3']`        |
-| `("-")? (([1-9]) ([0-9])*)` | `'-123'` | `['-', ['1', '2', '3']]` |
+### Value bindings
 
+A value binding takes a sub-match (e.g., of a sequence, choice, or
+repetition) and extracts it from the match's value while optionally
+associating it with a name that is made available in the
+`Match.groupdict()` dictionary.
+
+```python
+>>> e = pe.compile(r'[0-9] x:[.] [0-9]')
+>>> m = e.match('1.4')
+>>> m.groups()
+['1', '4']
+>>> m.groupdict()
+{'x': '.'}
+>>> m.value()
+'1'
+```
+
+### Actions
+
+Actions are functions that are called on a match as follows:
+
+``` python
+action(*match.groups(), **match.groupdict())
+```
+
+The return value of the action becomes the value of the expression.
+
+```python
+>>> e = pe.compile(r'[0-9] :[.] [0-9]',
+...                action=lambda a, b: (int(a), int(b)))
+>>> m = e.match('1.4')
+>>> m.groups()
+[(1, 4)]
+>>> m.groupdict()
+{}
+>>> m.value()
+(1, 4)
+```
 
 ## Similar Projects
 

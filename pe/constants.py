@@ -1,21 +1,21 @@
 
-from enum import Enum
+from enum import Enum, IntEnum, auto
 
 # Scan results
 
-NOMATCH = -1
+FAIL = -1  # TODO: Use typing.Final from Python 3.8
 
 # Processing Operators
 
-class Operators(Enum):
-    DEF = 0   # (DEF, name,)
-    DOT = 1   # (DOT,)
-    LIT = 2   # (LIT, string,)
-    CLS = 3   # (CLS, chars,)
-    SEQ = 4   # (SEQ, exprs,)
-    CHC = 5   # (CHC, exprs,)
-    RPT = 6   # (RPT, expr, min, max)
-    AND = 7   # (AND, expr,)
-    NOT = 8   # (NOT, expr,)
-    BND = 9   # (BND, name, expr)
-    RAW = 10  # (RAW, expr)
+class Operator(Enum):
+    DOT = auto()   # (DOT,)
+    LIT = auto()   # (LIT, string,)
+    CLS = auto()   # (CLS, chars,)
+    RGX = auto()   # (RGX, pattern, flags)
+    SEQ = auto()   # (SEQ, exprs,)
+    CHC = auto()   # (CHC, exprs,)
+    RPT = auto()   # (RPT, expr, min, max,)
+    SYM = auto()   # (NAM, name,)
+    AND = auto()   # (AND, expr,)
+    NOT = auto()   # (NOT, expr,)
+    BND = auto()   # (BND, name, expr)
