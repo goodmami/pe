@@ -266,11 +266,17 @@ class Rule(_Expr):
             # clear memo beyond size limit
             while len(memo) > MAX_MEMO_SIZE:
                 del memo[min(memo)]
-            end, args, kwargs = self.expression._match(s, pos, memo)
+            expr = self.expression
+            end, args, kwargs = expr._match(s, pos, memo)
             if end >= 0 and self.action:
-                # resolve value if necessary
-                print(self.expression, s, pos, end, args, kwargs)
-                args = [self.action(*(args or ()), **(kwargs or {}))]
+                if isinstance(expr, (Bind, Lookahead)):
+                    args = [self.action(**(kwargs or {}))]
+                elif expr.iterable:
+                    args = [self.action(args or (), **(kwargs or {}))]
+                elif args:
+                    args = [self.action(args[-1], **(kwargs or {}))]
+                else:
+                    args = [self.action(**(kwargs or {}))]
             memo[pos][_id] = (end, args, kwargs)
         return end, args, kwargs
 

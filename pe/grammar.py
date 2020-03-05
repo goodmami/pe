@@ -155,8 +155,9 @@ def Bind(expression: _Defn, name: str = None):
 
 
 
-def _make_quantified(primary, quantifier=None):
-    if quantifier is None:
+def _make_quantified(primary, quantifier):
+    print('q', primary, quantifier)
+    if not quantifier:
         return primary
     elif quantifier == '?':
         return Optional(primary)
@@ -170,9 +171,9 @@ def _make_quantified(primary, quantifier=None):
 
 def _make_evaluated(*args):
     if len(args) == 1:
+        print('ev', args[0])
         return args[0]
     else:
-        print(args)
         prefix, quantified = args
         if prefix == '&':
             return And(quantified)
@@ -211,6 +212,7 @@ def _make_grammar(*defs):
 # Whitespace and comments
 _EOF        = Bind(Not(Dot()))
 _EOL        = Bind(Choice(r'\r\n', r'\n', r'\r'))
+_EPS        = Literal('')
 _Comment    = Raw(Sequence('#', Star(Sequence(Not(_EOL), Dot())), _EOL))
 _Space      = Choice(Class(' \t'), _EOL)
 _Spacing    = Bind(Star(Choice(_Space, _Comment)))
@@ -241,7 +243,7 @@ _IdentStart = Class('a-zA-Z_')
 _IdentCont  = Class('a-zA-Z_0-9')
 _Identifier = Sequence(Raw(Sequence(_IdentStart, Star(_IdentCont))), _Spacing)
 _Name       = Sequence(_Identifier, Bind(Not(_Operator)))
-_Quantifier = Choice(_QUESTION, _STAR, _PLUS)
+_Quantifier = Choice(_QUESTION, _STAR, _PLUS, _EPS)
 _Binding    = Raw(Sequence(Optional(_Name), _COLON))
 _Prefix     = Choice(_AND, _NOT, _TILDE, _Binding)
 
@@ -261,7 +263,7 @@ PEG = Grammar(
                                              Nonterminal('Sequence')))),
         'Sequence':   Star(Nonterminal('Evaluated')),
         'Evaluated':  Sequence(Optional(_Prefix), Nonterminal('Quantified')),
-        'Quantified': Sequence(Nonterminal('Primary'), Optional(_Quantifier)),
+        'Quantified': Sequence(Nonterminal('Primary'), _Quantifier),
         'Primary':    Choice(Nonterminal('Name'),
                              Nonterminal('Group'),
                              Nonterminal('Literal'),
