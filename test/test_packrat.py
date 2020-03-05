@@ -4,84 +4,106 @@ import pytest
 from pe.constants import FAIL, Operator
 from pe.core import Grammar
 from pe.packrat import (
-    Regex,
-    Sequence as Seq,
-    Choice as Chc,
+    Terminal as Trm,
+    Optional as Opt,
     Repeat as Rpt,
     Lookahead as Look,
     Bind,
+    Raw,
+    Sequence as Seq,
+    Choice as Chc,
     Rule,
     PackratParser as PrP,
 )
 
-abc = Regex('[abc]')
-xyz = Regex('[xyz]')
+abc = Trm('[abc]')
+xyz = Trm('[xyz]')
+abseq = Seq(Trm('a'), Trm('b'))
 
 abc_grm = Grammar(definitions={'Start': (Operator.CLS, 'abc')})
 
 data = [
     #typ, args, kwargs,       input,   pos,scan, (groups, groupdict, value)
-    (Regex, ('.'), {},        'aaa',    0, 1,    ((), {}, 'a')),
-    (Regex, ('.'), {},        '   ',    0, 1,    ((), {}, ' ')),
-    (Regex, ('.'), {},        '',       0, FAIL, None),
+    (Trm, ('.'), {},          'aaa',    0, 1,    (('a',), {}, 'a')),
+    (Trm, ('.'), {},          '   ',    0, 1,    ((' ',), {}, ' ')),
+    (Trm, ('.'), {},          '',       0, FAIL, None),
 
-    (Regex, ('a',),   {},     'a',      0, 1,    ((), {}, 'a')),
-    (Regex, ('a',),   {},     'aa',     0, 1,    ((), {}, 'a')),
-    (Regex, ('a',),   {},     'b',      0, FAIL, None),
-    (Regex, ('a',),   {},     'a',      1, FAIL, None),
-    (Regex, ('a',),   {},     'ab',     1, FAIL, None),
-    (Regex, ('b',),   {},     'ab',     0, FAIL, None),
-    (Regex, ('b',),   {},     'ab',     1, 2,    ((), {}, 'b')),
-    (Regex, ('abc',), {},     'abcabc', 0, 3,    ((), {}, 'abc')),
-    (Regex, ('abc',), {},     'abcabc', 1, FAIL, None),
-    (Regex, ('abc',), {},     'abcabc', 3, 6,    ((), {}, 'abc')),
+    (Trm, ('a',),   {},       'a',      0, 1,    (('a',), {}, 'a')),
+    (Trm, ('a',),   {},       'aa',     0, 1,    (('a',), {}, 'a')),
+    (Trm, ('a',),   {},       'b',      0, FAIL, None),
+    (Trm, ('a',),   {},       'a',      1, FAIL, None),
+    (Trm, ('a',),   {},       'ab',     1, FAIL, None),
+    (Trm, ('b',),   {},       'ab',     0, FAIL, None),
+    (Trm, ('b',),   {},       'ab',     1, 2,    (('b',), {}, 'b')),
+    (Trm, ('abc',), {},       'abcabc', 0, 3,    (('abc',), {}, 'abc')),
+    (Trm, ('abc',), {},       'abcabc', 1, FAIL, None),
+    (Trm, ('abc',), {},       'abcabc', 3, 6,    (('abc',), {}, 'abc')),
 
-    (Regex, ('[ab]',),  {},   'a',      0, 1,    ((), {}, 'a')),
-    (Regex, ('[ab]',),  {},   'aa',     0, 1,    ((), {}, 'a')),
-    (Regex, ('[ab]',),  {},   'b',      0, 1,    ((), {}, 'b')),
-    (Regex, ('[ab]',),  {},   'a',      1, FAIL, None),
-    (Regex, ('[ab]',),  {},   'ab',     1, 2,    ((), {}, 'b')),
+    (Trm, ('[ab]',),  {},     'a',      0, 1,    (('a',), {}, 'a')),
+    (Trm, ('[ab]',),  {},     'aa',     0, 1,    (('a',), {}, 'a')),
+    (Trm, ('[ab]',),  {},     'b',      0, 1,    (('b',), {}, 'b')),
+    (Trm, ('[ab]',),  {},     'a',      1, FAIL, None),
+    (Trm, ('[ab]',),  {},     'ab',     1, 2,    (('b',), {}, 'b')),
 
-    (Regex, ('a',),   {},     'a',      0, 1, ((), {}, 'a')),
-    (Regex, ('a*',),  {},     'aaa',    0, 3, ((), {}, 'aaa')),
-    (Regex, ('a|b',), {},     'b',      0, 1, ((), {}, 'b')),
-    (Regex, ('(?:a)(b)(?:c)(d)',), {},
-                              'abcd',   0, 4, (('b', 'd'), {}, 'b')),
+    (Trm, ('a',),   {},       'a',      0, 1,    (('a',), {}, 'a')),
+    (Trm, ('a*',),  {},       'aaa',    0, 3,    (('aaa',), {}, 'aaa')),
+    (Trm, ('a|b',), {},       'b',      0, 1,    (('b',), {}, 'b')),
+    (Trm, ('(?:a)(b)(?:c)(d)',), {},
+                              'abcd',   0, 4,    (('b', 'd'),
+                                                  {},
+                                                  ('b', 'd'))),
 
-    (Seq, (abc,),     {},     'aaa',   0, 1,     ((), {}, 'a')),
-    (Seq, (abc, abc), {},     'bbb',   0, 2,     ((), {}, 'bb')),
-    (Seq, (abc,),     {},     'd',     0, FAIL,  None),
+    (Seq, (abc,),     {},     'aaa',    0, 1,    (('a',), {}, ('a',))),
+    (Seq, (abc, abc), {},     'bbb',    0, 2,    (('b', 'b',),
+                                                  {},
+                                                  ('b', 'b'))),
+    (Seq, (abc,),     {},     'd',      0, FAIL, None),
 
-    (Chc, (abc,),     {},     'aaa',   0, 1,     ((), {}, 'a')),
-    (Chc, (abc, abc), {},     'aaa',   0, 1,     ((), {}, 'a')),
-    (Chc, (abc, xyz), {},     'yyy',   0, 1,     ((), {}, 'y')),
-    (Chc, (abc, xyz), {},     'd',     0, FAIL,  None),
+    (Chc, (abc,),     {},     'aaa',    0, 1,    (('a',), {}, ('a',))),
+    (Chc, (abc, abc), {},     'aaa',    0, 1,    (('a',), {}, ('a',))),
+    (Chc, (abc, xyz), {},     'yyy',    0, 1,    (('y',), {}, ('y',))),
+    (Chc, (abc, xyz), {},     'd',      0, FAIL, None),
 
-    (Rpt, (abc,), {},         '',      0, 0,     ((), {}, '')),
-    (Rpt, (abc,), {'min': 1}, '',      0, FAIL,  None),
-    (Rpt, (abc,), {},         'aabbc', 0, 5,     ((), {}, 'aabbc')),
-    (Rpt, (abc,), {'max': 3}, 'aabbc', 0, 3,     ((), {}, 'aab')),
+    (Opt, (abc,), {},         'd',      0, 0,    ((), {}, ())),
+    (Opt, (abc,), {},         'ab',     0, 1,    (('a',), {}, ('a',))),
+    (Opt, (abseq,), {},       'd',      0, 0,    ((), {}, ())),
+    (Opt, (abseq,), {},       'ab',     0, 2,    (('a', 'b'), {}, ('a', 'b'))),
 
-    (Look, (abc, True), {},   'a',     0, 0,     ((), {}, '')),
-    (Look, (abc, True), {},   'd',     0, FAIL,  None),
+    (Rpt, (abc,), {},         '',       0, 0,    ((), {}, ())),
+    (Rpt, (abc,), {'min': 1}, '',       0, FAIL, None),
+    (Rpt, (abc,), {},         'aabbc',  0, 5,    (('a', 'a', 'b', 'b', 'c',),
+                                                  {},
+                                                  ('a', 'a', 'b', 'b', 'c',))),
+    (Rpt, (abc,), {'max': 3}, 'aabbc',  0, 3,    (('a', 'a', 'b',),
+                                                  {},
+                                                  ('a', 'a', 'b',))),
 
-    (Look, (abc, False), {},  'a',     0, FAIL,  None),
-    (Look, (abc, False), {},  'd',     0, 0,     ((), {}, '')),
+    (Look, (abc, True), {},   'a',      0, 0,    ((), {}, ())),
+    (Look, (abc, True), {},   'd',      0, FAIL, None),
 
-    (Bind, (abc,), {},        'a',     0, 1,     ((), {}, None)),
-    (Bind, (abc,), {},        'd',     0, FAIL,  None),
+    (Look, (abc, False), {},  'a',      0, FAIL, None),
+    (Look, (abc, False), {},  'd',      0, 0,    ((), {}, ())),
+
+    (Raw, (abseq,), {},       'ab',     0, 2,    (('ab',), {}, 'ab')),
+    (Raw, (Rpt(abc),), {},    'abab',   0, 4,    (('abab',), {}, 'abab')),
+    (Raw, (abseq,), {},       'ba',     0, FAIL, None),
+
+    (Bind, (abc,), {},        'a',      0, 1,    ((), {}, ())),
+    (Bind, (abc,), {},        'd',      0, FAIL, None),
     (Bind, (abc,), {'name': 'x'},
-                              'a',     0, 1,     ((), {'x': 'a'}, None)),
+                              'a',      0, 1,    ((), {'x': 'a'}, ())),
+    (Seq, (abc, Bind(xyz), abc), {},
+                              'axb',    0, 3,    (('a', 'b'), {}, ('a', 'b'))),
 
-    (Rule, (abc,), {},        'a',     0, 1,     ((), {}, 'a')),
-    (Rule, (abc,), {},        'd',     0, FAIL,  None),
+    (Rule, (abc,), {},        'a',      0, 1,    (('a',), {}, 'a')),
+    (Rule, (abc,), {},        'd',      0, FAIL, None),
     (Rule, (abc,), {'action': lambda x: int(x, 16)},
-                              'a',     0, 1,     ((10,), {}, 10)),
+                              'a',      0, 1,    ((10,), {}, 10)),
     (Rule, (abc,), {'action': lambda x: int(x, 16)},
-                              'd',     0, FAIL,  None),
+                              'd',      0, FAIL, None),
 
-    (PrP, (abc_grm), {},      'a',     0, 1,     ((), {}, 'a')),
-    (PrP, (abc_grm), {},      'd',     0, FAIL,  None),
+    (PrP, (abc_grm,), {},     'a',      0, 1,    (('a',), {}, 'a')),
+    (PrP, (abc_grm,), {},     'd',      0, FAIL, None),
 ]
 
 

@@ -54,8 +54,8 @@ Name = ...  # define a rule named 'Name'
 ## Matching Inputs with Parsing Expressions
 
 When a parsing expression matches an input, it returns a `Match`
-object, which is similar to those of the
-[`re`](https://docs.python.org/3/library/re.html) module for regular
+object, which is similar to those of Python's
+[re](https://docs.python.org/3/library/re.html) module for regular
 expressions. The default value of a match is the substring the
 expression matched.
 

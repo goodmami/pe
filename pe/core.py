@@ -1,5 +1,5 @@
 
-from typing import Union, List, Dict, Tuple, Callable
+from typing import Union, List, Dict, Tuple, Callable, NamedTuple, Any
 
 from pe.constants import FAIL, Operator
 
@@ -9,6 +9,8 @@ class Error(Exception):
 
 
 class Match:
+    """The result of a parsing expression match."""
+
     __slots__ = 'string', 'pos', 'end', 'pe', '_args', '_kwargs'
 
     def __init__(self,
@@ -16,8 +18,8 @@ class Match:
                  pos: int,
                  end: int,
                  pe: 'Expression',
-                 args: List = None,
-                 kwargs: Dict = None):
+                 args: List,
+                 kwargs: Dict):
         self.string = string
         self.pos = pos
         self.end = end
@@ -35,18 +37,18 @@ class Match:
         return dict(self._kwargs or ())
 
     def value(self):
-        if self._args is None:
-            return self.string[self.pos:self.end]
+        if self.pe.iterable:
+            return self._args
         elif self._args:
-            return self._args[0]
-        return None
+            return self._args[-1]
+        else:
+            return None
 
 
 class Expression:
-    __slots__ = 'structured',
+    """A compiled parsing expression."""
 
-    def __init__(self, structured: bool = True):
-        self.structured = structured
+    __slots__ = 'iterable',
 
     def scan(self, s: str, pos: int = 0) -> int:
         raise NotImplementedError()
@@ -55,18 +57,15 @@ class Expression:
         raise NotImplementedError()
 
 
-Definition = Union[Tuple[Operator],                          # DOT
-                   Tuple[Operator, str],                     # LIT, CLS, NAM
-                   Tuple[Operator, str, int],                # RGX
-                   Tuple[Operator, str, 'Definition'],       # DEF, BND
-                   Tuple[Operator, 'Definition'],            # AND, NOT
-                   Tuple[Operator, 'Definition', Callable],  # RUL
-                   Tuple[Operator, List['Definition']],      # SEQ, CHC
-                   Tuple[Operator, 'Definition', int, int]]  # RPT
-
+class Definition(NamedTuple):
+    """An abstract definition of a parsing expression."""
+    op: Operator
+    args: Tuple[Any, ...]
 
 
 class Grammar:
+    """A parsing expression grammar definition."""
+
     def __init__(self,
                  definitions: Dict[str, Definition] = None,
                  actions: Dict[str, Callable] = None,

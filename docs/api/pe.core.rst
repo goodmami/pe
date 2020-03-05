@@ -10,10 +10,13 @@ pe.core
 .. autoclass:: Expression
    :members:
 
-.. autoclass:: Lookahead
-   :show-inheritance:
+.. autoclass:: Definition
+
+   .. attribute:: op
+   .. attribute:: args
+
+.. autoclass:: Grammar
    :members:
 
-.. autoclass:: Term
-   :show-inheritance:
+.. autoclass:: Error
    :members:

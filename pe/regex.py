@@ -5,6 +5,8 @@ Parsing Expression to Regular Expression conversion.
 
 import re
 
+from pe.constants import Operator
+from pe.core import Definition
 
 _special_quantifiers = {
     #min max
@@ -14,11 +16,6 @@ _special_quantifiers = {
     (1, -1): '+',
 }
 
-
-# Using classname instead of isinstance is to avoid circular imports
-def clsname(expr) -> str:
-    """Return the class name of *expr*."""
-    return expr.__class__.__name__
 
 
 def set_re(expr) -> None:

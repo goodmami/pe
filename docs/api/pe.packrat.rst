@@ -1,8 +1,12 @@
 
-pe.expressions
-==============
+pe.packrat
+==========
 
-.. automodule:: pe.expressions
+.. automodule:: pe.packrat
+
+.. autoclass:: Terminal
+   :show-inheritance:
+   :members:
 
 .. autoclass:: Sequence
    :show-inheritance:
@@ -16,17 +20,7 @@ pe.expressions
    :show-inheritance:
    :members:
 
-.. autofunction:: Optional
-
-.. autoclass:: And
-   :show-inheritance:
-   :members:
-
-.. autoclass:: Not
-   :show-inheritance:
-   :members:
-
-.. autoclass:: Group
+.. autoclass:: Lookahead
    :show-inheritance:
    :members:
 
@@ -34,7 +28,11 @@ pe.expressions
    :show-inheritance:
    :members:
 
-.. autoclass:: Grammar
+.. autoclass:: Bind
+   :show-inheritance:
+   :members:
+
+.. autoclass:: PackratParser
    :show-inheritance:
    :members:
 

@@ -18,9 +18,8 @@ Welcome to pe's documentation!
 
    api/pe
    api/pe.core
-   api/pe.expressions
    api/pe.grammar
-   api/pe.terms
+   api/pe.packrat
 
 
 Indices and tables

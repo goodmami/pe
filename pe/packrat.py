@@ -5,18 +5,20 @@ Packrat Parsing
 """
 
 from typing import (
-    Union, Tuple, Dict, Callable, Pattern)
+    Union, Tuple, Sequence, Dict, Callable, Pattern)
 import re
 from collections import defaultdict
 
 from pe.constants import FAIL, Operator
-from pe.core import Error, Match, Expression, Grammar
+from pe.core import Error, Match, Expression, Definition, Grammar
 
-_MatchResult = Tuple[int, Union[Tuple, None], Union[Dict, None]]
+_MatchResult = Tuple[int, Sequence, Union[Dict, None]]
 Memo = Dict[int, Dict[int, _MatchResult]]
 
 #: Number of string positions that can be cached at one time.
 MAX_MEMO_SIZE = 1000
+_EMPTY_ARGS = ()
+_FAIL_RESULT = (FAIL, _EMPTY_ARGS, None)
 
 
 class _Expr(Expression):
@@ -26,7 +28,10 @@ class _Expr(Expression):
         end, args, kwargs = self._match(s, pos, defaultdict(dict))
         if end < 0:
             return None
-        return Match(s, pos, end, self, args=args, kwargs=kwargs)
+        args = tuple(args or ())
+        if kwargs is None:
+            kwargs = {}
+        return Match(s, pos, end, self, args, kwargs)
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         raise NotImplementedError()
@@ -34,14 +39,14 @@ class _Expr(Expression):
 
 # Terms (Dot, Literal, Class)
 
-class Regex(_Expr):
+class Terminal(_Expr):
     """An atomic expression."""
 
     __slots__ = '_re',
-    structured = False
 
     def __init__(self, pattern: str, flags: int = 0):
         self._re = re.compile(pattern, flags=flags)
+        self.iterable = self._re.groups > 0
 
     def scan(self, s: str, pos: int = 0):
         # TODO: walrus
@@ -53,20 +58,20 @@ class Regex(_Expr):
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         m = self._re.match(s, pos)
         if not m:
-            return FAIL, None, None
-        args = m.groups() if self._re.groups else None
+            return _FAIL_RESULT
+        args = m.groups() if self._re.groups else [m.group(0)]
         return m.end(), args, None
 
 
 # Combining Expressions
 
 class Sequence(_Expr):
+
     __slots__ = 'expressions',
+    iterable = True
 
     def __init__(self, *expressions: _Expr):
         self.expressions = expressions
-        super().__init__(
-            structured=any(e.structured for e in self.expressions))
 
     def scan(self, s: str, pos: int = 0):
         end = pos
@@ -82,12 +87,8 @@ class Sequence(_Expr):
         for expression in self.expressions:
             end, _args, _kwargs = expression._match(s, pos, memo)
             if end < 0:
-                return FAIL, None, None
-            # since this is structured, resolve args now
-            if _args is None:
-                args.append(s[pos:end])
-            else:
-                args.extend(_args)
+                return _FAIL_RESULT
+            args.extend(_args)
             if _kwargs:
                 kwargs.update(_kwargs)
             pos = end
@@ -95,12 +96,12 @@ class Sequence(_Expr):
 
 
 class Choice(_Expr):
+
     __slots__ = 'expressions',
+    iterable = True
 
     def __init__(self, *expressions: _Expr):
         self.expressions = expressions
-        super().__init__(
-            structured=any(m.structured for m in self.expressions))
 
     def scan(self, s: str, pos: int = 0):
         for e in self.expressions:
@@ -114,11 +115,13 @@ class Choice(_Expr):
             end, args, kwargs = e._match(s, pos, memo)
             if end >= 0:
                 return end, args, kwargs
-        return FAIL, None, None
+        return _FAIL_RESULT
 
 
 class Repeat(_Expr):
+
     __slots__ = 'expression', 'min', 'max',
+    iterable = True
 
     def __init__(self,
                  expression: _Expr,
@@ -131,7 +134,6 @@ class Repeat(_Expr):
         self.expression = expression
         self.min = min
         self.max = max
-        super().__init__(structured=self.expression.structured)
 
     def scan(self, s: str, pos: int = 0):
         min = self.min
@@ -165,16 +167,36 @@ class Repeat(_Expr):
             end, _args, _kwargs = expression._match(s, pos, memo)
             if end < 0:
                 break
-            pos = end
-            count += 1
-            if _args is not None:
-                ext(_args)
+            ext(_args)
             if _kwargs:
                 upd(_kwargs)
+            pos = end
+            count += 1
 
         if count < min:
-            return FAIL, None, None
+            return _FAIL_RESULT
         return pos, args, kwargs
+
+
+class Optional(_Expr):
+
+    __slots__ = 'expression',
+    iterable = True
+
+    def __init__(self, expression: _Expr):
+        self.expression = expression
+
+    def scan(self, s: str, pos: int = 0):
+        end = self.expression.scan(s, pos)
+        if end >= 0:
+            return end
+        return pos
+
+    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
+        end, args, kwargs = self.expression._match(s, pos, memo)
+        if end < 0:
+            return pos, _EMPTY_ARGS, None
+        return end, args, kwargs
 
 
 # Non-consuming Expressions
@@ -183,11 +205,11 @@ class Lookahead(_Expr):
     """An expression that may match but consumes no input."""
 
     __slots__ = 'expression', 'polarity',
+    iterable = True
 
     def __init__(self, expression: _Expr, polarity: bool):
         self.expression = expression
         self.polarity = polarity
-        super().__init__(structured=False)
 
     def scan(self, s: str, pos: int = 0) -> int:
         matched = self.expression.scan(s, pos) >= 0
@@ -197,25 +219,41 @@ class Lookahead(_Expr):
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         matched = self.expression._match(s, pos, memo)[0] >= 0
-        if self.polariy ^ matched:
-            return FAIL
-        return pos, None, None
+        if self.polarity ^ matched:
+            return _FAIL_RESULT
+        return pos, _EMPTY_ARGS, None
 
 
 # Recursion and Rules
 
 class Rule(_Expr):
-    __slots__ = 'expression', 'action',
+
+    __slots__ = '_expression', '_action',
 
     def __init__(self,
                  expression: Union[_Expr, None],
                  action: Callable = None):
-        self.expression = expression
-        self.action = action
-        super().__init__(
-            structured=(expression is None
-                        or expression.structured
-                        or action is not None))
+        self._expression = expression
+        self._action = action
+        self.finalize()
+
+    @property
+    def expression(self):
+        return self._expression
+
+    @expression.setter
+    def expression(self, expression: _Expr):
+        self._expression = expression
+        self.finalize()
+
+    @property
+    def action(self):
+        return self._action
+
+    @action.setter
+    def action(self, action: Union[Callable, None]):
+        self._action = action
+        self.finalize()
 
     def scan(self, s: str, pos: int = 0):
         return self.expression.scan(s, pos=pos)
@@ -231,16 +269,36 @@ class Rule(_Expr):
             end, args, kwargs = self.expression._match(s, pos, memo)
             if end >= 0 and self.action:
                 # resolve value if necessary
-                if args is None:
-                    args = [s[pos:end]]
+                print(self.expression, s, pos, end, args, kwargs)
                 args = [self.action(*(args or ()), **(kwargs or {}))]
             memo[pos][_id] = (end, args, kwargs)
         return end, args, kwargs
 
+    def finalize(self):
+        if self._expression:
+            self.iterable = self._action is None and self._expression.iterable
+
+
+class Raw(_Expr):
+
+    __slots__ = 'expression',
+    iterable = False
+
+    def __init__(self, expression: _Expr):
+        self.expression = expression
+
+    def scan(self, s: str, pos: int = 0):
+        return self.expression.scan(s, pos=pos)
+
+    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
+        end, args, kwargs = self.expression._match(s, pos, memo)
+        return end, (s[pos:end],), None
+
 
 class Bind(_Expr):
+
     __slots__ = 'expression', 'name',
-    structured = True
+    iterable = True
 
     def __init__(self, expression: _Expr, name: str = None):
         self.expression = expression
@@ -252,23 +310,28 @@ class Bind(_Expr):
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         end, args, kwargs = self.expression._match(s, pos, memo)
         if end < 0:
-            return end, None, None
+            return _FAIL_RESULT
         name = self.name
         if name:
-            bound = s[pos:end] if args is None else args
+            if self.expression.iterable:
+                bound = args
+            elif args:
+                bound = args[-1]
+            else:
+                bound = None
             if not kwargs:
                 kwargs = {}
             kwargs[name] = bound
-        return end, [], kwargs
+        return end, _EMPTY_ARGS, kwargs
 
 
 class PackratParser(Expression):
+
     __slots__ = 'grammar', '_exprs',
 
     def __init__(self, grammar: Grammar):
         self.grammar = grammar
         self._exprs: Dict[str, _Expr] = _grammar_to_packrat(grammar)
-        super().__init__(structured=True)
 
     @property
     def start(self):
@@ -285,8 +348,8 @@ class PackratParser(Expression):
             raise Error(f'start rule not defined')
         return self[self.start].scan(s, pos=pos)
 
-    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
-        return self.rules[self.start]._match(s, pos, memo)
+    def match(self, s: str, pos: int = 0) -> Match:
+        return self._exprs[self.start].match(s, pos=pos)
 
 
 def _grammar_to_packrat(grammar):
@@ -307,30 +370,34 @@ def _grammar_to_packrat(grammar):
     return exprs
 
 
-def _def_to_expr(_def, defns, exprs):
-    op = _def[0]
+def _def_to_expr(_def: Definition, defns, exprs):
+    op, args = _def
     if op == Operator.DOT:
-        return Regex('.')
+        return Terminal('.')
     elif op == Operator.LIT:
-        return Regex(re.escape(_def[1]))
+        return Terminal(re.escape(args[0]))
     elif op == Operator.CLS:
-        return Regex(f'[{_def[1]}]')  # TODO: validate ranges
+        return Terminal(f'[{args[0]}]')  # TODO: validate ranges
     elif op == Operator.RGX:
-        return Regex(term[1], flags=term[2])
-    elif op == Operator.SEQ:
-        return Sequence(*[_def_to_expr(e, defns, exprs) for e in _def[1]])
-    elif op == Operator.CHC:
-        return Choice(*[_def_to_expr(e, defns, exprs) for e in _def[1]])
+        return Terminal(args[0], flags=args[1])
+    elif op == Operator.OPT:
+        return Optional(_def_to_expr(args[0], defns, exprs))
     elif op == Operator.RPT:
-        return Repeat(_def_to_expr(_def[1], defns, exprs),
-                      min=_def[2], max=_def[3])
+        return Repeat(_def_to_expr(args[0], defns, exprs),
+                      min=args[1], max=args[2])
     elif op == Operator.SYM:
-        return exprs.setdefault(_def[1], Rule(None))
+        return exprs.setdefault(args[0], Rule(None))
     elif op == Operator.AND:
-        return Lookahead(_def_to_expr(_def[1], defns, exprs), True)
+        return Lookahead(_def_to_expr(args[0], defns, exprs), True)
     elif op == Operator.NOT:
-        return Lookahead(_def_to_expr(_def[1], defns, exprs), False)
+        return Lookahead(_def_to_expr(args[0], defns, exprs), False)
+    elif op == Operator.RAW:
+        return Raw(_def_to_expr(args[0], defns, exprs))
     elif op == Operator.BND:
-        return Bind(_def_to_expr(_def[2], defns, exprs), name=_def[1])
+        return Bind(_def_to_expr(args[1], defns, exprs), name=args[0])
+    elif op == Operator.SEQ:
+        return Sequence(*[_def_to_expr(e, defns, exprs) for e in args[0]])
+    elif op == Operator.CHC:
+        return Choice(*[_def_to_expr(e, defns, exprs) for e in args[0]])
     else:
         raise Error(f'invalid definition: {_def!r}')
