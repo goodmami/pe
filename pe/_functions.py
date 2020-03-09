@@ -18,7 +18,7 @@ def compile(source,
     else:
         raise Error(f'unsupported parser: {parser}')
     g = loads(source, flags=flags)
-    g.actions = actions
+    g.actions = actions or {}
     p = make(g)
     return p
 

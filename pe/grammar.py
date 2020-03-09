@@ -72,7 +72,7 @@ The syntax is defined as follows::
 """
 
 from typing import Union, Pattern
-from operator import itemgetter
+import ast
 
 from pe.constants import Operator, Flag
 from pe.core import Error, Expression, Definition, Grammar
@@ -157,6 +157,11 @@ def Evaluate(expression: _Defn):
     return Definition(Operator.EVL, (_validate(expression),))
 
 
+def _make_literal(s):
+    # TODO: proper unescaping
+    return Literal(s.replace(r'\\', '\\'))
+
+
 def _make_quantified(primary, quantifier=None):
     if not quantifier:
         return _validate(primary)
@@ -208,11 +213,6 @@ def _make_choice(exprs):
         return Choice(*exprs)
     else:
         raise Error(f'empty choice: {exprs}')
-
-
-def _make_group(expr):
-    expr = _validate(expr)
-    return expr
 
 
 def _make_def(name, operator, expression):
@@ -325,10 +325,10 @@ PEG = Grammar(
         'Sequence': _make_sequence,
         'Evaluated': _make_evaluated,
         'Quantified': _make_quantified,
-        'Group': _make_group,
+        'Group': _validate,
         'Name': Nonterminal,
         'Class': Class,
-        'Literal': Literal,
+        'Literal': _make_literal,
         'Dot': Dot,
     }
 )

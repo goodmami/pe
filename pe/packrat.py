@@ -385,6 +385,10 @@ def _grammar_to_packrat(grammar):
             if isinstance(expr, Rule) and expr.expression is None:
                 expr.expression = _def_to_expr(_def, defns, exprs)
             expr.action = actns.get(name)
+    # ensure all symbols are defined
+    for name, expr in exprs.items():
+        if expr is None or isinstance(expr, Rule) and expr.expression is None:
+            raise Error(f'undefined rule: {name}')
     return exprs
 
 

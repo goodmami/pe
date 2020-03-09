@@ -1,5 +1,6 @@
 
 import pe
+from pe.constants import Flag
 
 
     # '''
@@ -33,7 +34,7 @@ Json = pe.compile(
     Object   <- :LBRACE =(Member (:COMMA Member)*)? :RBRACE
     Member   <- =(String :COLON Value)
     Array    <- :LBRACK =(Value (:COMMA Value)*)? :RBRACK
-    String   <- :["] ~(!["] . / '\\' .)* :["]
+    String   <- :["] ~(!["\\] . / '\\' . )* :["] :Spacing
     Number   <- FLOAT / INTEGER
     Constant <- TRUE / FALSE / NULL
     INTEGER  <- ~("-"? ("0" / [1-9] [0-9]*))
@@ -48,6 +49,7 @@ Json = pe.compile(
     LBRACK   <- "[" Spacing
     RBRACK   <- "]" Spacing
     COMMA    <- "," Spacing
+    COLON    <- ":" Spacing
     Spacing  <- [\t\n\f\r ]*
     ''',
     actions={
@@ -64,51 +66,58 @@ Json = pe.compile(
 )
 
 
+def _match(s):
+    return Json.match(s, flags=Flag.STRICT).value()
+
 def test_numbers():
-    assert Json.match('0').value() == 0
-    assert Json.match('123').value() == 123
-    assert Json.match('-123').value() == -123
-    assert Json.match('0.5').value() == 0.5
-    assert Json.match('0.5e-1').value() == 0.05
-    assert Json.match('-3e+02').value() == -300.0
+    assert _match('0') == 0
+    assert _match('123') == 123
+    assert _match('-123') == -123
+    assert _match('0.5') == 0.5
+    assert _match('0.5e-1') == 0.05
+    assert _match('-3e+02') == -300.0
 
 def test_string():
-    assert Json.match('""').value() == ''
-    assert Json.match('"foo"').value() == 'foo'
-    assert Json.match(r'"foo\"bar"').value() == 'foo\\"bar'
-    assert Json.match('"ほげ"').value() == 'ほげ'
+    print(Json.grammar['String'])
+    assert _match('""') == ''
+    assert _match('"foo"') == 'foo'
+    assert _match(r'"foo\"bar"') == 'foo\\"bar'
+    assert _match('"ほげ"') == 'ほげ'
 
 def test_constants():
-    assert Json.match('true').value() == True
-    assert Json.match('false').value() == False
-    assert Json.match('null').value() == None
+    assert _match('true') == True
+    assert _match('false') == False
+    assert _match('null') == None
 
 def test_arrays():
-    assert Json.match('[]').value() == []
-    assert Json.match('[1]').value() == [1]
-    assert Json.match('[1, 2, 3]').value() == [1, 2, 3]
-    assert Json.match('[[], [], []]').value() == [[], [], []]
-    assert Json.match('[[[1]]]').value() == [[[1]]]
+    assert _match('[]') == []
+    assert _match('[1]') == [1]
+    assert _match('[1, 2, 3]') == [1, 2, 3]
+    assert _match('[0, 1.2, "string", true, false, null]'
+    ) == [0, 1.2, "string", True, False, None]
+    assert _match('[[], [], []]') == [[], [], []]
+    assert _match('[[[1]]]') == [[[1]]]
 
 def test_objects():
-    assert Json.match('{}').value() == {}
-    assert Json.match('{"key": true}').value() == {"key": True}
-    assert (Json.match('{"true": true, "false": false}')
-            .value() == {"true": True, "false": False})
-    assert (Json.match('{"key": {"key": [1,2,3]}}')
-            .value() == {'key': {'key': [1,2,3]}})
-    assert (Json.match('''{
+    print(Json._exprs['Object'].match('{}'))
+    assert _match('{}') == {}
+    assert _match('{"key": true}') == {"key": True}
+    assert (_match('{"true": true, "false": false}')
+             == {"true": True, "false": False})
+    assert (_match('{"key": {"key": [1,2,3]}}')
+             == {'key': {'key': [1,2,3]}})
+    assert (_match('''{
         "key": [
              1,
              2
         ]
-    }''').value() == {'key': [1, 2]})
+    }''') == {'key': [1, 2]})
 
 
 # def test_recursion():
 #     try:
 #         for i in range(50,1000,10):
-#             Json.match(('[' * i) + (']' * i))
+#             _match(('[' * i) + (']' * i))
 #     except RecursionError:
 #         assert False, f'failed at recursion depth {i}'
 
@@ -129,8 +138,8 @@ if __name__ == '__main__':
             "null": null
         }
     }'''
-    assert Json.match(s) is not None
-    assert Json.match(s).value() == {
+    assert _match(s) is not None
+    assert _match(s) == {
         'bool': [True, False],
         'number': {'float': -0.14e3, 'int': 1},
         'other': {'string': 'string', 'unicode': 'あ', 'null': None}
@@ -139,15 +148,7 @@ if __name__ == '__main__':
     print(
         'match',
         timeit.timeit(
-            'Json.match(s)',
-            setup='from __main__ import Json, s',
-            number=10000
-        )
-    )
-    print(
-        'scan',
-        timeit.timeit(
-            'Json.scan(s)',
+            '_match(s)',
             setup='from __main__ import Json, s',
             number=10000
         )
