@@ -9,28 +9,49 @@ from typing import (
 import re
 from collections import defaultdict
 
-from pe.constants import FAIL, Operator
-from pe.core import Error, Match, Expression, Definition, Grammar
+from pe.constants import FAIL, Operator, ValueType, Flag
+from pe.core import (
+    Error,
+    ParseError,
+    Match,
+    Expression,
+    Definition,
+    Grammar,
+)
 
 _MatchResult = Tuple[int, Sequence, Union[Dict, None]]
 Memo = Dict[int, Dict[int, _MatchResult]]
 
 #: Number of string positions that can be cached at one time.
 MAX_MEMO_SIZE = 1000
-_EMPTY_ARGS = ()
-_FAIL_RESULT = (FAIL, _EMPTY_ARGS, None)
 
 
 class _Expr(Expression):
     __slots__ = ()
 
-    def match(self, s: str, pos: int = 0) -> Union[Match]:
-        end, args, kwargs = self._match(s, pos, defaultdict(dict))
+    def match(self,
+              s: str,
+              pos: int = 0,
+              flags: Flag = Flag.NONE) -> Union[Match, None]:
+        memo = defaultdict(dict)
+        end, args, kwargs = self._match(s, pos, memo)
+
         if end < 0:
-            return None
+            if memo:
+                pos = max(memo)
+                args = [_args for _, _args, _ in memo[pos].values()]
+            else:
+                args = [args]
+            if flags & Flag.STRICT:
+                exc = _make_parse_error(s, pos, args)
+                raise exc
+            else:
+                return None
+
         args = tuple(args or ())
         if kwargs is None:
             kwargs = {}
+
         return Match(s, pos, end, self, args, kwargs)
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
@@ -46,40 +67,28 @@ class Terminal(_Expr):
 
     def __init__(self, pattern: str, flags: int = 0):
         self._re = re.compile(pattern, flags=flags)
-        self.iterable = self._re.groups > 0
-
-    def scan(self, s: str, pos: int = 0):
-        # TODO: walrus
-        m = self._re.match(s, pos)
-        if not m:
-            return FAIL
-        return m.end()
+        if self._re.groups == 0:
+            self.value_type = ValueType.MONADIC
+        else:
+            self.value_type = ValueType.VARIADIC
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         m = self._re.match(s, pos)
         if not m:
-            return _FAIL_RESULT
+            return FAIL, [(self, pos)], None
         args = m.groups() if self._re.groups else [m.group(0)]
         return m.end(), args, None
 
 
-# Combining Expressions
+# Combining Expressions,
 
 class Sequence(_Expr):
 
     __slots__ = 'expressions',
-    iterable = True
+    value_type = ValueType.VARIADIC
 
     def __init__(self, *expressions: _Expr):
         self.expressions = expressions
-
-    def scan(self, s: str, pos: int = 0):
-        end = pos
-        for e in self.expressions:
-            end = e.scan(s, pos=end)
-            if end < 0:
-                break  # return fail code
-        return end
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         args = []
@@ -87,7 +96,7 @@ class Sequence(_Expr):
         for expression in self.expressions:
             end, _args, _kwargs = expression._match(s, pos, memo)
             if end < 0:
-                return _FAIL_RESULT
+                return FAIL, _args, None
             args.extend(_args)
             if _kwargs:
                 kwargs.update(_kwargs)
@@ -98,30 +107,25 @@ class Sequence(_Expr):
 class Choice(_Expr):
 
     __slots__ = 'expressions',
-    iterable = True
+    value_type = ValueType.VARIADIC
 
     def __init__(self, *expressions: _Expr):
         self.expressions = expressions
 
-    def scan(self, s: str, pos: int = 0):
-        for e in self.expressions:
-            end = e.scan(s, pos=pos)
-            if end >= 0:
-                return end
-        return FAIL
-
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
+        failargs = []
         for e in self.expressions:
             end, args, kwargs = e._match(s, pos, memo)
             if end >= 0:
                 return end, args, kwargs
-        return _FAIL_RESULT
+            failargs.extend(args)
+        return FAIL, failargs, None
 
 
 class Repeat(_Expr):
 
     __slots__ = 'expression', 'min', 'max',
-    iterable = True
+    value_type = ValueType.VARIADIC
 
     def __init__(self,
                  expression: _Expr,
@@ -134,22 +138,6 @@ class Repeat(_Expr):
         self.expression = expression
         self.min = min
         self.max = max
-
-    def scan(self, s: str, pos: int = 0):
-        min = self.min
-        max = self.max
-        guard = len(s) - pos  # simple guard against runaway left-recursion
-        expr = self.expression
-        count: int = 0
-        while guard > 0 and count != max:
-            end = expr.scan(s, pos)
-            if end < 0:
-                break
-            pos = end
-            count += 1
-        if count < min:
-            return FAIL
-        return pos
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         expression = self.expression
@@ -174,28 +162,22 @@ class Repeat(_Expr):
             count += 1
 
         if count < min:
-            return _FAIL_RESULT
+            return FAIL, [(self, pos)], None
         return pos, args, kwargs
 
 
 class Optional(_Expr):
 
     __slots__ = 'expression',
-    iterable = True
+    value_type = ValueType.VARIADIC
 
     def __init__(self, expression: _Expr):
         self.expression = expression
 
-    def scan(self, s: str, pos: int = 0):
-        end = self.expression.scan(s, pos)
-        if end >= 0:
-            return end
-        return pos
-
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         end, args, kwargs = self.expression._match(s, pos, memo)
         if end < 0:
-            return pos, _EMPTY_ARGS, None
+            return pos, (), None
         return end, args, kwargs
 
 
@@ -205,37 +187,116 @@ class Lookahead(_Expr):
     """An expression that may match but consumes no input."""
 
     __slots__ = 'expression', 'polarity',
-    iterable = True
+    value_type = ValueType.NILADIC
 
     def __init__(self, expression: _Expr, polarity: bool):
         self.expression = expression
         self.polarity = polarity
 
-    def scan(self, s: str, pos: int = 0) -> int:
-        matched = self.expression.scan(s, pos) >= 0
-        if self.polarity ^ matched:
-            return FAIL
-        return pos
+    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
+        end, args, kwargs = self.expression._match(s, pos, memo)
+        if self.polarity ^ (end >= 0):
+            return FAIL, args, None
+        return pos, (), None
+
+
+# Value-changing Expressions
+
+class Raw(_Expr):
+
+    __slots__ = 'expression',
+    value_type = ValueType.MONADIC
+
+    def __init__(self, expression: _Expr):
+        self.expression = expression
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
-        matched = self.expression._match(s, pos, memo)[0] >= 0
-        if self.polarity ^ matched:
-            return _FAIL_RESULT
-        return pos, _EMPTY_ARGS, None
+        end, args, kwargs = self.expression._match(s, pos, memo)
+        if end < 0:
+            return FAIL, args, None
+        return end, (s[pos:end],), None
+
+
+class Bind(_Expr):
+
+    __slots__ = 'expression', 'name',
+    value_type = ValueType.NILADIC
+
+    def __init__(self, expression: _Expr, name: str = None):
+        self.expression = expression
+        self.name = name
+
+    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
+        expr = self.expression
+        end, args, kwargs = expr._match(s, pos, memo)
+        if end < 0:
+            return FAIL, args, None
+        name = self.name
+        if name:
+            value_type = expr.value_type
+            if not kwargs:
+                kwargs = {}
+            if value_type == ValueType.NILADIC:
+                kwargs[name] = None
+            elif value_type == ValueType.MONADIC:
+                kwargs[name] = args[0]
+            elif value_type == ValueType.VARIADIC:
+                kwargs[name] = args
+            else:
+                raise Error(
+                    'cannot bind {expr!r} with value type {value_type!r}')
+        return end, (), kwargs
+
+
+class Evaluate(_Expr):
+
+    __slots__ = 'expression',
+    value_type = ValueType.MONADIC
+
+    def __init__(self, expression: _Expr):
+        self.expression = expression
+
+    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
+        expr = self.expression
+        value_type = expr.value_type
+        end, args, kwargs = expr._match(s, pos, memo)
+        if end < 0:
+            return FAIL, args, None
+        if value_type == ValueType.NILADIC:
+            arg = None
+        elif value_type == ValueType.MONADIC:
+            arg = args[0]
+        elif value_type == ValueType.VARIADIC:
+            arg = args
+        else:
+            raise Error(
+                f'cannot evaluate {expr!r} with value type {value_type!r}')
+        return end, [args], None
 
 
 # Recursion and Rules
 
 class Rule(_Expr):
+    """
+    A grammar rule is a named expression with an optional action.
 
-    __slots__ = '_expression', '_action',
+    The *name* field is more relevant for the grammar than the rule
+    itself, but it helps with debugging.
+    """
+
+    __slots__ = '_expression', '_action', 'name'
 
     def __init__(self,
+                 name: str,
                  expression: Union[_Expr, None],
                  action: Callable = None):
+        self.name = name
         self._expression = expression
         self._action = action
         self.finalize()
+
+    def __repr__(self):
+        return f'<{type(self).__name__} ({self.name}) object at {id(self)}>'
 
     @property
     def expression(self):
@@ -255,80 +316,33 @@ class Rule(_Expr):
         self._action = action
         self.finalize()
 
-    def scan(self, s: str, pos: int = 0):
-        return self.expression.scan(s, pos=pos)
-
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         _id = id(self)
+
         if pos in memo and _id in memo[pos]:
             end, args, kwargs = memo[pos][_id]  # packrat memoization check
         else:
             # clear memo beyond size limit
             while len(memo) > MAX_MEMO_SIZE:
                 del memo[min(memo)]
+
             expr = self.expression
             end, args, kwargs = expr._match(s, pos, memo)
             if end >= 0 and self.action:
-                if isinstance(expr, (Bind, Lookahead)):
-                    args = [self.action(**(kwargs or {}))]
-                elif expr.iterable:
-                    args = [self.action(args or (), **(kwargs or {}))]
-                elif args:
-                    args = [self.action(args[-1], **(kwargs or {}))]
-                else:
-                    args = [self.action(**(kwargs or {}))]
+                args = [self.action(*args, **(kwargs or {}))]
+
             memo[pos][_id] = (end, args, kwargs)
-        return end, args, kwargs
+
+        return end, args, {}
 
     def finalize(self):
         if self._expression:
-            self.iterable = self._action is None and self._expression.iterable
-
-
-class Raw(_Expr):
-
-    __slots__ = 'expression',
-    iterable = False
-
-    def __init__(self, expression: _Expr):
-        self.expression = expression
-
-    def scan(self, s: str, pos: int = 0):
-        return self.expression.scan(s, pos=pos)
-
-    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
-        end, args, kwargs = self.expression._match(s, pos, memo)
-        return end, (s[pos:end],), None
-
-
-class Bind(_Expr):
-
-    __slots__ = 'expression', 'name',
-    iterable = True
-
-    def __init__(self, expression: _Expr, name: str = None):
-        self.expression = expression
-        self.name = name
-
-    def scan(self, s: str, pos: int = 0):
-        return self.expression.scan(s, pos=pos)
-
-    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
-        end, args, kwargs = self.expression._match(s, pos, memo)
-        if end < 0:
-            return _FAIL_RESULT
-        name = self.name
-        if name:
-            if self.expression.iterable:
-                bound = args
-            elif args:
-                bound = args[-1]
+            if self._action is not None:
+                self.value_type = ValueType.MONADIC
             else:
-                bound = None
-            if not kwargs:
-                kwargs = {}
-            kwargs[name] = bound
-        return end, _EMPTY_ARGS, kwargs
+                self.value_type = self._expression.value_type
+        else:
+            self.value_type = ValueType.DEFERRED
 
 
 class PackratParser(Expression):
@@ -349,13 +363,11 @@ class PackratParser(Expression):
     def __contains__(self, name: str) -> bool:
         return name in self._exprs
 
-    def scan(self, s: str, pos: int = 0):
-        if self.start not in self:
-            raise Error(f'start rule not defined')
-        return self[self.start].scan(s, pos=pos)
-
-    def match(self, s: str, pos: int = 0) -> Match:
-        return self._exprs[self.start].match(s, pos=pos)
+    def match(self,
+              s: str,
+              pos: int = 0,
+              flags: Flag = Flag.NONE) -> Union[Match, None]:
+        return self._exprs[self.start].match(s, pos=pos, flags=flags)
 
 
 def _grammar_to_packrat(grammar):
@@ -366,7 +378,7 @@ def _grammar_to_packrat(grammar):
         if name not in exprs:
             expr = _def_to_expr(_def, defns, exprs)
             if name in actns:
-                expr = Rule(expr, action=actns[name])
+                expr = Rule(name, expr, action=actns[name])
             exprs[name] = expr
         else:
             expr = exprs[name]
@@ -377,7 +389,8 @@ def _grammar_to_packrat(grammar):
 
 
 def _def_to_expr(_def: Definition, defns, exprs):
-    op, args = _def
+    op = _def.op
+    args = _def.args
     if op == Operator.DOT:
         return Terminal('.')
     elif op == Operator.LIT:
@@ -392,7 +405,7 @@ def _def_to_expr(_def: Definition, defns, exprs):
         return Repeat(_def_to_expr(args[0], defns, exprs),
                       min=args[1], max=args[2])
     elif op == Operator.SYM:
-        return exprs.setdefault(args[0], Rule(None))
+        return exprs.setdefault(args[0], Rule(args[0], None))
     elif op == Operator.AND:
         return Lookahead(_def_to_expr(args[0], defns, exprs), True)
     elif op == Operator.NOT:
@@ -401,9 +414,29 @@ def _def_to_expr(_def: Definition, defns, exprs):
         return Raw(_def_to_expr(args[0], defns, exprs))
     elif op == Operator.BND:
         return Bind(_def_to_expr(args[1], defns, exprs), name=args[0])
+    elif op == Operator.EVL:
+        return Evaluate(_def_to_expr(args[0], defns, exprs))
     elif op == Operator.SEQ:
         return Sequence(*[_def_to_expr(e, defns, exprs) for e in args[0]])
     elif op == Operator.CHC:
         return Choice(*[_def_to_expr(e, defns, exprs) for e in args[0]])
     else:
         raise Error(f'invalid definition: {_def!r}')
+
+
+def _make_parse_error(s, pos, failures):
+    try:
+        start = s.rindex('\n', 0, pos)
+    except ValueError:
+        start = 0
+    try:
+        end = s.index('\n', start + 1)
+    except ValueError:
+        end = len(s)
+    lineno = s.count('\n', 0, start + 1)
+    line = s[start:end]
+    failures = ', or '.join(str(pe) for err in failures for pe, _ in err)
+    return ParseError(f'failed to parse {failures}',
+                      lineno=lineno,
+                      offset=pos - start,
+                      text=line)

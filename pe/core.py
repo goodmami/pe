@@ -1,11 +1,45 @@
 
 from typing import Union, List, Dict, Tuple, Callable, NamedTuple, Any
 
-from pe.constants import FAIL, Operator
+from pe.constants import FAIL, Operator, ValueType, Flag
 
 
 class Error(Exception):
     """Exception raised for invalid parsing expressions."""
+
+
+class ParseError(Error):
+
+    def __init__(self,
+                 message: str = None,
+                 filename: str = None,
+                 lineno: int = None,
+                 offset: int = None,
+                 text: str = None):
+        self.message = message
+        self.filename = filename
+        self.lineno = lineno
+        self.offset = offset
+        self.text = text
+
+    def __str__(self):
+        parts = []
+        if self.filename is not None:
+            parts.append(f'File "{self.filename}"')
+        if self.lineno is not None:
+            parts.append(f'line {self.lineno}')
+        if parts:
+            parts = ['', '  ' + ', '.join(parts)]
+        if self.text is not None:
+            parts.append('    ' + self.text)
+            if self.offset is not None:
+                parts.append('    ' + (' ' * self.offset) + '^')
+        elif parts:
+            parts[-1] += f', character {self.offset}'
+        if self.message is not None:
+            name = self.__class__.__name__
+            parts.append(f'{name}: {self.message}')
+        return '\n'.join(parts)
 
 
 class Match:
@@ -37,30 +71,45 @@ class Match:
         return dict(self._kwargs or ())
 
     def value(self):
-        if self.pe.iterable:
-            return self._args
-        elif self._args:
-            return self._args[-1]
-        else:
-            return None
+        return evaluate(self._args, self.pe.value_type)
 
 
 class Expression:
     """A compiled parsing expression."""
 
-    __slots__ = 'iterable',
+    __slots__ = 'value_type',
 
-    def scan(self, s: str, pos: int = 0) -> int:
+    def match(self,
+              s: str,
+              pos: int = 0,
+              flags: Flag = Flag.NONE) -> Union[Match, None]:
         raise NotImplementedError()
 
-    def match(self, s: str, pos: int = 0) -> Union[Match, None]:
-        raise NotImplementedError()
+
+def evaluate(args, value_type):
+    if value_type == ValueType.VARIADIC:
+        return args
+    elif value_type == ValueType.MONADIC:
+        return args[-1]
+    elif value_type == ValueType.NILADIC:
+        return None
+    else:
+        raise Error(f'invalid value type: {value_type!r}')
 
 
-class Definition(NamedTuple):
+class Definition:
     """An abstract definition of a parsing expression."""
-    op: Operator
-    args: Tuple[Any, ...]
+    __slots__ = 'op', 'args',
+
+    def __init__(self, op: Operator, args: Tuple[Any, ...]):
+        self.op = op
+        self.args = args
+
+    def __repr__(self):
+        return f'({self.op}, {self.args!r})'
+
+    def __eq__(self, other: 'Definition'):
+        return (self.op == other.op) and (self.args == other.args)
 
 
 class Grammar:
@@ -74,8 +123,18 @@ class Grammar:
         self.definitions = definitions or {}
         self.actions = actions or {}
 
+    def __repr__(self):
+        return (f'Grammar({self.definitions!r}, '
+                f'actions={self.actions!r}, '
+                f'start={self.start!r})')
+
     def __setitem__(self, name: str, definition: Definition):
         self.definitions[name] = definition
 
     def __getitem__(self, name):
         return self.definitions[name]
+
+    def __eq__(self, other: 'Grammar'):
+        return (self.start == other.start
+                and self.definitions == other.definitions
+                and self.actions == other.actions)

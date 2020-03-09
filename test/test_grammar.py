@@ -1,6 +1,9 @@
 
 from pe.constants import Operator as Op
-from pe.core import Definition as Def
+from pe.core import (
+    Definition as Def,
+    Grammar as Grammar,
+)
 from pe.grammar import (
     loads,
     Dot,
@@ -18,6 +21,7 @@ from pe.grammar import (
     Not,
     Raw,
     Bind,
+    Evaluate,
 )
 
 
@@ -100,6 +104,11 @@ def test_Bind():
     assert Bind('foo', name='bar') == Bind(Literal('foo'), name='bar')
 
 
+def test_Evaluate():
+    assert Evaluate(Dot()) == Def(Op.EVL, (Def(Op.DOT, ()),))
+    assert Evaluate('foo') == Evaluate(Literal('foo'))
+
+
 def test_loads_dot():
     assert loads('.') == Dot()
     assert loads('.  # comment') == Dot()
@@ -107,6 +116,7 @@ def test_loads_dot():
 
 def test_loads_literal():
     assert loads('"foo"') == Literal('foo')
+    from pe.grammar import _parser
     assert loads('"foo"  # comment') == Literal('foo')
 
 
@@ -167,8 +177,13 @@ def test_loads_bind():
     assert loads('x:"a"  # comment') == Bind('a', name='x')
 
 
+def test_loads_raw():
+    assert loads('="a"') == Evaluate('a')
+    assert loads('="a"  # comment') == Evaluate('a')
+
+
 def Grm(dfns):
-    return Grammar(definitions=dfns)
+    return Grammar(definitions=dfns, start=next(iter(dfns)))
 
 
 def test_loads_def():
@@ -177,3 +192,8 @@ def test_loads_def():
     assert loads('A <- "a" "b"') == Grm({'A': Sequence('a', 'b')})
     assert loads('A <- "a" B <- "b"') == Grm({'A': Literal('a'),
                                               'B': Literal('b')})
+    assert loads('''
+        A   <- "a" Bee
+        Bee <- "b"
+    ''') == Grm({'A': Sequence('a', Nonterminal('Bee')),
+                 'Bee': Literal('b')})

@@ -1,10 +1,5 @@
 
-from operator import itemgetter
-
 import pe
-
-
-first = itemgetter(0)
 
 
     # '''
@@ -27,23 +22,27 @@ first = itemgetter(0)
     # _        <- [\t\n\f\r ]
     # ''',
 
+def head(*args):
+    return args[0]
+
+
 Json = pe.compile(
-    '''
+    r'''
     Start    <- :Spacing Value
     Value    <- Object / Array / String / Number / Constant
-    Object   <- :LBRACE (Member (:COMMA Member)*)? :RBRACE
-    Member   <- *String :COLON Value
-    Array    <- :LBRACK (Value (:COMMA Value)*)? :RBRACK
-    String   <- :["] (!["] . | '\\' .)* :["]
-    Number   <- INTEGER / FLOAT
+    Object   <- :LBRACE =(Member (:COMMA Member)*)? :RBRACE
+    Member   <- =(String :COLON Value)
+    Array    <- :LBRACK =(Value (:COMMA Value)*)? :RBRACK
+    String   <- :["] ~(!["] . / '\\' .)* :["]
+    Number   <- FLOAT / INTEGER
     Constant <- TRUE / FALSE / NULL
-    INTEGER  <- "-"? ("0" / [1-9] [0-9]*)
-    FLOAT    <- INTEGER FRACTION? EXPONENT?
+    INTEGER  <- ~("-"? ("0" / [1-9] [0-9]*))
+    FLOAT    <- ~(INTEGER FRACTION? EXPONENT?)
     FRACTION <- "." [0-9]+
     EXPONENT <- [eE] [-+]? [0-9]+
-    TRUE     <- "true"
-    FALSE    <- "false"
-    NULL     <- "null"
+    TRUE     <- :("true" Spacing)
+    FALSE    <- :("false" Spacing)
+    NULL     <- :("null" Spacing)
     LBRACE   <- "{" Spacing
     RBRACE   <- "}" Spacing
     LBRACK   <- "[" Spacing
@@ -52,9 +51,8 @@ Json = pe.compile(
     Spacing  <- [\t\n\f\r ]*
     ''',
     actions={
-        'Start': first,
+        'Start': head,
         'Object': dict,
-        'Member': tuple,
         'Array': list,
         'String': str,
         'INTEGER': int,
@@ -65,43 +63,6 @@ Json = pe.compile(
     }
 )
 
-# # lexical patterns
-# WS       = Repeat(Class('\t\n\f\r '))
-# LBRACE   = Sequence('{', WS)
-# RBRACE   = Sequence(WS, '}')
-# LBRACKET = Sequence('[', WS)
-# RBRACKET = Sequence(WS, ']')
-# COLON    = Sequence(WS, ':', WS)
-# COMMA    = Sequence(WS, ',', WS)
-# INTEGER  = Sequence(Optional('-'), UNSIGNED_INTEGER)
-
-# # basic values
-# Integer  = Rule(INTEGER, action=int)
-# Float    = Rule(FLOAT, action=float)
-# String   = Rule(DQSTRING, action=lambda s: s[1:-1])
-# TRUE     = Rule('true', action=lambda _: True)
-# FALSE    = Rule('false', action=lambda _: False)
-# NULL     = Rule('null', action=lambda _: None)
-
-# # placeholder for recursive type
-# Json     = Grammar()
-# Value    = Json['Value']
-
-# # recursive patterns
-# Member   = Sequence(Group(String), COLON, Group(Value))
-# Members  = Repeat(Group(Member), delimiter=COMMA)
-# Object   = Rule(Sequence(LBRACE, Members, RBRACE), action=dict)
-
-# Items    = Repeat(Group(Value), delimiter=COMMA)
-# Array    = Rule(Sequence(LBRACKET, Items, RBRACKET), action=list)
-
-# # now fill in Value
-# Json['Value'] = Choice(
-#     Object, Array, String, Float, Integer, TRUE, FALSE, NULL)
-
-# Json['Start'] = Rule(Sequence(WS, Value, WS),
-#                      name='Start',
-#                      action=lambda xs: xs[1])
 
 def test_numbers():
     assert Json.match('0').value() == 0
@@ -144,12 +105,12 @@ def test_objects():
     }''').value() == {'key': [1, 2]})
 
 
-def test_recursion():
-    try:
-        for i in range(50,1000,10):
-            Json.match(('[' * i) + (']' * i))
-    except RecursionError:
-        assert False, f'failed at recursion depth {i}'
+# def test_recursion():
+#     try:
+#         for i in range(50,1000,10):
+#             Json.match(('[' * i) + (']' * i))
+#     except RecursionError:
+#         assert False, f'failed at recursion depth {i}'
 
 
 if __name__ == '__main__':

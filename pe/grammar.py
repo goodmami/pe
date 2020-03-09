@@ -27,13 +27,13 @@ The syntax is defined as follows::
   Start      <- :Spacing (Expression / Grammar) :EndOfFile
   Grammar    <- Definition+
   Definition <- Identifier Operator Expression
-  Operator   <- LEFTARROW / RAWARROW
-  Expression <- Sequence (SLASH Sequence)*
-  Sequence   <- Evaluated*
-  Evaluated  <- Prefix? Quantified
-  Prefix     <- AND / NOT / TILDE / Binding
-  Binding    <- Name? :COLON
-  Quantified <- Primary Quantifier?
+  Operator   <- LEFTARROW
+  Expression <- =(Sequence (:SLASH Sequence)*)
+  Sequence   <- =Evaluated*
+  Evaluated  <- prefix:Prefix? Quantified
+  Prefix     <- AND / NOT / TILDE / Binding / EQUAL
+  Binding    <- ~(Name? ':') :Spacing
+  Quantified <- Primary quantifier:Quantifier?
   Quantifier <- QUESTION / STAR / PLUS
   Primary    <- Name / Group / Literal / Class / DOT
   Name       <- Identifier !Operator
@@ -52,18 +52,17 @@ The syntax is defined as follows::
   Char       <- '\\' . / .
 
   LEFTARROW  <- '<-' Spacing
-  RAWARROW   <- '<~' Spacing
   SLASH      <- '/' Spacing
   AND        <- '&' Spacing
   NOT        <- '!' Spacing
   TILDE      <- '~' Spacing
+  EQUAL      <- '=' Spacing
   QUESTION   <- '?' Spacing
   STAR       <- '*' Spacing
   PLUS       <- '+' Spacing
   OPEN       <- '(' Spacing
   CLOSE      <- ')' Spacing
   DOT        <- '.' Spacing
-  COLON      <- ':' Spacing
 
   Spacing    <- (?: Space / Comment)*
   Comment    <- '#' (?: !EndOfLine .)* EndOfLine
@@ -75,8 +74,8 @@ The syntax is defined as follows::
 from typing import Union, Pattern
 from operator import itemgetter
 
-from pe.constants import Operator
-from pe.core import Expression, Definition, Grammar
+from pe.constants import Operator, Flag
+from pe.core import Error, Expression, Definition, Grammar
 from pe.packrat import PackratParser
 
 
@@ -154,12 +153,16 @@ def Bind(expression: _Defn, name: str = None):
     return Definition(Operator.BND, (name, _validate(expression),))
 
 
+def Evaluate(expression: _Defn):
+    return Definition(Operator.EVL, (_validate(expression),))
 
-def _make_quantified(primary, quantifier):
-    print('q', primary, quantifier)
+
+def _make_quantified(primary, quantifier=None):
     if not quantifier:
-        return primary
-    elif quantifier == '?':
+        return _validate(primary)
+    assert len(quantifier) == 1
+    quantifier = quantifier[0]
+    if quantifier == '?':
         return Optional(primary)
     elif quantifier == '*':
         return Star(primary)
@@ -169,51 +172,75 @@ def _make_quantified(primary, quantifier):
         raise Error(f'invalid quantifier: {quantifier!r}')
 
 
-def _make_evaluated(*args):
-    if len(args) == 1:
-        print('ev', args[0])
-        return args[0]
+def _make_evaluated(quantified, prefix=None):
+    if not prefix:
+        return _validate(quantified)
+    assert len(prefix) == 1
+    prefix = prefix[0]
+    if prefix == '&':
+        return And(quantified)
+    elif prefix == '!':
+        return Not(quantified)
+    elif prefix == '~':
+        return Raw(quantified)
+    elif prefix.endswith(':'):
+        name = prefix[:-1]
+        return Bind(quantified, name=(name or None))
+    elif prefix == '=':
+        return Evaluate(quantified)
     else:
-        prefix, quantified = args
-        if prefix == '&':
-            return And(quantified)
-        if prefix == '!':
-            return Not(quantified)
-        if prefix == '~':
-            return Raw(quantified)
-        elif prefix.endswith(':'):
-            name = prefix[:-1]
-            return Bind(quantified, name=(name or None))
-        else:
-            raise Error(f'invalid prefix: {prefix!r}')
+        raise Error(f'invalid prefix: {prefix!r}')
 
 
-def _make_sequence(xs):
-    print('seq', xs)
-    return Sequence(*xs)
+def _make_sequence(exprs):
+    if len(exprs) == 1:
+        return _validate(exprs[0])
+    elif len(exprs) > 1:
+        return Sequence(*exprs)
+    else:
+        raise Error(f'empty sequence: {exprs}')
 
 
-def _make_group(*args, **kwargs):
-    print(args, kwargs)
+def _make_choice(exprs):
+    if len(exprs) == 1:
+        return _validate(exprs[0])
+    elif len(exprs) > 1:
+        return Choice(*exprs)
+    else:
+        raise Error(f'empty choice: {exprs}')
+
+
+def _make_group(expr):
+    expr = _validate(expr)
+    return expr
 
 
 def _make_def(name, operator, expression):
-    return (name, Rule(expression))
+    if operator == '<:':
+        expression = Bind(expression)
+    if operator == '<~':
+        expression = Raw(expression)
+    elif operator == '<=':
+        expression = Evaluate(expression)
+    return (name, expression)
 
 
 def _make_grammar(*defs):
     if defs:
         start = defs[0][0]
-    return Grammar(defs, start=start)
+    return Grammar(dict(defs), start=start)
 
+def _make_start(*args):
+    return args[0]
 
 # Lexical productions do not need to go in the grammar
 
 # Whitespace and comments
 _EOF        = Bind(Not(Dot()))
-_EOL        = Bind(Choice(r'\r\n', r'\n', r'\r'))
-_EPS        = Literal('')
-_Comment    = Raw(Sequence('#', Star(Sequence(Not(_EOL), Dot())), _EOL))
+_EOL        = Bind(Choice('\r\n', '\n', '\r'))
+_Comment    = Raw(Sequence('#',
+                           Star(Sequence(Not(_EOL), Dot())),
+                           Optional(_EOL)))
 _Space      = Choice(Class(' \t'), _EOL)
 _Spacing    = Bind(Star(Choice(_Space, _Comment)))
 
@@ -224,51 +251,62 @@ _SLASH      = Sequence('/', _Spacing)
 _AND        = Sequence('&', _Spacing)
 _NOT        = Sequence('!', _Spacing)
 _TILDE      = Sequence('~', _Spacing)
+_EQUAL      = Sequence('=', _Spacing)
 _QUESTION   = Sequence('?', _Spacing)
 _STAR       = Sequence('*', _Spacing)
 _PLUS       = Sequence('+', _Spacing)
 _OPEN       = Sequence('(', _Spacing)
 _CLOSE      = Sequence(')', _Spacing)
 _DOT        = Sequence('.', _Spacing)
-_COLON      = Sequence(':', _Spacing)
 
 # Non-recursive patterns
-_Operator   = Choice(_LEFTARROW, _RAWARROW)
+_Operator   = _LEFTARROW
 _Char       = Choice(Sequence('\\', Dot()), Dot())
 _Range      = Choice(Sequence(_Char, '-', _Char), _Char)
-_Class      = Raw(Sequence('[', Star(Sequence(Not(']'), _Range)), ']'))
-_Literal    = Raw(Choice(Sequence("'", Star(Sequence(Not("'"), _Char)), "'"),
-                         Sequence('"', Star(Sequence(Not('"'), _Char)), '"')))
+_Class      = Sequence(
+    Bind('['),
+    Raw(Star(Sequence(Not(']'), _Range))),
+    Bind(']'),
+    _Spacing)
+_Literal    = Sequence(
+    Choice(
+        Sequence(Bind("'"), Raw(Star(Sequence(Not("'"), _Char))), Bind("'")),
+        Sequence(Bind('"'), Raw(Star(Sequence(Not('"'), _Char))), Bind('"'))),
+    _Spacing)
 _IdentStart = Class('a-zA-Z_')
 _IdentCont  = Class('a-zA-Z_0-9')
 _Identifier = Sequence(Raw(Sequence(_IdentStart, Star(_IdentCont))), _Spacing)
-_Name       = Sequence(_Identifier, Bind(Not(_Operator)))
-_Quantifier = Choice(_QUESTION, _STAR, _PLUS, _EPS)
-_Binding    = Raw(Sequence(Optional(_Name), _COLON))
-_Prefix     = Choice(_AND, _NOT, _TILDE, _Binding)
+_Name       = Sequence(_Identifier, Bind(Not(_Operator)), _Spacing)
+_Quantifier = Choice(_QUESTION, _STAR, _PLUS)
+_Binding    = Sequence(Raw(Sequence(Optional(_Name), ':')), _Spacing)
+_Prefix     = Choice(_AND, _NOT, _TILDE, _Binding, _EQUAL)
 
 PEG = Grammar(
     definitions={
         # Hierarchical syntax
         'Start':      Sequence(_Spacing,
-                               Choice(Nonterminal('Expression'),
-                                      Nonterminal('Grammar')),
+                               Choice(Nonterminal('Grammar'),
+                                      Nonterminal('Expression')),
                                _EOF),
         'Grammar':    Plus(Nonterminal('Definition')),
         'Definition': Sequence(Nonterminal('Identifier'),
                                _Operator,
                                Nonterminal('Expression')),
-        'Expression': Sequence(Nonterminal('Sequence'),
-                               Star(Sequence(_SLASH,
-                                             Nonterminal('Sequence')))),
-        'Sequence':   Star(Nonterminal('Evaluated')),
-        'Evaluated':  Sequence(Optional(_Prefix), Nonterminal('Quantified')),
-        'Quantified': Sequence(Nonterminal('Primary'), _Quantifier),
+        'Expression': Evaluate(
+            Sequence(Nonterminal('Sequence'),
+                     Star(Sequence(Bind(_SLASH),
+                                   Nonterminal('Sequence'))))),
+        'Sequence':   Evaluate(Plus(Nonterminal('Evaluated'))),
+        'Evaluated':  Sequence(Bind(Optional(_Prefix), name='prefix'),
+                               Nonterminal('Quantified')),
+        'Quantified': Sequence(Nonterminal('Primary'),
+                               Bind(Optional(_Quantifier), name='quantifier')),
         'Primary':    Choice(Nonterminal('Name'),
                              Nonterminal('Group'),
                              Nonterminal('Literal'),
                              Nonterminal('Class'),
                              Nonterminal('Dot')),
+        'Identifier': _Identifier,
         'Name':       _Name,
         'Group':      Sequence(Bind(_OPEN),
                                Nonterminal('Expression'),
@@ -280,26 +318,28 @@ PEG = Grammar(
         'Dot':        Bind(_DOT),
     },
     actions={
-        'Dot': lambda: Dot(),
-        'Class': lambda s: Class(s[1:-1]),
-        'Literal': lambda s: Literal(s[1:-1]),
-        'Name': lambda s: Nonterminal(s),
-        'Group': _make_group,
-        'Quantified': _make_quantified,
-        'Evaluated': _make_evaluated,
-        'Sequence': _make_sequence,
-        'Expression': lambda xs: Choice(*xs),
-        'Definition': _make_def,
+        'Start': _make_start,
         'Grammar': _make_grammar,
+        'Definition': _make_def,
+        'Expression': _make_choice,
+        'Sequence': _make_sequence,
+        'Evaluated': _make_evaluated,
+        'Quantified': _make_quantified,
+        'Group': _make_group,
+        'Name': Nonterminal,
+        'Class': Class,
+        'Literal': Literal,
+        'Dot': Dot,
     }
 )
 
 _parser = PackratParser(PEG)
 
 
-def loads(source: str) -> Union[Grammar, Expression]:
+def loads(source: str,
+          flags: Flag = Flag.NONE) -> Union[Grammar, Expression]:
     """Parse the PEG at *source* and return a grammar definition."""
-    m = _parser.match(source)
+    m = _parser.match(source, flags=Flag.STRICT | flags)
     if not m:
         raise Error('invalid grammar')
     return m.value()

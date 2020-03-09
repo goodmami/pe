@@ -3,6 +3,7 @@ import pytest
 
 from pe.constants import FAIL, Operator
 from pe.core import Grammar
+from pe.grammar import Class
 from pe.packrat import (
     Terminal as Trm,
     Optional as Opt,
@@ -20,7 +21,7 @@ abc = Trm('[abc]')
 xyz = Trm('[xyz]')
 abseq = Seq(Trm('a'), Trm('b'))
 
-abc_grm = Grammar(definitions={'Start': (Operator.CLS, 'abc')})
+abc_grm = Grammar(definitions={'Start': Class('abc')})
 
 data = [
     #typ, args, kwargs,       input,   pos,scan, (groups, groupdict, value)
@@ -78,28 +79,28 @@ data = [
                                                   {},
                                                   ('a', 'a', 'b',))),
 
-    (Look, (abc, True), {},   'a',      0, 0,    ((), {}, ())),
+    (Look, (abc, True), {},   'a',      0, 0,    ((), {}, None)),
     (Look, (abc, True), {},   'd',      0, FAIL, None),
 
     (Look, (abc, False), {},  'a',      0, FAIL, None),
-    (Look, (abc, False), {},  'd',      0, 0,    ((), {}, ())),
+    (Look, (abc, False), {},  'd',      0, 0,    ((), {}, None)),
 
     (Raw, (abseq,), {},       'ab',     0, 2,    (('ab',), {}, 'ab')),
     (Raw, (Rpt(abc),), {},    'abab',   0, 4,    (('abab',), {}, 'abab')),
     (Raw, (abseq,), {},       'ba',     0, FAIL, None),
 
-    (Bind, (abc,), {},        'a',      0, 1,    ((), {}, ())),
+    (Bind, (abc,), {},        'a',      0, 1,    ((), {}, None)),
     (Bind, (abc,), {},        'd',      0, FAIL, None),
     (Bind, (abc,), {'name': 'x'},
-                              'a',      0, 1,    ((), {'x': 'a'}, ())),
+                              'a',      0, 1,    ((), {'x': 'a'}, None)),
     (Seq, (abc, Bind(xyz), abc), {},
                               'axb',    0, 3,    (('a', 'b'), {}, ('a', 'b'))),
 
-    (Rule, (abc,), {},        'a',      0, 1,    (('a',), {}, 'a')),
-    (Rule, (abc,), {},        'd',      0, FAIL, None),
-    (Rule, (abc,), {'action': lambda x: int(x, 16)},
+    (Rule, ('A', abc,), {},   'a',      0, 1,    (('a',), {}, 'a')),
+    (Rule, ('A', abc,), {},   'd',      0, FAIL, None),
+    (Rule, ('A', abc,), {'action': lambda x: int(x, 16)},
                               'a',      0, 1,    ((10,), {}, 10)),
-    (Rule, (abc,), {'action': lambda x: int(x, 16)},
+    (Rule, ('A', abc,), {'action': lambda x: int(x, 16)},
                               'd',      0, FAIL, None),
 
     (PrP, (abc_grm,), {},     'a',      0, 1,    (('a',), {}, 'a')),
@@ -107,16 +108,15 @@ data = [
 ]
 
 
-@pytest.mark.parametrize('type,args,kwargs,input,pos,scan,match', data)
-def test_exprs(type, args, kwargs, input, pos, scan, match):
+@pytest.mark.parametrize('type,args,kwargs,input,pos,end,match', data)
+def test_exprs(type, args, kwargs, input, pos, end, match):
     e = type(*args, **kwargs)
-    assert e.scan(input, pos=pos) == scan
     m = e.match(input, pos=pos)
     if match is None:
         assert m is None
     else:
         groups, groupdict, value = match
-        assert m.end == scan
+        assert m.end == end
         assert m.groups() == groups
         assert m.groupdict() == groupdict
         assert m.value() == value
