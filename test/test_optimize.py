@@ -60,4 +60,4 @@ def test_regex():
     assert (rload(r'A <- ![abc] .') ==
             grm({'A': Regex(r'[^abc]')}))
     assert (rload(r'A <- (![abc] .)*') ==
-            grm({'A': Regex(r'[^abc]*')}))
+            grm({'A': Regex(r'(?:[^abc])*')}))

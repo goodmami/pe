@@ -130,7 +130,7 @@ def _merge_seq(g, defn):
     return Sequence(*_exprs)
 
 
-def _mergeable_chc(defn):
+def _single_char(defn):
     return (defn.op == Operator.CLS
             or defn.op == Operator.LIT and len(defn.args[0]) == 1)
 
@@ -140,7 +140,7 @@ def _merge_chc(g, defn):
     _exprs = [_merge(g, exprs[0])]
     prev = _exprs[-1]
     for expr in exprs[1:]:
-        if (_mergeable_chc(expr) and _mergeable_chc(prev)):
+        if (_single_char(expr) and _single_char(prev)):
             _exprs[-1] = prev = Class(prev.args[0] + expr.args[0])
         else:
             _exprs.append(expr)
@@ -170,14 +170,29 @@ def _regex(g, defn, structured):
         return Regex(f'[{args[0]}]')
 
     elif op == Operator.SEQ:
-        exprs = [_regex(g, d, structured) for d in args[0]]
+        exprs = args[0]
         _exprs = []
-        for k, g in groupby(exprs, key=lambda d: d.op):
-            if k == Operator.RGX:
-                _exprs.append(Regex(''.join(d.args[0] for d in g)))
+        i = 0
+        # Special case: ![abc] . -> [^abc]
+        while i < len(exprs):
+            d = exprs[i]
+            if (i != len(exprs) - 1
+                    and d.op == Operator.NOT
+                    and _single_char(d.args[0])
+                    and exprs[i+1].op == Operator.DOT):
+                _exprs.append(Regex(f'[^{d.args[0].args[0]}]'))
+                i += 2
             else:
-                _exprs.extend(g)
-        return Sequence(*_exprs)
+                _exprs.append(_regex(g, d, structured))
+                i += 1
+        # combine adjacent regexes
+        _exprs2 = []
+        for k, g in groupby(_exprs, key=lambda d: d.op):
+            if k == Operator.RGX:
+                _exprs2.append(Regex(''.join(d.args[0] for d in g)))
+            else:
+                _exprs2.extend(g)
+        return Sequence(*_exprs2)
 
     elif op == Operator.CHC:
         exprs = [_regex(g, d, structured) for d in args[0]]
@@ -252,12 +267,4 @@ def _quantifier_re(min, max):
             max = '' if max < 0 else max
             q = f'{{{min},{max}}}'
     return q
-
-
-def first(g: Grammar):
-    pass
-
-
-def follow(g: Grammar):
-    pass
 
