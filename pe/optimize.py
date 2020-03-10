@@ -207,9 +207,19 @@ def _regex(g, defn, structured):
             return Optional(d)
 
     elif op == Operator.AND:
-        return And(_regex(g, args[0], structured))
+        d = _regex(g, args[0], structured)
+        if d.op == Operator.RGX:
+            return Regex(f'(?={d.args[0]})')
+        else:
+            return And(d)
+
     elif op == Operator.NOT:
-        return Not(_regex(g, args[0], structured))
+        d = _regex(g, args[0], structured)
+        if d.op == Operator.RGX:
+            return Regex(f'(?!{d.args[0]})')
+        else:
+            return Not(d)
+
     elif op == Operator.RAW:
         return Raw(_regex(g, args[0], structured))
     elif op == Operator.BND:

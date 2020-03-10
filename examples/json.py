@@ -11,29 +11,29 @@ Json = pe.compile(
     Object   <- :LBRACE =(Member (:COMMA Member)*)? :RBRACE
     Member   <- =(String :COLON Value)
     Array    <- :LBRACK =(Value (:COMMA Value)*)? :RBRACK
-    String   <- :["] ~(!["\\] . / '\\' . )* :["] :Spacing
-    Number   <- (FLOAT / INTEGER) :Spacing
+    String   <- ~(["] (!["\\] . / '\\' . )* ["])
+    Number   <- (FLOAT / INTEGER)
     Constant <- TRUE / FALSE / NULL
     INTEGER  <- ~("-"? ("0" / [1-9] [0-9]*))
     FLOAT    <- ~(INTEGER FRACTION? EXPONENT?)
     FRACTION <- "." [0-9]+
     EXPONENT <- [eE] [-+]? [0-9]+
-    TRUE     <- "true" Spacing
-    FALSE    <- "false" Spacing
-    NULL     <- "null" Spacing
-    LBRACE   <- "{" Spacing
-    RBRACE   <- "}" Spacing
-    LBRACK   <- "[" Spacing
-    RBRACK   <- "]" Spacing
-    COMMA    <- "," Spacing
-    COLON    <- ":" Spacing
+    TRUE     <- "true"
+    FALSE    <- "false"
+    NULL     <- "null"
+    LBRACE   <- Spacing "{" Spacing
+    RBRACE   <- Spacing "}" Spacing
+    LBRACK   <- Spacing "[" Spacing
+    RBRACK   <- Spacing "]" Spacing
+    COMMA    <- Spacing "," Spacing
+    COLON    <- Spacing ":" Spacing
     Spacing  <- [\t\n\f\r ]*
     ''',
     actions={
         'Start': first,
         'Object': dict,
         'Array': list,
-        'String': str,
+        'String': lambda s: s[1:-1],
         'INTEGER': int,
         'FLOAT': float,
         'TRUE': constant(True),
@@ -45,7 +45,7 @@ Json = pe.compile(
 
 
 def _match(s):
-    return Json.match(s, flags=Flag.STRICT).value()
+    return Json.match(s, flags=Flag.STRICT|Flag.MEMOIZE).value()
 
 def test_numbers():
     assert _match('0') == 0

@@ -24,6 +24,8 @@ Memo = Dict[int, Dict[int, _MatchResult]]
 
 #: Number of string positions that can be cached at one time.
 MAX_MEMO_SIZE = 1000
+DEL_MEMO_SIZE = 500
+
 
 
 class _Expr(Expression):
@@ -33,7 +35,12 @@ class _Expr(Expression):
               s: str,
               pos: int = 0,
               flags: Flag = Flag.NONE) -> Union[Match, None]:
-        memo = defaultdict(dict)
+
+        if flags & Flag.MEMOIZE:
+            memo = defaultdict(dict)
+        else:
+            memo = None
+
         end, args, kwargs = self._match(s, pos, memo)
 
         if end < 0:
@@ -319,19 +326,21 @@ class Rule(_Expr):
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         _id = id(self)
 
-        if pos in memo and _id in memo[pos]:
+        if memo and pos in memo and _id in memo[pos]:
             end, args, kwargs = memo[pos][_id]  # packrat memoization check
         else:
             # clear memo beyond size limit
-            while len(memo) > MAX_MEMO_SIZE:
-                del memo[min(memo)]
+            while memo and len(memo) > MAX_MEMO_SIZE:
+                for _pos in sorted(memo)[:DEL_MEMO_SIZE]:
+                    del memo[_pos]
 
             expr = self.expression
             end, args, kwargs = expr._match(s, pos, memo)
             if end >= 0 and self.action:
                 args = [self.action(*args, **(kwargs or {}))]
 
-            memo[pos][_id] = (end, args, kwargs)
+            if memo is not None:
+                memo[pos][_id] = (end, args, kwargs)
 
         return end, args, {}
 

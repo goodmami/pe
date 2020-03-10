@@ -36,9 +36,10 @@ class ValueType(enum.Enum):
 
 class Flag(enum.Flag):
     NONE = 0
-    DEBUG = _auto()   # print debugging info for compiled expression
-    STRICT = _auto()  # raise error on match failure
-    INLINE = _auto()  # inline non-recursive rules
-    MERGE = _auto()   # merge adjacent terms if possible
-    REGEX = _auto()   # combine adjacent terms into a single regex
+    DEBUG = _auto()    # print debugging info for compiled expression
+    STRICT = _auto()   # raise error on match failure
+    MEMOIZE = _auto()  # use a packrat memo
+    INLINE = _auto()   # inline non-recursive rules
+    MERGE = _auto()    # merge adjacent terms if possible
+    REGEX = _auto()    # combine adjacent terms into a single regex
     OPTIMIZE = INLINE | MERGE | REGEX
