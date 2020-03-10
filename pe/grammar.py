@@ -26,21 +26,21 @@ The syntax is defined as follows::
   # Hierarchical syntax
   Start      <- :Spacing (Expression / Grammar) :EndOfFile
   Grammar    <- Definition+
-  Definition <- Identifier Operator Expression
+  Definition <- Identifier :Spacing Operator Expression
   Operator   <- LEFTARROW
   Expression <- =(Sequence (:SLASH Sequence)*)
   Sequence   <- =Evaluated*
   Evaluated  <- prefix:Prefix? Quantified
   Prefix     <- AND / NOT / TILDE / Binding / EQUAL
-  Binding    <- ~(Name? ':') :Spacing
+  Binding    <- ~(Identifier? ':') :Spacing
   Quantified <- Primary quantifier:Quantifier?
   Quantifier <- QUESTION / STAR / PLUS
   Primary    <- Name / Group / Literal / Class / DOT
-  Name       <- Identifier !Operator
+  Name       <- Identifier :Spacing !Operator
   Group      <- :OPEN Expression :CLOSE
 
   # Lexical syntax
-  Identifier <- ~(IdentStart IdentCont*) :Spacing
+  Identifier <- ~(IdentStart IdentCont*)
   IdentStart <- [a-zA-Z_]
   IdentCont  <- IdentStart / [0-9]
 
@@ -71,7 +71,7 @@ The syntax is defined as follows::
   EndOfFile  <- !.
 """
 
-from typing import Union, Pattern
+from typing import Union, Pattern, Callable
 import ast
 
 from pe.constants import Operator, Flag
@@ -102,7 +102,10 @@ def Literal(string: str):
 
 
 def Class(chars: str):
-    return Definition(Operator.CLS, (chars,))
+    if len(chars) == 1:
+        return Definition(Operator.LIT, (chars,))
+    else:
+        return Definition(Operator.CLS, (chars,))
 
 
 def Regex(pattern: Union[str, Pattern], flags: int = 0):
@@ -110,11 +113,31 @@ def Regex(pattern: Union[str, Pattern], flags: int = 0):
 
 
 def Sequence(*expressions: _Defn):
-    return Definition(Operator.SEQ, (list(map(_validate, expressions)),))
+    exprs = list(map(_validate, expressions))
+    if len(exprs) == 1:
+        return exprs[0]
+    else:
+        _exprs = []
+        for expr in exprs:
+            if expr.op == Operator.SEQ:
+                _exprs.extend(expr.args[0])
+            else:
+                _exprs.append(expr)
+        return Definition(Operator.SEQ, (_exprs,))
 
 
 def Choice(*expressions: _Defn):
-    return Definition(Operator.CHC, (list(map(_validate, expressions)),))
+    exprs = list(map(_validate, expressions))
+    if len(exprs) == 1:
+        return exprs[0]
+    else:
+        _exprs = []
+        for expr in exprs:
+            if expr.op == Operator.CHC:
+                _exprs.extend(expr.args[0])
+            else:
+                _exprs.append(expr)
+        return Definition(Operator.CHC, (_exprs,))
 
 
 def Repeat(expression: _Defn, min: int = 0, max: int = -1):
@@ -157,9 +180,13 @@ def Evaluate(expression: _Defn):
     return Definition(Operator.EVL, (_validate(expression),))
 
 
+def Rule(expression: _Defn, action: Callable):
+    return Definition(Operator.RUL, (_validate(expression), action))
+
+
 def _make_literal(s):
     # TODO: proper unescaping
-    return Literal(s.replace(r'\\', '\\'))
+    return Literal(s.replace('\\\\', '\\'))
 
 
 def _make_quantified(primary, quantifier=None):
@@ -275,10 +302,10 @@ _Literal    = Sequence(
     _Spacing)
 _IdentStart = Class('a-zA-Z_')
 _IdentCont  = Class('a-zA-Z_0-9')
-_Identifier = Sequence(Raw(Sequence(_IdentStart, Star(_IdentCont))), _Spacing)
-_Name       = Sequence(_Identifier, Bind(Not(_Operator)), _Spacing)
+_Identifier = Sequence(Raw(Sequence(_IdentStart, Star(_IdentCont))))
+_Name       = Sequence(_Identifier, _Spacing, Not(_Operator))
 _Quantifier = Choice(_QUESTION, _STAR, _PLUS)
-_Binding    = Sequence(Raw(Sequence(Optional(_Name), ':')), _Spacing)
+_Binding    = Sequence(Raw(Sequence(Optional(_Identifier), ':')), _Spacing)
 _Prefix     = Choice(_AND, _NOT, _TILDE, _Binding, _EQUAL)
 
 PEG = Grammar(
@@ -290,6 +317,7 @@ PEG = Grammar(
                                _EOF),
         'Grammar':    Plus(Nonterminal('Definition')),
         'Definition': Sequence(Nonterminal('Identifier'),
+                               _Spacing,
                                _Operator,
                                Nonterminal('Expression')),
         'Expression': Evaluate(
@@ -339,7 +367,7 @@ _parser = PackratParser(PEG)
 def loads(source: str,
           flags: Flag = Flag.NONE) -> Union[Grammar, Expression]:
     """Parse the PEG at *source* and return a grammar definition."""
-    m = _parser.match(source, flags=Flag.STRICT | flags)
+    m = _parser.match(source, flags=Flag.STRICT)
     if not m:
         raise Error('invalid grammar')
     return m.value()

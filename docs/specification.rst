@@ -10,55 +10,52 @@ Quick Reference
 .. code:: ruby
 
    # The following abbreviations are used below:
-   #   e - a parsing expression
-   #   p - a primary term
-   #   q - a quantified term
-   #   v - an evaluated term
-   #   s - a sequence
-   #   A - a nonterminal identifier
-   #   n - a binding identifier
-   #   $x - the value of x
-   #   %x - the bindings of x
-   #   ~x - the substring matched by x
+   #   Expression Types (E):            Value Types (V)
+   #     e - a parsing expression         u - a unary value type
+   #     p - a primary term               i - an iterable value type
+   #     q - a quantified term            n - a nullary value type
+   #     v - an evaluated term            d - a deferred value type
+   #     s - a sequence                 Value/Binding Resolution:
+   #   Other:                             $x - the value of x
+   #     A - a nonterminal identifier     %x - the bindings of x
+   #     name - a binding identifier      ~x - (as a value) the substring matched by x
 
-   # Op        Name      Type  Matches                      Values        Bindings
+   # Op        Name      Value-Type  Description
 
-   ### Primary Terms
-     .       # Dot       p     any single character         [~.]          {}
-     "abc"   # Literal   p     the string 'abc'             [~'abc']      {}
-     'abc'   # Literal   p     the string 'abc'             [~'abc ]      {}
-     [abc]   # Class     p     any one character in 'abc'   [~[abc]]      {}
-     A       # Symbol    p     rule A                       $A            {%A}
-     (e)     # Group     p     parsing expression e         $e            {%e}
+   ### Primary Terms (p)
+     .       # Dot       Unary       any single character
+     "abc"   # Literal   Unary       the string 'abc'
+     'abc'   # Literal   Unary       the string 'abc'
+     [abc]   # Class     Unary       any one character in 'abc'
+     A       # Symbol    Deferred    rule A
+     (e)     # Group     Deferred    parsing expression e
 
-   ### Quantified Terms (repetition)
-     p       #           q     primary term p exactly once  $p            {%p}
-     p?      # Optional  q     p zero or one times          [] or $p      {} or {%p}
-     p*      # Star      q     p zero or more times         [] + $p ...   {} or {%p, ...}
-     p+      # Plus      q     p one or more times          $p + $p ...   {%p, ...}
+   ### Quantified Terms (q)
+     p       #           Deferred
+     p?      # Optional  Iterable    p zero or one times
+     p*      # Star      Iterable    p zero or more times
+     p+      # Plus      Iterable    p one or more times
 
-   ### Evaluated Terms
-     q       #           v     quantified term q            $q            {%q}
-     &q      # And       v     q, but consume no input      []            {}
-     !q      # Not       v     not q, but consume no input  []            {}
-     n:q     # Bind      v     q                            []            {n:$q}  (see note)
-     :q      # Bind      v     q                            []            {}
-     ~q      # Raw       v     q                            [~q]          {}
+   ### Evaluated Terms (v)
+     q       #           Deferred    quantified term q
+     &q      # And       Nullary     q, but consume no input
+     !q      # Not       Nullary     not q, but consume no input
+     name:q  # Bind      Nullary     q
+     :q      # Bind      Nullary     q
+     ~q      # Raw       Unary       q
+     q
 
-   ### Sequences
-     v       #           s     evaluated term v             $v            {%v}
-     v s     # Sequence  s     v then sequence s            $v + $s       {%v} + {%s}
+   ### Sequences (s)
+     v       #           Deferred    evaluated term v
+     v s     # Sequence  Iterable    v then sequence s
 
-   ### Choices
-     s       #           e     sequence s                   $s            {%s}
-     s / e   # Choice    e     e only if s failed           $s or $e      {%s} or {%e}
+   ### Choices (e)
+     s       #           Deferred    sequence s
+     s / e   # Choice    Iterable    e only if s failed
 
-   ### Grammars
-     A <- e  # Rule      -     parsing expression e         $e            {}
-     A <~ e  # Raw       -     parsing expression e         [~e]          {}
-
-* *Note* -- the exact value used in a binding depends on the type of bound
-  expression; see below.
+   ### Grammars (r)
+     A <- e  # Rule      Deferred    parsing expression e
+     A <~ e  # Rule      Deferred    short for A <- ~(e)
 
 
 Grammar Syntax
@@ -122,24 +119,24 @@ itself. This PEG is based on Bryan Ford's original `paper
 Operator Precedence
 ===================
 
-===========  ========  ==========
-Operator     Name      Precedence
-===========  ========  ==========
-``.``        Dot       5
-``" "``      Literal   5
-``[ ]``      Class     5
-``Abc``      Name      5
-``(e)``      Group     5
-``e?``       Optional  4
-``e*``       Star      4
-``e+``       Plus      4
-``&e``       And       3
-``!e``       Not       3
-``:e``       Bind      3
-``~e``       Raw       3
-``e1 e2``    Sequence  2
-``e1 / e2``  Choice    1
-===========  ========  ==========
+===========  ========  ==========  ===============
+Operator     Name      Precedence  Expression Type
+===========  ========  ==========  ===============
+``.``        Dot       5           Primary
+``" "``      Literal   5           Primary
+``[ ]``      Class     5           Primary
+``Abc``      Name      5           Primary
+``(e)``      Group     5           Primary
+``e?``       Optional  4           Quantified
+``e*``       Star      4           Quantified
+``e+``       Plus      4           Quantified
+``&e``       And       3           Evaluated
+``!e``       Not       3           Evaluated
+``:e``       Bind      3           Evaluated
+``~e``       Raw       3           Evaluated
+``e1 e2``    Sequence  2           Sequence
+``e1 / e2``  Choice    1           Expression
+===========  ========  ==========  ===============
 
 
 Semantic Values
@@ -156,7 +153,15 @@ This document defines the expressions available to **pe**.
 Dot
 ---
 
-``.``
+:form:            ``.``
+:expression-type: primary
+:value-type:      atomic
+
+
+
+The Dot operator always succeeds if there is any remaining input and
+fails otherwise. It consumes a single character.
+
 
 
 Literal
@@ -181,6 +186,27 @@ Group
 -----
 
 ``(e)``
+
+Groups do not actually refer to a construct in **pe**, but they are
+used to aid in the parsing of a grammar. This is helpful when one
+wants to apply a lower-precedence operator with a higher-precedence
+one, such as a sequence of choices::
+
+  [0-9] ' and ' / ' or ' [0-9]    # parses "1 and" or "or 2" but not "1 and 2" or "1 or 2"
+
+  [0-9] (' and ' / ' or ') [0-9]  # parses "1 and 2", "1 or 2", etc.
+
+Or repeated subexpressions::
+
+  [0-9] (' and ' [0-9])*  # parses "1", "1 and 2", "3 and 5 and 8", etc.
+
+The three expressions above would translate to the following::
+
+  Choice(Sequence(Class('0-9'), Literal(' and ')), Sequence(Literal(' or '), Class('0-9')))
+
+  Sequence(Class('0-9'), Choice(Literal(' and '), Literal(' or ')), Class('0-9'))
+
+  Sequence(Class('0-9'), Star(Sequence(Literal(' and '), Class('0-9'))))
 
 
 Optional

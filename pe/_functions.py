@@ -5,6 +5,7 @@ from pe.constants import Flag
 from pe.core import Error, Expression
 from pe.grammar import loads
 from pe.packrat import PackratParser
+from pe.optimize import inline, merge, regex
 
 
 def compile(source,
@@ -19,6 +20,17 @@ def compile(source,
         raise Error(f'unsupported parser: {parser}')
     g = loads(source, flags=flags)
     g.actions = actions or {}
+
+    if flags & Flag.INLINE:
+        g = inline(g)
+    if flags & Flag.MERGE:
+        g = merge(g)
+    if flags & Flag.REGEX:
+        g = regex(g)
+    if flags & Flag.DEBUG:
+        for name, defn in g.definitions.items():
+            print(name, defn)
+
     p = make(g)
     return p
 

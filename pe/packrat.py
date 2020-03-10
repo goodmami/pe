@@ -424,6 +424,10 @@ def _def_to_expr(_def: Definition, defns, exprs):
         return Sequence(*[_def_to_expr(e, defns, exprs) for e in args[0]])
     elif op == Operator.CHC:
         return Choice(*[_def_to_expr(e, defns, exprs) for e in args[0]])
+    elif op == Operator.RUL:
+        return Rule('<anonymous>',
+                    _def_to_expr(args[0], defns, exprs),
+                    action=args[1])
     else:
         raise Error(f'invalid definition: {_def!r}')
 

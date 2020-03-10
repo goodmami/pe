@@ -35,6 +35,8 @@ def test_Literal():
 
 def test_Class():
     assert Class('foo') == Def(Op.CLS, ('foo',))
+    # simple optimizations
+    assert Class('f') == Def(Op.LIT, ('f',))
 
 
 def test_Regex():
@@ -43,16 +45,20 @@ def test_Regex():
 
 
 def test_Sequence():
-    assert Sequence(Dot()) == Def(Op.SEQ, ([Def(Op.DOT, ())],))
     assert Sequence(Literal('a'), Dot()) == Def(Op.SEQ, ([Def(Op.LIT, ('a',)),
                                                           Def(Op.DOT, ())],))
     assert Sequence('foo', 'bar') == Sequence(Literal('foo'), Literal('bar'))
+    # simple optimizations
+    assert Sequence(Dot()) == Def(Op.DOT, ())
+    assert Sequence(Sequence('a', 'b'), 'c') == Sequence('a', 'b', 'c')
 
 def test_Choice():
-    assert Choice(Dot()) == Def(Op.CHC, ([Def(Op.DOT, ())],))
     assert Choice(Literal('a'), Dot()) == Def(Op.CHC, ([Def(Op.LIT, ('a',)),
                                                         Def(Op.DOT, ())],))
     assert Choice('foo', 'bar') == Choice(Literal('foo'), Literal('bar'))
+    # simple optimizations
+    assert Choice(Dot()) == Def(Op.DOT, ())
+    assert Choice(Choice('a', 'b'), 'c') == Choice('a', 'b', 'c')
 
 
 def test_Repeat():
@@ -175,6 +181,7 @@ def test_loads_bind():
     assert loads(':"a"  # comment') == Bind('a')
     assert loads('x:"a"') == Bind('a', name='x')
     assert loads('x:"a"  # comment') == Bind('a', name='x')
+    assert loads('x :"a"') == Sequence(Nonterminal('x'), Bind('a'))
 
 
 def test_loads_raw():

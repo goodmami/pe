@@ -1,30 +1,7 @@
 
 import pe
 from pe.constants import Flag
-
-
-    # '''
-    # Start    <- _* (Value) _*
-    # Value    <- Object / Array / String / Number / Constant
-    # Object   <- "{" _* (Member){:COMMA} _* "}"
-    # Member   <- (String) _* ":" _* (Value)
-    # Array    <- "[" _* (Value){:COMMA} _* "]"
-    # String   <- '"' (?: '\\' . / !'"' . )* '"'
-    # Number   <- INTEGER / FLOAT
-    # Constant <- TRUE / FALSE / NULL
-    # INTEGER  <- "-"? (?: "0" / [1-9] [0-9]*)
-    # FLOAT    <- INTEGER FRACTION? EXPONENT?
-    # FRACTION <- "." [0-9]+
-    # EXPONENT <- [eE] [-+]? [0-9]+
-    # TRUE     <- "true"
-    # FALSE    <- "false"
-    # NULL     <- "null"
-    # COMMA    <- _* "," _*
-    # _        <- [\t\n\f\r ]
-    # ''',
-
-def head(*args):
-    return args[0]
+from pe.actions import first, constant
 
 
 Json = pe.compile(
@@ -35,15 +12,15 @@ Json = pe.compile(
     Member   <- =(String :COLON Value)
     Array    <- :LBRACK =(Value (:COMMA Value)*)? :RBRACK
     String   <- :["] ~(!["\\] . / '\\' . )* :["] :Spacing
-    Number   <- FLOAT / INTEGER
+    Number   <- (FLOAT / INTEGER) :Spacing
     Constant <- TRUE / FALSE / NULL
     INTEGER  <- ~("-"? ("0" / [1-9] [0-9]*))
     FLOAT    <- ~(INTEGER FRACTION? EXPONENT?)
     FRACTION <- "." [0-9]+
     EXPONENT <- [eE] [-+]? [0-9]+
-    TRUE     <- :("true" Spacing)
-    FALSE    <- :("false" Spacing)
-    NULL     <- :("null" Spacing)
+    TRUE     <- "true" Spacing
+    FALSE    <- "false" Spacing
+    NULL     <- "null" Spacing
     LBRACE   <- "{" Spacing
     RBRACE   <- "}" Spacing
     LBRACK   <- "[" Spacing
@@ -53,16 +30,17 @@ Json = pe.compile(
     Spacing  <- [\t\n\f\r ]*
     ''',
     actions={
-        'Start': head,
+        'Start': first,
         'Object': dict,
         'Array': list,
         'String': str,
         'INTEGER': int,
         'FLOAT': float,
-        'TRUE': lambda: True,
-        'FALSE': lambda: False,
-        'NULL': lambda: None,
-    }
+        'TRUE': constant(True),
+        'FALSE': constant(False),
+        'NULL': constant(None),
+    },
+    flags=Flag.OPTIMIZE
 )
 
 
@@ -78,7 +56,6 @@ def test_numbers():
     assert _match('-3e+02') == -300.0
 
 def test_string():
-    print(Json.grammar['String'])
     assert _match('""') == ''
     assert _match('"foo"') == 'foo'
     assert _match(r'"foo\"bar"') == 'foo\\"bar'
@@ -99,7 +76,6 @@ def test_arrays():
     assert _match('[[[1]]]') == [[[1]]]
 
 def test_objects():
-    print(Json._exprs['Object'].match('{}'))
     assert _match('{}') == {}
     assert _match('{"key": true}') == {"key": True}
     assert (_match('{"true": true, "false": false}')
@@ -114,12 +90,25 @@ def test_objects():
     }''') == {'key': [1, 2]})
 
 
-# def test_recursion():
-#     try:
-#         for i in range(50,1000,10):
-#             _match(('[' * i) + (']' * i))
-#     except RecursionError:
-#         assert False, f'failed at recursion depth {i}'
+def test_recursion():
+    i = 1
+    j = 1001
+    passed = True
+    while True:
+        try:
+            _match(('[' * i) + (']' * i))
+        except RecursionError:
+            passed = False
+            j = i
+            i = int(i / 2)
+            if i <= 1:
+                break
+        else:
+            if j - i <= 1:
+                break
+            i += int((j - i) / 2)
+    _match(('[' * i) + (']' * i))
+    assert passed, f'failed at recursion depth {i}'
 
 
 if __name__ == '__main__':
@@ -148,8 +137,8 @@ if __name__ == '__main__':
     print(
         'match',
         timeit.timeit(
-            '_match(s)',
-            setup='from __main__ import Json, s',
+            'match(s)',
+            setup='from __main__ import Json, s; match = Json.match',
             number=10000
         )
     )
