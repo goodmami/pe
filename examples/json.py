@@ -1,21 +1,22 @@
 
 import pe
 from pe.constants import Flag
-from pe.actions import first, constant
+from pe.actions import first, constant, pack, raw
 
 
 Json = pe.compile(
     r'''
     Start    <- :Spacing Value
     Value    <- Object / Array / String / Number / Constant
-    Object   <- :LBRACE =(Member (:COMMA Member)*)? :RBRACE
-    Member   <- =(String :COLON Value)
-    Array    <- :LBRACK =(Value (:COMMA Value)*)? :RBRACK
-    String   <- ~(["] (!["\\] . / '\\' . )* ["])
-    Number   <- (FLOAT / INTEGER)
+    Object   <- :LBRACE (Member (:COMMA Member)*)? :RBRACE
+    Member   <- (String :COLON Value)
+    Array    <- :LBRACK (Value (:COMMA Value)*)? :RBRACK
+    String   <- ["] (!["\\] . / '\\' . )* ["]
+    Number   <- (Float / Integer)
     Constant <- TRUE / FALSE / NULL
-    INTEGER  <- ~("-"? ("0" / [1-9] [0-9]*))
-    FLOAT    <- ~(INTEGER FRACTION? EXPONENT?)
+    Integer  <- INTEGER
+    Float    <- INTEGER FRACTION? EXPONENT?
+    INTEGER  <- "-"? ("0" / [1-9] [0-9]*)
     FRACTION <- "." [0-9]+
     EXPONENT <- [eE] [-+]? [0-9]+
     TRUE     <- "true"
@@ -31,11 +32,12 @@ Json = pe.compile(
     ''',
     actions={
         'Start': first,
-        'Object': dict,
-        'Array': list,
+        'Object': pack(dict),
+        'Member': pack(tuple),
+        'Array': pack(list),
         'String': lambda s: s[1:-1],
-        'INTEGER': int,
-        'FLOAT': float,
+        'Integer': raw(int),
+        'Float': raw(float),
         'TRUE': constant(True),
         'FALSE': constant(False),
         'NULL': constant(None),

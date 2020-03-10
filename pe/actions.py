@@ -7,6 +7,22 @@ def constant(value):
     return constant_value
 
 
+def pack(func):
+
+    def call_func(*args, **kwargs):
+        return func(args, **kwargs)
+
+    return call_func
+
+
+def raw(func):
+
+    def call_func(*args, **kwargs):
+        return func(''.join(args), **kwargs)
+
+    return call_func
+
+
 def first(*args, **kwargs):
     return args[0]
 
