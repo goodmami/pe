@@ -7,7 +7,7 @@ parse exactly as a standard PEG grammar.
 
 ## Quick Reference
 
-```ruby
+```julia
 # Operator  Name      Value     Description
 
 ### Primary Terms (p)
@@ -46,10 +46,16 @@ parse exactly as a standard PEG grammar.
 
 ## Expression Value Types
 
-- Niladic: No value
-- Monadic: A single value
-- Variadic: More than one value
-- Deferred: Value type depends on resolved expression
+- Niladic: expression emits no value
+- Monadic: expression always emits a single value
+- Variadic: expression emits any number (zero or more) values
+- Deferred: value type depends on a resolved expression
+
+Note that the *variadic* type is a generalization which defines an
+expression's behavior in **pe**; some expressions always emit one or
+more value while some always emit a fixed number. A *monadic*
+expression (e.g., `[ab]`) may therefore behave differently from a
+*variadic* expression with a single value (e.g., `'a' / 'b'`).
 
 
 ## Grammar Syntax
@@ -59,7 +65,7 @@ itself. This PEG is based on Bryan Ford's original
 [paper][PEG].
 
 
-```ruby
+```julia
 # Hierarchical syntax
 Start      <- :Spacing (Expression / Grammar) :EndOfFile
 Grammar    <- Definition+
@@ -318,12 +324,13 @@ corresponding rule's expression had been written in place of the
 nonterminal. Schematically, that means that `A1` and `A2` below are
 equivalent for any expression `e`.
 
-```ruby
+```julia
 A1 <- B
 B  <- e
 
 A2 <- (e)
 ```
+
 
 ### Group
 
@@ -354,6 +361,7 @@ following function calls:
 
     Sequence(Class('0-9'), Star(Sequence(Literal('+'), Class('0-9'))))
 
+
 ### Optional
 
 - Notation: `e?`
@@ -366,12 +374,23 @@ or fails. If the given expression succeeds, the emitted value and
 consumed input is the same as that of the given expression. If the
 given expression fails, no input is consumed and no value is emitted.
 
+Note that the Optional operator also succeeds when there is no
+remaining input.
+
+
 ### Star
 
 - Notation: `e*`
 - Function: Star(*expression*)
 - Type: **Quantified**
 - Value: **Variadic**
+
+The Star operator succeeds if the given expression succeeds zero or
+more times. The accumulated values of the given expression are
+emitted.
+
+Note that the Star operator also succeeds when there is no remaining
+input.
 
 
 ### Plus
@@ -381,6 +400,10 @@ given expression fails, no input is consumed and no value is emitted.
 - Type: **Quantified**
 - Value: **Variadic**
 
+The Plus operator succeeds if the given expression succeeds one or
+more times. The accumulated values of the given expression are
+emitted.
+
 
 ### And
 
@@ -388,6 +411,11 @@ given expression fails, no input is consumed and no value is emitted.
 - Function: And(*expression*)
 - Type: **Evaluated**
 - Value: **Niladic**
+
+The And operator (also called *positive lookahead*) succeeds when the
+given expression succeeds at the current position in the input, but no
+input is consumed (even though the given expression would otherwise
+consume input) and no values are emitted.
 
 
 ### Not
@@ -397,6 +425,10 @@ given expression fails, no input is consumed and no value is emitted.
 - Type: **Evaluated**
 - Value: **Niladic**
 
+The Not operator (also called *negative lookahead*) succeeds when the
+given expression fails at the current position in the input, but no
+input is consumed and no values are emitted.
+
 
 ### Bind
 
@@ -405,13 +437,19 @@ given expression fails, no input is consumed and no value is emitted.
 - Type: **Evaluated**
 - Value: **Niladic**
 
+The Bind operator succeeds when the given expression succeeds at the
+current line of input, but no values are emitted. Unlike the
+[And](#and) operator, matching input is consumed. If a name is given,
+the value of the given expression is associated with the name for the
+duration of a rule.
+
 The bound value depends on the value type of the bound expression:
 
 - Niladic: `None`
 - Monadic: the value emitted by the monadic expression
 - Variadic: the sequence of values emitted by the variadic expression
 
-```ruby
+```julia
 # Expression        # Input    # Value of 'a'
 a:.                 # abcd     'a'
 a:"abc"             # abcd     'abc'
@@ -435,6 +473,17 @@ C <- A
 - Type: **Sequence**
 - Value: **Variadic**
 
+The Sequence operator succeeds when all of its given expressions
+succeed, in turn, from the current position in the input. After an
+expression succeeds, possibly consuming input, successive expressions
+start matching at the new position in the input, and so on. The
+Sequence operator emits the accumulated values of its given
+expressions. If any given expression fails, the entire Sequence fails
+and no values are emitted and no input is consumed.
+
+A Sequence with no given expressions is invalid. A Sequence with one
+given expression is reduced to the given expression only.
+
 
 ### Choice
 
@@ -443,14 +492,38 @@ C <- A
 - Type: **Expression**
 - Value: **Variadic**
 
+The Choice operator succeeds when any of its given expressions
+succeeds. If a given expression fails, the next given expression is
+attempted at the current position in the input. If a given expression
+succeeds, the Choice operator succeeds and immediately emits the given
+expression's value and consumes its input.
+
+A Choice with no given expressions is invalid. A Choice with one given
+expression is reduced to the given expression only.
+
 
 ### Rule
 
 - Notation: `Abc <- e`
 - Function: Rule(*expression*, *action*=None)
 - Type: **Rule**
-- Value: **Variadic**
+- Value: **Deferred**
 
+A Rule is often associated with a name in the grammar, but the rule
+itself is just a wrapper around a given expression that provides some
+additional behavior. The rule thus succeeds when the given expression
+succeeds, emitting the given expressions value and consuming its
+input. If an action is defined, the value type of the rule is
+*monadic* and it emits the result of applying the action with any
+emitted or bound values. If no action is defined, the value type of
+the Rule is the resolved value type of the given expression. After the
+rule completes, any bound values are cleared, regardless of whether an
+action was defined.
 
+Note that, while Rules may only be defined in the PEG notation with a
+name in the grammar, anonymized rules may appear inside of
+expressions. This situation can occur by defining expressions using
+the API instead of the notation, or as the result of inlining
+optimizations.
 
 [PEG]: https://bford.info/pub/lang/peg

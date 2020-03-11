@@ -56,6 +56,13 @@ def test_merge():
     # assert pe.compile('A <- :("a" "b")',
     #                   flags=Flag.MERGE).match('ab').value() == ('a', 'b')
 
+    assert pe.compile('A <- x:("a" / "b")',
+                      actions={'A': lambda x: x},
+                      flags=Flag.NONE).match('a').value() == ['a']
+    # assert pe.compile('A <- x:("a" / "b")',
+    #                   actions={'A': lambda x: x},
+    #                   flags=Flag.MERGE).match('a').value() == ['a']
+
 
 def test_regex():
     assert (rload(r'A <- "a"') ==
