@@ -40,4 +40,4 @@ class Flag(enum.Flag):
     INLINE = _auto()   # inline non-recursive rules
     MERGE = _auto()    # merge adjacent terms if possible
     REGEX = _auto()    # combine adjacent terms into a single regex
-    OPTIMIZE = INLINE | MERGE | REGEX
+    OPTIMIZE = INLINE | REGEX # | MERGE disabled while behavior differs

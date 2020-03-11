@@ -43,10 +43,14 @@ parse exactly as a standard PEG grammar.
   A <- e  # Rule      Deferred  parsing expression e
 ```
 
-* *Note*: Evaluation of an expression depends on the value type:
-  - Niladic -- return `None`
-  - Monadic -- return the value itself
-  - Variadic -- return the values as a list
+
+## Expression Value Types
+
+- Niladic: No value
+- Monadic: A single value
+- Variadic: More than one value
+- Deferred: Value type depends on resolved expression
+
 
 ## Grammar Syntax
 
@@ -55,7 +59,7 @@ itself. This PEG is based on Bryan Ford's original
 [paper][PEG].
 
 
-``` sourceCode ruby
+```ruby
 # Hierarchical syntax
 Start      <- :Spacing (Expression / Grammar) :EndOfFile
 Grammar    <- Definition+
@@ -63,10 +67,10 @@ Definition <- Identifier :Operator Expression
 Operator   <- Spacing LEFTARROW
 Expression <- Sequence (SLASH Sequence)*
 Sequence   <- Evaluated*
-Evaluated  <- prefix:Prefix? Quantified
+Evaluated  <- Prefix? Quantified
 Prefix     <- AND / NOT / Binding
 Binding    <- Identifier? ':' :Spacing
-Quantified <- Primary quantifier:Quantifier?
+Quantified <- Primary Quantifier?
 Quantifier <- QUESTION / STAR / PLUS
 Primary    <- Name / Group / Literal / Class / DOT
 Name       <- Identifier :Spacing !Operator
@@ -94,7 +98,6 @@ PLUS       <- '+' :Spacing
 OPEN       <- '(' :Spacing
 CLOSE      <- ')' :Spacing
 DOT        <- '.' :Spacing
-COLON      <- ':' :Spacing
 
 Spacing    <- (Space / Comment)*
 Comment    <- '#' (!EndOfLine .)* EndOfLine
@@ -103,23 +106,25 @@ EndOfLine  <- '\r\n' / '\n' / '\r'
 EndOfFile  <- !.
 ```
 
+
 ## Operator Precedence
 
-| Operator  | Name     | Precedence | Expression Type |
-| --------- | -------- | ---------- | --------------- |
-| `.`       | Dot      | 5          | Primary         |
-| `" "`     | Literal  | 5          | Primary         |
-| `[ ]`     | Class    | 5          | Primary         |
-| `Abc`     | Name     | 5          | Primary         |
-| `(e)`     | Group    | 5          | Primary         |
-| `e?`      | Optional | 4          | Quantified      |
-| `e*`      | Star     | 4          | Quantified      |
-| `e+`      | Plus     | 4          | Quantified      |
-| `&e`      | And      | 3          | Evaluated       |
-| `!e`      | Not      | 3          | Evaluated       |
-| `:e`      | Bind     | 3          | Evaluated       |
-| `e1 e2`   | Sequence | 2          | Sequence        |
-| `e1 / e2` | Choice   | 1          | Expression      |
+| Operator         | Name     | Precedence | Expression Type |
+| ---------------- | -------- | ---------- | --------------- |
+| `.`              | Dot      | 5          | Primary         |
+| `" "` or `' '`   | Literal  | 5          | Primary         |
+| `[ ]`            | Class    | 5          | Primary         |
+| `Abc`            | Name     | 5          | Primary         |
+| `(e)`            | Group    | 5          | Primary         |
+| `e?`             | Optional | 4          | Quantified      |
+| `e*`             | Star     | 4          | Quantified      |
+| `e+`             | Plus     | 4          | Quantified      |
+| `&e`             | And      | 3          | Evaluated       |
+| `!e`             | Not      | 3          | Evaluated       |
+| `:e` or `name:e` | Bind     | 3          | Evaluated       |
+| `e1 e2`          | Sequence | 2          | Sequence        |
+| `e1 / e2`        | Choice   | 1          | Expression      |
+
 
 ## Semantic Values
 
@@ -131,33 +136,55 @@ This document defines the expressions available to **pe**.
 
 ### Dot
 
-  - form  
-    `.`
-
-  - expression-type  
-    primary
-
-  - value-type  
-    atomic
+<table>
+<tr><td>**expression-form**</td><td>`.`</td></tr>
+<tr><td>**API function**   </td><td>Dot()</td></tr>
+<tr><td>**expression-type**</td><td>primary</td></tr>
+<tr><td>**value-type**     </td><td>monadic</td></tr>
+</table>
 
 The Dot operator always succeeds if there is any remaining input and
 fails otherwise. It consumes a single character.
 
+
 ### Literal
 
-`"abc"`
+<table>
+<tr><td>**expression-form**</td><td>`'abc'` or `"abc"`</td></tr>
+<tr><td>**API function**   </td><td>Literal(*string*)</td></tr>
+<tr><td>**expression-type**</td><td>primary</td></tr>
+<tr><td>**value-type**     </td><td>monadic</td></tr>
+</table>
+
 
 ### Character Class
 
-`[abc]`
+<table>
+<tr><td>**expression-form**</td><td>`[abc]`</td></tr>
+<tr><td>**API function**   </td><td>Class(*ranges*)</td></tr>
+<tr><td>**expression-type**</td><td>primary</td></tr>
+<tr><td>**value-type**     </td><td>monadic</td></tr>
+</table>
+
 
 ### Nonterminal Symbol
 
-`A`
+<table>
+<tr><td>**expression-form**</td><td>`Abc`</td></tr>
+<tr><td>**API function**   </td><td>Nonterminal(*name*)</td></tr>
+<tr><td>**expression-type**</td><td>primary</td></tr>
+<tr><td>**value-type**     </td><td>deferred</td></tr>
+</table>
+
 
 ### Group
 
-`(e)`
+<table>
+<tr><td>**expression-form**</td><td>`(e)`</td></tr>
+<tr><td>**API function**   </td><td>none</td></tr>
+<tr><td>**expression-type**</td><td>primary</td></tr>
+<tr><td>**value-type**     </td><td>deferred</td></tr>
+</table>
 
 Groups do not actually refer to a construct in **pe**, but they are used
 to aid in the parsing of a grammar. This is helpful when one wants to
@@ -165,7 +192,7 @@ apply a lower-precedence operator with a higher-precedence one, such as
 a sequence of choices:
 
     [0-9] ' and ' / ' or ' [0-9]    # parses "1 and" or "or 2" but not "1 and 2" or "1 or 2"
-    
+
     [0-9] (' and ' / ' or ') [0-9]  # parses "1 and 2", "1 or 2", etc.
 
 Or repeated subexpressions:
@@ -175,40 +202,77 @@ Or repeated subexpressions:
 The three expressions above would translate to the following:
 
     Choice(Sequence(Class('0-9'), Literal(' and ')), Sequence(Literal(' or '), Class('0-9')))
-    
+
     Sequence(Class('0-9'), Choice(Literal(' and '), Literal(' or ')), Class('0-9'))
-    
+
     Sequence(Class('0-9'), Star(Sequence(Literal(' and '), Class('0-9'))))
 
 ### Optional
 
-`e?`
+<table>
+<tr><td>**expression-form**</td><td>`e?`</td></tr>
+<tr><td>**API function**   </td><td>Optional(*expression*)</td></tr>
+<tr><td>**expression-type**</td><td>quantified</td></tr>
+<tr><td>**value-type**     </td><td>variadic</td></tr>
+</table>
+
 
 ### Star
 
-`e*`
+<table>
+<tr><td>**expression-form**</td><td>`e*`</td></tr>
+<tr><td>**API function**   </td><td>Star(*expression*)</td></tr>
+<tr><td>**expression-type**</td><td>quantified</td></tr>
+<tr><td>**value-type**     </td><td>variadic</td></tr>
+</table>
+
 
 ### Plus
 
-`e+`
+<table>
+<tr><td>**expression-form**</td><td>`e+`</td></tr>
+<tr><td>**API function**   </td><td>Plus(*expression*)</td></tr>
+<tr><td>**expression-type**</td><td>quantified</td></tr>
+<tr><td>**value-type**     </td><td>variadic</td></tr>
+</table>
+
+
+### And
+
+<table>
+<tr><td>**expression-form**</td><td>`&e`</td></tr>
+<tr><td>**API function**   </td><td>And(*expression*)</td></tr>
+<tr><td>**expression-type**</td><td>evaluated</td></tr>
+<tr><td>**value-type**     </td><td>niladic</td></tr>
+</table>
+
+
+### Not
+
+<table>
+<tr><td>**expression-form**</td><td>`!e`</td></tr>
+<tr><td>**API function**   </td><td>Not(*expression*)</td></tr>
+<tr><td>**expression-type**</td><td>evaluated</td></tr>
+<tr><td>**value-type**     </td><td>niladic</td></tr>
+</table>
+
 
 ### Bind
 
-`n:e`
+<table>
+<tr><td>**expression-form**</td><td>`:e` or `name:e`</td></tr>
+<tr><td>**API function**   </td><td>Bind(*expression*, *name*=None)</td></tr>
+<tr><td>**expression-type**</td><td>evaluated</td></tr>
+<tr><td>**value-type**     </td><td>niladic</td></tr>
+</table>
 
-`:e`
+The bound value depends on the value type of the bound expression:
 
-  - If the bound expression is repeated (an optional, star, or plus), a
-    sequence, or a choice, or indirectly one of these through some chain
-    of nonterminals to rules where no rule specifies an action, the
-    associated value is the values list;
-  - Otherwise, if the values list is empty, the associated value is
-    `None`;
-  - Otherwise, the associated value is the last item on the values list
+- Niladic: `None`
+- Monadic: the value emitted by the monadic expression
+- Variadic: the sequence of values emitted by the variadic expression
 
-<!-- end list -->
-
-``` sourceCode 
+```ruby
 # Expression        # Input    # Value of 'a'
 a:.                 # abcd     'a'
 a:"abc"             # abcd     'abc'
@@ -227,73 +291,33 @@ C <- A
 
 ### Sequence
 
-`e e`
+<table>
+<tr><td>**expression-form**</td><td>`e e`</td></tr>
+<tr><td>**API function**   </td><td>Sequence(*expression*, ...)</td></tr>
+<tr><td>**expression-type**</td><td>sequence</td></tr>
+<tr><td>**value-type**     </td><td>variadic</td></tr>
+</table>
+
 
 ### Ordered Choice
 
-`e / e`
+<table>
+<tr><td>**expression-form**</td><td>`e / e`</td></tr>
+<tr><td>**API function**   </td><td>Choice(*expression*, ...)</td></tr>
+<tr><td>**expression-type**</td><td>expression</td></tr>
+<tr><td>**value-type**     </td><td>variadic</td></tr>
+</table>
 
-## Value Transformations
 
-``` sourceCode 
-# Grammar                        Input  ->  Value
-# -------------------------------------------------------
-Start <- [0-9]                   '3'    ->  '3'
-# -------------------------------------------------------
-Start <- [0-9]          -> int   '3'    ->  0
-# -------------------------------------------------------
-Start <- ([0-9])                 '3'    ->  '3'
-# -------------------------------------------------------
-Start <- ([0-9])        -> int   '3'    ->  3
-# -------------------------------------------------------
-Start <- (([0-9]))      -> int   '3'    ->  *error*
-# -------------------------------------------------------
-Start <- Digit                   '3'    ->  '3'
-Digit <- [0-9]
-# -------------------------------------------------------
-Start <- Digit                   '3'    ->  0
-Digit <- [0-9]          -> int
-# -------------------------------------------------------
-Start <- Digit                   '3'    ->  '3'
-Digit <- ([0-9])
-# -------------------------------------------------------
-Start <- (Digit)                 '3'    ->  '3'
-Digit <- [0-9]
-# -------------------------------------------------------
-Start <- (Digit)                 '3'    ->  0
-Digit <- [0-9]          -> int
-# -------------------------------------------------------
-Start <- Digit                   '3'    ->  3
-Digit <- ([0-9])        -> int
-```
+### Rule
 
-``` sourceCode 
-# Grammar                        Input  ->  Value
-Start <- "-" [0-9]               '-3'   ->  '-3'
-# -------------------------------------------------------
-Start <- "-" [0-9]      -> int   '-3'  ->  -3
-# -------------------------------------------------------
-Start <- "-" ([0-9])             '-3'  ->  ['3']
-# -------------------------------------------------------
-Start <- "-" ([0-9])    -> int   '-3'  ->  *error*
-# -------------------------------------------------------
-Start <- "-" Digit               '-3'  ->  '-3'
-Digit <- [0-9]
-# -------------------------------------------------------
-Start <- "-" Digit               '-3'  ->  ['-', 3]
-Digit <- [0-9]          -> int
-# -------------------------------------------------------
-Start <- "-" Digit               '-3'  ->  ['-', ['3']]
-Digit <- ([0-9])
-# -------------------------------------------------------
-Start <- "-" (Digit)             '-3'  ->  ['3']
-Digit <- [0-9]
-# -------------------------------------------------------
-Start <- ("-") (Digit)           '-3'  ->  ['-', ['3']]
-Digit <- ([0-9])
-# -------------------------------------------------------
-Start <- ("-") Digit             '-3'  ->  ['-']
-Digit <- ([0-9])
-```
+<table>
+<tr><td>**expression-form**</td><td>`Abc <- e`</td></tr>
+<tr><td>**API function**   </td><td>Choice(*expression*, ...)</td></tr>
+<tr><td>**expression-type**</td><td>expression</td></tr>
+<tr><td>**value-type**     </td><td>variadic</td></tr>
+</table>
+
+
 
 [PEG]: https://bford.info/pub/lang/peg

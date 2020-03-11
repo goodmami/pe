@@ -1,7 +1,7 @@
 
 import pytest
 
-from pe.constants import FAIL, Operator
+from pe.constants import FAIL, Operator, Flag
 from pe.core import Grammar
 from pe.grammar import Class
 from pe.packrat import (

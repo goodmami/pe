@@ -35,7 +35,7 @@ def compile(source,
     return p
 
 
-def match(pattern: str, string: str):
+def match(pattern: str, string: str, flags: Flag = Flag.NONE):
     """Compile *pattern* and match *string* against it.
 
     Example:
@@ -43,5 +43,5 @@ def match(pattern: str, string: str):
         >>> pe.match(r'"-"? [1-9] [0-9]*', '-12345').value()
         '-12345'
     """
-    expr = compile(pattern)
+    expr = compile(pattern, flags=Flag.OPTIMIZE)
     return expr.match(string)
