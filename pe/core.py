@@ -90,7 +90,7 @@ def evaluate(args, value_type):
     if value_type == ValueType.VARIADIC:
         return args
     elif value_type == ValueType.MONADIC:
-        return args[-1]
+        return args[0]
     elif value_type == ValueType.NILADIC:
         return None
     else:

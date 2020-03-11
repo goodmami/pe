@@ -15,7 +15,7 @@ def pack(func):
     return call_func
 
 
-def raw(func):
+def join(func):
 
     def call_func(*args, **kwargs):
         return func(''.join(args), **kwargs)

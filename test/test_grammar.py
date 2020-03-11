@@ -19,9 +19,7 @@ from pe.grammar import (
     Nonterminal,
     And,
     Not,
-    Raw,
     Bind,
-    Evaluate,
 )
 
 
@@ -98,21 +96,11 @@ def test_Not():
     assert Not('foo') == Not(Literal('foo'))
 
 
-def test_Raw():
-    assert Raw(Dot()) == Def(Op.RAW, (Def(Op.DOT, ()),))
-    assert Raw('foo') == Def(Op.RAW, (Def(Op.LIT, ('foo',)),))
-
-
 def test_Bind():
     assert Bind(Dot()) == Def(Op.BND, (None, Def(Op.DOT, ())))
     assert Bind(Dot(), name='x') == Def(Op.BND, ('x', Def(Op.DOT, ())))
     assert Bind('foo') == Bind(Literal('foo'))
     assert Bind('foo', name='bar') == Bind(Literal('foo'), name='bar')
-
-
-def test_Evaluate():
-    assert Evaluate(Dot()) == Def(Op.EVL, (Def(Op.DOT, ()),))
-    assert Evaluate('foo') == Evaluate(Literal('foo'))
 
 
 def test_loads_dot():
@@ -171,22 +159,12 @@ def test_loads_not():
     assert loads('!"a"  # comment') == Not('a')
 
 
-def test_loads_raw():
-    assert loads('~"a"') == Raw('a')
-    assert loads('~"a"  # comment') == Raw('a')
-
-
 def test_loads_bind():
     assert loads(':"a"') == Bind('a')
     assert loads(':"a"  # comment') == Bind('a')
     assert loads('x:"a"') == Bind('a', name='x')
     assert loads('x:"a"  # comment') == Bind('a', name='x')
     assert loads('x :"a"') == Sequence(Nonterminal('x'), Bind('a'))
-
-
-def test_loads_raw():
-    assert loads('="a"') == Evaluate('a')
-    assert loads('="a"  # comment') == Evaluate('a')
 
 
 def Grm(dfns):

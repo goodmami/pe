@@ -30,8 +30,6 @@ parse exactly as a standard PEG grammar.
   !q      # Not       Niladic   Fail if q matches; consume no input; return no value
   name:q  # Bind      Niladic   Match q and bind its value to 'name'
   :q      # Bind      Niladic   Match q and discard its value
-  ~q      # Raw       Monadic   Match q and return the matched substring of the input
-  =q      # Evaluate  Monadic   Match q and render a single value (see note)
 
 ### Sequences (s)
   v       #           Deferred  evaluated term v
@@ -61,21 +59,21 @@ itself. This PEG is based on Bryan Ford's original
 # Hierarchical syntax
 Start      <- :Spacing (Expression / Grammar) :EndOfFile
 Grammar    <- Definition+
-Definition <- Identifier Operator Expression
-Operator   <- LEFTARROW / RAWARROW
+Definition <- Identifier :Operator Expression
+Operator   <- Spacing LEFTARROW
 Expression <- Sequence (SLASH Sequence)*
 Sequence   <- Evaluated*
-Evaluated  <- Prefix? Quantified
-Prefix     <- AND / NOT / TILDE / Binding
-Binding    <- Name? :COLON
-Quantified <- Primary Quantifier?
+Evaluated  <- prefix:Prefix? Quantified
+Prefix     <- AND / NOT / Binding
+Binding    <- Identifier? ':' :Spacing
+Quantified <- Primary quantifier:Quantifier?
 Quantifier <- QUESTION / STAR / PLUS
 Primary    <- Name / Group / Literal / Class / DOT
-Name       <- Identifier !Operator
+Name       <- Identifier :Spacing !Operator
 Group      <- :OPEN Expression :CLOSE
 
 # Lexical syntax
-Identifier <- ~(IdentStart IdentCont*) :Spacing
+Identifier <- IdentStart IdentCont*
 IdentStart <- [a-zA-Z_]
 IdentCont  <- IdentStart / [0-9]
 
@@ -87,11 +85,9 @@ Range      <- Char '-' Char / Char
 Char       <- '\\' . / .
 
 LEFTARROW  <- '<-' :Spacing
-RAWARROW   <- '<~' :Spacing
 SLASH      <- '/' :Spacing
 AND        <- '&' :Spacing
 NOT        <- '!' :Spacing
-TILDE      <- '~' :Spacing
 QUESTION   <- '?' :Spacing
 STAR       <- '*' :Spacing
 PLUS       <- '+' :Spacing
@@ -122,7 +118,6 @@ EndOfFile  <- !.
 | `&e`      | And      | 3          | Evaluated       |
 | `!e`      | Not      | 3          | Evaluated       |
 | `:e`      | Bind     | 3          | Evaluated       |
-| `~e`      | Raw      | 3          | Evaluated       |
 | `e1 e2`   | Sequence | 2          | Sequence        |
 | `e1 / e2` | Choice   | 1          | Expression      |
 
@@ -221,7 +216,6 @@ a:[abc]             # abcd     'a'
 a:A                 # abcd     'abc'
 a:B                 # abcd     ['a', 'b', 'c']
 a:.*                # abcd     ['a', 'b', 'c']
-a:(~.*)             # abcd     'abcd'
 a:("a" / A)         # abcd     ['a']
 a:C                 # abcd     'abc'
 
@@ -230,12 +224,6 @@ A <- "abc"
 B <- "a" "b" "c"
 C <- A
 ```
-
-### Raw
-
-`~e`
-
-<https://github.com/PhilippeSigaud/Pegged>
 
 ### Sequence
 

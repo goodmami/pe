@@ -20,9 +20,7 @@ from pe.grammar import (
     Nonterminal,
     And,
     Not,
-    Raw,
     Bind,
-    Evaluate,
     Rule,
     Grammar,
 )
@@ -64,13 +62,9 @@ def _inline(g, defn, visited):
         return And(_inline(g, args[0], visited))
     elif op == Operator.NOT:
         return Not(_inline(g, args[0], visited))
-    elif op == Operator.RAW:
-        return Raw(_inline(g, args[0], visited))
     elif op == Operator.BND:
         name, d = args
         return Bind(_inline(g, d, visited), name=name)
-    elif op == Operator.EVL:
-        return Evaluate(_inline(g, args[0], visited))
     elif op == Operator.RUL:
         return Rule(_inline(g, args[0], visited), action=args[1])
     else:
@@ -105,13 +99,9 @@ def _merge(g, defn):
         return And(_merge(g, args[0]))
     elif op == Operator.NOT:
         return Not(_merge(g, args[0]))
-    elif op == Operator.RAW:
-        return Raw(_merge(g, args[0]))
     elif op == Operator.BND:
         name, d = args
         return Bind(_merge(g, d), name=name)
-    elif op == Operator.EVL:
-        return Evaluate(_merge(g, args[0]))
     elif op == Operator.RUL:
         return Rule(_merge(g, args[0]), action=args[1])
     else:
@@ -235,13 +225,9 @@ def _regex(g, defn, structured):
         else:
             return Not(d)
 
-    elif op == Operator.RAW:
-        return Raw(_regex(g, args[0], structured))
     elif op == Operator.BND:
         name, d = args
         return Bind(_regex(g, d, structured), name=name)
-    elif op == Operator.EVL:
-        return Evaluate(_regex(g, args[0], structured))
     elif op == Operator.RUL:
         return Rule(_regex(g, args[0], structured), action=args[1])
     else:

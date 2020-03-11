@@ -10,7 +10,6 @@ from pe.packrat import (
     Repeat as Rpt,
     Lookahead as Look,
     Bind,
-    Raw,
     Sequence as Seq,
     Choice as Chc,
     Rule,
@@ -84,10 +83,6 @@ data = [
 
     (Look, (abc, False), {},  'a',      0, FAIL, None),
     (Look, (abc, False), {},  'd',      0, 0,    ((), {}, None)),
-
-    (Raw, (abseq,), {},       'ab',     0, 2,    (('ab',), {}, 'ab')),
-    (Raw, (Rpt(abc),), {},    'abab',   0, 4,    (('abab',), {}, 'abab')),
-    (Raw, (abseq,), {},       'ba',     0, FAIL, None),
 
     (Bind, (abc,), {},        'a',      0, 1,    ((), {}, None)),
     (Bind, (abc,), {},        'd',      0, FAIL, None),

@@ -5,7 +5,7 @@ Packrat Parsing
 """
 
 from typing import (
-    Union, Tuple, Sequence, Dict, Callable, Pattern)
+    Union, Tuple, Sequence as SeqType, Set, Dict, Callable, Pattern)
 import re
 from collections import defaultdict
 
@@ -15,11 +15,12 @@ from pe.core import (
     ParseError,
     Match,
     Expression,
+    evaluate,
     Definition,
     Grammar,
 )
 
-_MatchResult = Tuple[int, Sequence, Union[Dict, None]]
+_MatchResult = Tuple[int, SeqType, Union[Dict, None]]
 Memo = Dict[int, Dict[int, _MatchResult]]
 
 #: Number of string positions that can be cached at one time.
@@ -95,18 +96,22 @@ class Sequence(_Expr):
     value_type = ValueType.VARIADIC
 
     def __init__(self, *expressions: _Expr):
-        self.expressions = expressions
+        self.expressions = list(_pair_bindings(expressions))
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         args = []
         kwargs = {}
-        for expression in self.expressions:
-            end, _args, _kwargs = expression._match(s, pos, memo)
+        for bind, expr in self.expressions:
+            end, _args, _kwargs = expr._match(s, pos, memo)
             if end < 0:
                 return FAIL, _args, None
-            args.extend(_args)
-            if _kwargs:
-                kwargs.update(_kwargs)
+            if bind is not None:
+                if _kwargs:
+                    kwargs.update(_kwargs)
+                if bind:
+                    kwargs[bind] = evaluate(_args, expr.value_type)
+                else:
+                    args.extend(_args)
             pos = end
         return pos, args, kwargs
 
@@ -209,21 +214,6 @@ class Lookahead(_Expr):
 
 # Value-changing Expressions
 
-class Raw(_Expr):
-
-    __slots__ = 'expression',
-    value_type = ValueType.MONADIC
-
-    def __init__(self, expression: _Expr):
-        self.expression = expression
-
-    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
-        end, args, kwargs = self.expression._match(s, pos, memo)
-        if end < 0:
-            return FAIL, args, None
-        return end, (s[pos:end],), None
-
-
 class Bind(_Expr):
 
     __slots__ = 'expression', 'name',
@@ -240,45 +230,12 @@ class Bind(_Expr):
             return FAIL, args, None
         name = self.name
         if name:
-            value_type = expr.value_type
             if not kwargs:
                 kwargs = {}
-            if value_type == ValueType.NILADIC:
-                kwargs[name] = None
-            elif value_type == ValueType.MONADIC:
-                kwargs[name] = args[0]
-            elif value_type == ValueType.VARIADIC:
-                kwargs[name] = args
-            else:
-                raise Error(
-                    'cannot bind {expr!r} with value type {value_type!r}')
-        return end, (), kwargs
-
-
-class Evaluate(_Expr):
-
-    __slots__ = 'expression',
-    value_type = ValueType.MONADIC
-
-    def __init__(self, expression: _Expr):
-        self.expression = expression
-
-    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
-        expr = self.expression
-        value_type = expr.value_type
-        end, args, kwargs = expr._match(s, pos, memo)
-        if end < 0:
-            return FAIL, args, None
-        if value_type == ValueType.NILADIC:
-            arg = None
-        elif value_type == ValueType.MONADIC:
-            arg = args[0]
-        elif value_type == ValueType.VARIADIC:
-            arg = args
+            kwargs[name] = evaluate(args, expr.value_type)
         else:
-            raise Error(
-                f'cannot evaluate {expr!r} with value type {value_type!r}')
-        return end, [args], None
+            kwargs = None
+        return end, (), kwargs
 
 
 # Recursion and Rules
@@ -423,12 +380,8 @@ def _def_to_expr(_def: Definition, defns, exprs):
         return Lookahead(_def_to_expr(args[0], defns, exprs), True)
     elif op == Operator.NOT:
         return Lookahead(_def_to_expr(args[0], defns, exprs), False)
-    elif op == Operator.RAW:
-        return Raw(_def_to_expr(args[0], defns, exprs))
     elif op == Operator.BND:
         return Bind(_def_to_expr(args[1], defns, exprs), name=args[0])
-    elif op == Operator.EVL:
-        return Evaluate(_def_to_expr(args[0], defns, exprs))
     elif op == Operator.SEQ:
         return Sequence(*[_def_to_expr(e, defns, exprs) for e in args[0]])
     elif op == Operator.CHC:
@@ -457,3 +410,11 @@ def _make_parse_error(s, pos, failures):
                       lineno=lineno,
                       offset=pos - start,
                       text=line)
+
+
+def _pair_bindings(expressions):
+    for expr in expressions:
+        if isinstance(expr, Bind):
+            yield (expr.name, expr.expression)
+        else:
+            yield (False, expr)

@@ -20,8 +20,6 @@ class Operator(enum.Enum):
     AND = _auto()  # (AND, (expr,))
     NOT = _auto()  # (NOT, (expr,))
     BND = _auto()  # (BND, (name, expr))
-    EVL = _auto()  # (EVL, (expr,))
-    RAW = _auto()  # (RAW, (expr))
     SEQ = _auto()  # (SEQ, (exprs,))
     CHC = _auto()  # (CHC, (exprs,))
     RUL = _auto()  # (RUL, (expr, action))
