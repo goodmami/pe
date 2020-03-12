@@ -95,12 +95,10 @@ def test_objects():
 def test_recursion():
     i = 1
     j = 1001
-    passed = True
     while True:
         try:
             _match(('[' * i) + (']' * i))
         except RecursionError:
-            passed = False
             j = i
             i = int(i / 2)
             if i <= 1:
@@ -110,7 +108,8 @@ def test_recursion():
                 break
             i += int((j - i) / 2)
     _match(('[' * i) + (']' * i))
-    assert passed, f'failed at recursion depth {i}'
+    print(f'maximum recursion depth: {i}')
+    assert i > 100, f'failed at recursion depth {i}'
 
 
 if __name__ == '__main__':

@@ -25,8 +25,8 @@ The syntax is defined as follows::
   Expression <- Sequence (:SLASH Sequence)*
   Sequence   <- Evaluated*
   Evaluated  <- prefix:Prefix? Quantified
-  Prefix     <- AND / NOT / Binding
-  Binding    <- Identifier? ':' :Spacing
+  Prefix     <- AND / NOT / Binding / COLON
+  Binding    <- Identifier ':' :Spacing
   Quantified <- Primary quantifier:Quantifier?
   Quantifier <- QUESTION / STAR / PLUS
   Primary    <- Name / Group / Literal / Class / DOT
@@ -43,12 +43,20 @@ The syntax is defined as follows::
 
   Class      <- :'[' ( !']' Range )* :']' :Spacing
   Range      <- Char '-' Char / Char
-  Char       <- '\\' . / .
+  Char       <- '\\' [tnvfr"'-\[\\\]]
+              / '\\' Oct Oct? Oct?
+              / '\\' 'x' Hex Hex
+              / '\\' 'u' Hex Hex Hex Hex
+              / '\\' 'U' Hex Hex Hex Hex Hex Hex Hex Hex
+              / !'\\' .
+  Oct        <- [0-7]
+  Hex        <- [0-9a-fA-F]
 
   LEFTARROW  <- '<-' Spacing
   SLASH      <- '/' Spacing
   AND        <- '&' Spacing
   NOT        <- '!' Spacing
+  COLON      <- ':' Spacing
   QUESTION   <- '?' Spacing
   STAR       <- '*' Spacing
   PLUS       <- '+' Spacing
@@ -66,6 +74,7 @@ The syntax is defined as follows::
 from typing import Union, Pattern, Callable
 import ast
 
+import pe
 from pe.constants import Operator, Flag
 from pe.core import Error, Expression, Definition, Grammar
 from pe.packrat import PackratParser
@@ -161,6 +170,10 @@ def Not(expression: _Defn):
     return Definition(Operator.NOT, (_validate(expression),))
 
 
+def Discard(expression: _Defn):
+    return Definition(Operator.DIS, (_validate(expression),))
+
+
 def Bind(expression: _Defn, name: str = None):
     return Definition(Operator.BND, (name, _validate(expression),))
 
@@ -172,7 +185,7 @@ def Rule(expression: _Defn, action: Callable):
 def _make_literal(*xs):
     s = ''.join(xs)
     # TODO: proper unescaping
-    return Literal(s.replace('\\\\', '\\'))
+    return Literal(pe.unescape(s))
 
 
 def _make_quantified(primary, quantifier=None):
@@ -199,9 +212,11 @@ def _make_evaluated(quantified, prefix=None):
         return And(quantified)
     elif prefix == '!':
         return Not(quantified)
+    elif prefix == ':':
+        return Discard(quantified)
     elif prefix.endswith(':'):
         name = prefix[:-1]
-        return Bind(quantified, name=(name or None))
+        return Bind(quantified, name=name)
     else:
         raise Error(f'invalid prefix: {prefix!r}')
 
@@ -255,7 +270,19 @@ _DOT        = Sequence('.', _Spacing)
 
 # Non-recursive patterns
 _Operator   = Sequence(_Spacing, Bind(_LEFTARROW))
-_Char       = Choice(Sequence('\\', Dot()), Dot())
+_Special    = Class('-tnvfr"\'[]\\\\')
+_Oct        = Class('0-7')
+_Hex        = Class('0-9a-fA-F')
+_Octal      = Sequence(_Oct, Optional(_Oct), Optional(_Oct))
+_UTF8       = Sequence('x', _Hex, _Hex)
+_UTF16      = Sequence('u', _Hex, _Hex, _Hex, _Hex)
+_UTF32      = Sequence('U', _Hex, _Hex, _Hex, _Hex, _Hex, _Hex, _Hex, _Hex)
+_Char       = Choice(Sequence('\\', Choice(_Special,
+                                           _Octal,
+                                           _UTF8,
+                                           _UTF16,
+                                           _UTF32)),
+                     Sequence(Not('\\'), Dot()))
 _Range      = Choice(Sequence(_Char, '-', _Char), _Char)
 _Class      = Sequence(
     Bind('['),

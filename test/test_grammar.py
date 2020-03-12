@@ -20,6 +20,7 @@ from pe.grammar import (
     And,
     Not,
     Bind,
+    Discard,
 )
 
 
@@ -97,10 +98,14 @@ def test_Not():
 
 
 def test_Bind():
-    assert Bind(Dot()) == Def(Op.BND, (None, Def(Op.DOT, ())))
     assert Bind(Dot(), name='x') == Def(Op.BND, ('x', Def(Op.DOT, ())))
     assert Bind('foo') == Bind(Literal('foo'))
     assert Bind('foo', name='bar') == Bind(Literal('foo'), name='bar')
+
+
+def test_Discard():
+    assert Discard(Dot()) == Def(Op.DIS, (Def(Op.DOT, ()),))
+    assert Discard('foo') == Discard(Literal('foo'))
 
 
 def test_loads_dot():
@@ -112,6 +117,18 @@ def test_loads_literal():
     assert loads('"foo"') == Literal('foo')
     from pe.grammar import _parser
     assert loads('"foo"  # comment') == Literal('foo')
+    assert loads('"\\t"') == Literal('\t')
+    assert loads('"\\n"') == Literal('\n')
+    assert loads('"\\v"') == Literal('\v')
+    assert loads('"\\f"') == Literal('\f')
+    assert loads('"\\r"') == Literal('\r')
+    assert loads('"\\""') == Literal('"')
+    assert loads("'\\''") == Literal("'")
+    assert loads("'\\-'") == Literal("-")
+    assert loads("'\\['") == Literal("[")
+    assert loads("'\\\\'") == Literal("\\")
+    assert loads("'\\]'") == Literal("]")
+    # TODO: octal, utf8, utf16, utf32, escape errors
 
 
 def test_loads_class():
@@ -160,11 +177,16 @@ def test_loads_not():
 
 
 def test_loads_bind():
-    assert loads(':"a"') == Bind('a')
-    assert loads(':"a"  # comment') == Bind('a')
     assert loads('x:"a"') == Bind('a', name='x')
     assert loads('x:"a"  # comment') == Bind('a', name='x')
-    assert loads('x :"a"') == Sequence(Nonterminal('x'), Bind('a'))
+    assert loads('x: "a"') == Bind('a', name='x')
+
+
+def test_loads_discard():
+    assert loads(':"a"') == Discard('a')
+    assert loads(':"a"  # comment') == Discard('a')
+    assert loads('x :"a"') == Sequence(Nonterminal('x'), Discard('a'))
+    assert loads('x : "a"') == Sequence(Nonterminal('x'), Discard('a'))
 
 
 def Grm(dfns):

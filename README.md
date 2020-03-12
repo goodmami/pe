@@ -1,9 +1,9 @@
 # <img src="docs/logo.png" width="60" alt="pe logo" /> Parsing Expressions
 
-**pe** is a library for parsing expressions, including parsing
-expression grammars (PEGs). It aims to join the expressive power of
-parsing expressions with the familiarity of regular expressions.
-For example:
+**pe** is a library for parsing expressions, including [parsing
+expression grammars] (PEGs). It aims to join the expressive power of
+parsing expressions with the familiarity of regular expressions.  For
+example:
 
 ``` python
 >>> import pe
@@ -13,42 +13,42 @@ For example:
 '"escaped \\"string\\""'
 ```
 
+[parsing expression grammars]: https://en.wikipedia.org/wiki/Parsing_expression_grammar
 
-## Syntax Quick Reference
+## Syntax Overview
 
 **pe** is backward compatible with standard PEG syntax and it is
 conservative with extensions.
 
 ```regex
-# basic terms
-.           # any single character
-"abc"       # literal
-'abc'       # literal
-[abc]       # character class
-[^abc]      # negated character class
+# terminals
+.            # any single character
+"abc"        # string literal
+'abc'        # string literal
+[abc]        # character class
 
 # repeating expressions
-e           # exactly one
-e?          # zero or one (optional)
-e*          # zero or more
-e+          # one or more
+e            # exactly one
+e?           # zero or one (optional)
+e*           # zero or more
+e+           # one or more
 
 # combining expressions
-e1 e2       # sequence of e1 and e2
-e1 | e2     # ordered choice of e1 and e2
-(e)         # subexpression
+e1 e2        # sequence of e1 and e2
+e1 / e2      # ordered choice of e1 and e2
+(e)          # subexpression
 
 # lookahead
-&e          # positive lookahead
-!e          # negative lookahead
+&e           # positive lookahead
+!e           # negative lookahead
 
 # (extension) binding
-:e          # discard result after match
-name:e      # bind e to name
+:e           # discard result after match
+name:e       # bind result of e to 'name'
 
 # grammars
-Name = ...  # define a rule named 'Name'
-... = Name  # refer to rule named 'Name'
+Name <- ...  # define a rule named 'Name'
+... <- Name  # refer to rule named 'Name'
 ```
 
 ## Matching Inputs with Parsing Expressions
@@ -56,18 +56,18 @@ Name = ...  # define a rule named 'Name'
 When a parsing expression matches an input, it returns a `Match`
 object, which is similar to those of Python's
 [re](https://docs.python.org/3/library/re.html) module for regular
-expressions. The default value of a match is the substring the
+expressions. The default value of a match is the substrings the
 expression matched.
 
 ```python
 >>> e = pe.compile(r'[0-9] [.] [0-9]')
 >>> m = e.match('1.4')
 >>> m.groups()
-['1.4']
+('1', '.', '4')
 >>> m.groupdict()
 {}
 >>> m.value()
-'1.4'
+('1', '.', '4')
 ```
 
 ### Value bindings
@@ -81,11 +81,11 @@ associating it with a name that is made available in the
 >>> e = pe.compile(r'[0-9] x:[.] [0-9]')
 >>> m = e.match('1.4')
 >>> m.groups()
-['1', '4']
+('1', '4')
 >>> m.groupdict()
 {'x': '.'}
 >>> m.value()
-'1'
+('1', '4')
 ```
 
 ### Actions
@@ -96,18 +96,26 @@ Actions are functions that are called on a match as follows:
 action(*match.groups(), **match.groupdict())
 ```
 
-The return value of the action becomes the value of the expression.
+While you can define your own functions that follow this signature,
+**pe** provides some helper functions for common operations, such as
+`pack(func)`, which packs the `*args` into a list and calls
+`func(arglist)`, or `join(func, sep='')` which joins all `*args` into
+a string with `sep.join(args)` and calls `func(argstring)`.
+
+The return value of the action becomes the value of the
+expression. Note that the return value of `Match.groups()` is always
+an iterable while `Match.value()` can return a single object.
 
 ```python
->>> e = pe.compile(r'[0-9] :[.] [0-9]',
-...                action=lambda a, b: (int(a), int(b)))
+>>> from pe.actions import join
+>>> e = pe.compile(r'[0-9] [.] [0-9]', action=join(float))
 >>> m = e.match('1.4')
 >>> m.groups()
-[(1, 4)]
+(1.4,)
 >>> m.groupdict()
 {}
 >>> m.value()
-(1, 4)
+1.4
 ```
 
 ## Similar Projects

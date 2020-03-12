@@ -82,7 +82,14 @@ Literal    <- :['] ~( !['] Char )* :['] :Spacing
 
 Class      <- :'[' ~( !']' Range )* :']' :Spacing
 Range      <- Char '-' Char / Char
-Char       <- '\\' . / .
+Char       <- '\\' [tnvfr"'-\[\\\]]
+            / '\\' Oct Oct? Oct?
+            / '\\' 'x' Hex Hex
+			/ '\\' 'u' Hex Hex Hex Hex
+			/ '\\' 'U' Hex Hex Hex Hex Hex Hex Hex Hex
+			/ .
+Oct        <- [0-7]
+Hex        <- [0-9a-fA-F]
 
 LEFTARROW  <- '<-' :Spacing
 SLASH      <- '/' :Spacing
@@ -287,7 +294,7 @@ The following ASCII punctuation characters, in addition to
 not necessarily inside [string literals](#literal) or [character
 classes](#class); for these see below):
 
-    ! " # & ' ( ) * + - . / : ? [ \ ] _
+    ! " # & ' ( ) * + . / : ? [ \ ] _
 
 Special characters inside [string literals](#literal) and [character
 classes](#class) are different. For both, the `\` character is used
@@ -297,13 +304,12 @@ escaped:
 
 - `'` in single-quoted string literals
 - `"` in double-quoted string literals
-- `[` and `]` inside character classes, as well as `-` in most
-  positions
+- `[` and `]` inside character classes
 
 The other ASCII punctuation characters are currently unused but are
 reserved in expressions for potential future uses:
 
-    $ % , ; < = > @ ` { | } ~
+    $ % , - ; < = > @ ` { | } ~
 
 
 ### Whitespace
@@ -352,6 +358,11 @@ escape sequences or schemes are allowed:
 - `\v`: vertical tab
 - `\f`: form feed
 - `\r`: carriage return
+- `\"`: `"` character
+- `\'`: `'` character
+- `\[`: `[` character
+- `\]`: `]` character
+- `\\`: `\` character
 - `\N`, `\NN`, `\NNN`: octal sequence of one to three octal digits; the
   maximum value is `\777`; leading zeros are permitted; the value
   denotes a unicode character and not a byte
@@ -359,9 +370,8 @@ escape sequences or schemes are allowed:
 - `\uNNNN`: UTF-16 character sequence of exactly 4 hexadecimal digits
 - `\UNNNNNNNN`: UTF-32 character sequence of exactly 8 hexadecimal
   digits
-- `\c`: literal character `c` for all characters that are not in the
-  set `t n v f r 0 1 2 3 4 5 6 7 x u U`; this includes escape
-  sequences such as `\"`, `\'`, `\[`, `\]`, `\-`, and `\\`
+
+All other escape sequences are invalid.
 
 Note that for UTF-8 and UTF-16, a single code-point may require more
 than one escape sequence. For all others, one escape sequence
@@ -434,10 +444,26 @@ the union of all ranges.
 It is invalid if a range separated by `-` has a first character with a
 value higher than the second character.
 
-The `[`, `]`, `-`, and `\` characters are special inside a character
-class and must be escaped if they are used literally, however the `-`
-character may be used unescaped if it is the first character in the
-range (e.g., `[-abc]`).
+The `[`, `]`, and `\` characters are special inside a character class
+and must be escaped if they are used literally. The `-` character must
+be escaped if it is meant literally in a position that would otherwise
+describe a range between two characters. Valid positions for the
+literal usage are as follows:
+
+- at the beginning of the character class (e.g., `[-a-z]` matches `-`
+  or `a` through `z`)
+- at the end of a character class (e.g., `[a-z-]` matches `a` through
+  `z` or `-`)
+- immediately after a range (`[a-z-_]` matches `a` through `z` or `-`
+  or `_`, `[a-z--/]` matches `a` through `z` or `-` through `/`)
+- as the second character of a range (`[*--/]` matches `*` through `-`
+  or `/`)
+
+If the `-` is meant literally in a character class, it is recommended
+to be placed as the first character to avoid confusion. Additionally,
+it is recommended that it be escaped when describing a range from or
+to the `-` character as the `--` sequence is a set-difference operator
+in regular expression engines which may undergird the **pe** parser.
 
 
 ### Nonterminal

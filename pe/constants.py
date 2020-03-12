@@ -19,6 +19,7 @@ class Operator(enum.Enum):
     RPT = _auto()  # (RPT, (expr, min, max,))
     AND = _auto()  # (AND, (expr,))
     NOT = _auto()  # (NOT, (expr,))
+    DIS = _auto()  # (DIS, (expr,))
     BND = _auto()  # (BND, (name, expr))
     SEQ = _auto()  # (SEQ, (exprs,))
     CHC = _auto()  # (CHC, (exprs,))

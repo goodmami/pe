@@ -366,7 +366,10 @@ def _def_to_expr(_def: Definition, defns, exprs):
     elif op == Operator.LIT:
         return Terminal(re.escape(args[0]))
     elif op == Operator.CLS:
-        return Terminal(f'[{args[0]}]')  # TODO: validate ranges
+        s = (args[0]
+             .replace('[', '\\[')
+             .replace(']', '\\]'))
+        return Terminal(f'[{s}]')  # TODO: validate ranges
     elif op == Operator.RGX:
         return Terminal(args[0], flags=args[1])
     elif op == Operator.OPT:
@@ -380,6 +383,8 @@ def _def_to_expr(_def: Definition, defns, exprs):
         return Lookahead(_def_to_expr(args[0], defns, exprs), True)
     elif op == Operator.NOT:
         return Lookahead(_def_to_expr(args[0], defns, exprs), False)
+    elif op == Operator.DIS:
+        return Bind(_def_to_expr(args[0], defns, exprs), name=None)
     elif op == Operator.BND:
         return Bind(_def_to_expr(args[1], defns, exprs), name=args[0])
     elif op == Operator.SEQ:

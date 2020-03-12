@@ -15,10 +15,10 @@ def pack(func):
     return call_func
 
 
-def join(func):
+def join(func, sep=''):
 
     def call_func(*args, **kwargs):
-        return func(''.join(args), **kwargs)
+        return func(sep.join(args), **kwargs)
 
     return call_func
 
