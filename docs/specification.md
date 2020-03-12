@@ -5,63 +5,53 @@ specification with a description of the semantic effect of parsing.
 Any **pe** grammar without extended features or rule actions should
 parse exactly as a standard PEG grammar.
 
+**Contents**
+
+- [Quick Reference](#quick-reference)
+- [Grammar Syntax](#grammar-syntax)
+- [Expression Types and Precedence](#expression-types-and-precedence)
+- [Expression Values and Behavior](#expression-values-and-behavior)
+- [Parsing Preliminaries](#parsing-preliminaries)
+- [Operators](#operators)
+
 ## Quick Reference
 
-```julia
-# Operator  Name      Value     Description
-
-### Primary Terms (p)
-  .       # Dot       Monadic   Match any single character
-  'abc'   # Literal   Monadic   Match the string 'abc'
-  "abc"   # Literal   Monadic   Match the string 'abc'
-  [abc]   # Class     Monadic   Match any one character in 'abc'
-  A       # Symbol    Deferred  Match the expression in rule A
-  (e)     # Group     Deferred  Match the subexpression e
-
-### Quantified Terms (q)
-  p       #           Deferred  Match primary term p exactly once
-  p?      # Optional  Variadic  Match p zero or one times
-  p*      # Star      Variadic  Match p zero or more times
-  p+      # Plus      Variadic  Match p one or more times
-
-### Value-changing Terms (v)
-  q       #           Deferred  Match quantified term q
-  &q      # And       Niladic   Succeed if q matches; consume no input; return no value
-  !q      # Not       Niladic   Fail if q matches; consume no input; return no value
-  name:q  # Bind      Niladic   Match q and bind its value to 'name'
-  :q      # Bind      Niladic   Match q and discard its value
-
-### Sequences (s)
-  v       #           Deferred  evaluated term v
-  v s     # Sequence  Variadic  v then sequence s
-
-### Choices (e)
-  s       #           Deferred  sequence s
-  s / e   # Choice    Variadic  e only if s failed
-
-### Grammars (r)
-  A <- e  # Rule      Deferred  parsing expression e
-```
+The following is a brief description of the available operators and
+their behavior. More detailed information is available in the
+following sections.
 
 
-## Expression Value Types
-
-- Niladic: expression emits no value
-- Monadic: expression always emits a single value
-- Variadic: expression emits any number (zero or more) values
-- Deferred: value type depends on a resolved expression
-
-Note that the *variadic* type is a generalization which defines an
-expression's behavior in **pe**; some expressions always emit one or
-more value while some always emit a fixed number. A *monadic*
-expression (e.g., `[ab]`) may therefore behave differently from a
-*variadic* expression with a single value (e.g., `'a' / 'b'`).
+| [Syntax] | [Operator] | [Type]        | [Value]    | Description                                           |
+| -------  | ---------- | ------------- | ---------- | ----------------------------------------------------- |
+| `.`      | [Dot]      | [Primary]     | [Monadic]  | Match any single character                            |
+| `'abc'`  | [Literal]  | [Primary]     | [Monadic]  | Match the string 'abc'                                |
+| `"abc"`  | [Literal]  | [Primary]     | [Monadic]  | Match the string 'abc'                                |
+| `[abc]`  | [Class]    | [Primary]     | [Monadic]  | Match any one character in 'abc'                      |
+| `A`      | [Symbol]   | [Primary]     | [Deferred] | Match the expression in definition A                  |
+| `(e)`    | [Group]    | [Primary]     | [Deferred] | Match the subexpression e                             |
+| `p`      | (default)  | [Quantified]  | [Deferred] | Match primary term p exactly once                     |
+| `p?`     | [Optional] | [Quantified]  | [Variadic] | Match p zero or one times                             |
+| `p*`     | [Star]     | [Quantified]  | [Variadic] | Match p zero or more times                            |
+| `p+`     | [Plus]     | [Quantified]  | [Variadic] | Match p one or more times                             |
+| `q`      | (default)  | [Valued]      | [Deferred] | Match quantified term q; consume input; emit value    |
+| `&q`     | [And]      | [Valued]      | [Niladic]  | Succeed if q matches; consume no input; emit no value |
+| `!q`     | [Not]      | [Valued]      | [Niladic]  | Fail if q matches; consume no input; emit no value    |
+| `name:q` | [Bind]     | [Valued]      | [Niladic]  | Match q; consume input; bind value to 'name'          |
+| `:q`     | [Bind]     | [Valued]      | [Niladic]  | Match q; consume input; emit no value                 |
+| `v`      | (default)  | [Sequential]  | [Deferred] | Match valued term v                                   |
+| `v s`    | [Sequence] | [Sequential]  | [Variadic] | Match sequential term s only if v succeeded           |
+| `s`      | (default)  | [Applicative] | [Deferred] | Match sequential term s                               |
+| (none)   | [Rule]     | [Applicative] | [Monadic]  | Match sequential term s, apply any defined action     |
+| `a`      | (default)  | [Prioritized] | [Deferred] | Match applicative term a                              |
+| `a / e`  | [Choice]   | [Prioritized] | [Variadic] | Match prioritized term e only if a failed             |
+| `A <- e` | [Grammar]  | [Definitive]  | [Deferred] | Match prioritized term e for start symbol A           |
 
 
 ## Grammar Syntax
+[Syntax]: #grammar-syntax
 
-The following is a formal description of **pe**'s PEG syntax describing
-itself. This PEG is based on Bryan Ford's original
+The following is a formal description of **pe**'s PEG syntax
+describing itself. This PEG is based on Bryan Ford's original
 [paper][PEG].
 
 
@@ -72,8 +62,8 @@ Grammar    <- Definition+
 Definition <- Identifier :Operator Expression
 Operator   <- Spacing LEFTARROW
 Expression <- Sequence (SLASH Sequence)*
-Sequence   <- Evaluated*
-Evaluated  <- Prefix? Quantified
+Sequence   <- Valued*
+Valued     <- Prefix? Quantified
 Prefix     <- AND / NOT / Binding
 Binding    <- Identifier? ':' :Spacing
 Quantified <- Primary Quantifier?
@@ -113,30 +103,130 @@ EndOfFile  <- !.
 ```
 
 
-## Operator Precedence
+## Expression Types and Precedence
 
-| Operator         | Name     | Precedence | Expression Type |
-| ---------------- | -------- | ---------- | --------------- |
-| `.`              | Dot      | 5          | Primary         |
-| `" "` or `' '`   | Literal  | 5          | Primary         |
-| `[ ]`            | Class    | 5          | Primary         |
-| `Abc`            | Name     | 5          | Primary         |
-| `(e)`            | Group    | 5          | Primary         |
-| `e?`             | Optional | 4          | Quantified      |
-| `e*`             | Star     | 4          | Quantified      |
-| `e+`             | Plus     | 4          | Quantified      |
-| `&e`             | And      | 3          | Evaluated       |
-| `!e`             | Not      | 3          | Evaluated       |
-| `:e` or `name:e` | Bind     | 3          | Evaluated       |
-| `e1 e2`          | Sequence | 2          | Sequence        |
-| `e1 / e2`        | Choice   | 1          | Expression      |
-| `Abc <- e`       | Rule     | 0          | Rule            |
+### Expression Types
+[Type]: #expression-types-and-precedence
+
+##### Primary
+[Primary]: #primary
+
+Primary expressions include terminals ([Dot], [Literal], or [Class]),
+[nonterminals](#nonterminal), and [grouped](#group) expressions.  They
+are the only type that may be quantified. All terminals are
+[monadic](#monadic) while nonterminals and grouped expressions have a
+[deferred](#deferred) value type.
+
+##### Quantified
+[Quantified]: #quantified
+
+Quantified expressions indicate how many times they must occur for the
+expression to match. The default (unannotated) quantified expression
+must occur exactly once. The [Optional], [Star], and [Plus] operators
+change this number. All non-default quantified expressions are
+[variadic](#variadic).
+
+##### Valued
+[Valued]: #valued
+
+Valued expressions specify the semantic effects of the expression,
+such as whether it consumes input and if it emits, binds, or discards
+the expression's value. The default (unannotated) valued expression
+consumes the input of its match and emits its value, unless its
+quantified or primary expression consumes no input or emits no
+value. The [And], [Not], [Bind], and [Discard] operators change this
+behavior. All non-default valued expressions are [niladic](#niladic).
+
+##### Sequential
+[Sequential]: #sequential
+
+Sequential expressions match multiple valued expressions in sequence.
+The default (singular) sequential expression has a
+[deferred](#deferred) value type, while all sequential expressions
+with multiple subexpressions are [variadic](#variadic).
+
+##### Applicative
+[Applicative]: #applicative
+
+Applicative expressions match a single sequential expression and apply
+an action on its result. The default (with no action) applicative
+expression has a [deferred](#deferred) value type while one with an
+action is [monadic](#monadic).
+
+##### Prioritized
+[Prioritized]: #prioritized
+
+Prioritized expressions match multiple applicative expressions as a
+prioritized choice; only the first expression to match is used. The
+default (singular) prioritized expression has a [deferred](#deferred)
+value type, while all prioritized expressions with multiple
+subexpressions are [variadic](#variadic).
 
 
-## Semantic Values
+##### Definitive
+[Definitive]: #definitive
+
+Definitive expressions are associated with a nonterminal symbol in a
+[Grammar]. Definitive expressions have a [deferred](#deferred) value
+type.
+
+### Operator Precedence
+
+| [Syntax]         | [Operator] | Precedence | Expression Type |
+| ---------------- | ---------- | ---------- | --------------- |
+| `.`              | [Dot]      | 6          | [Primary]       |
+| `" "` or `' '`   | [Literal]  | 6          | [Primary]       |
+| `[ ]`            | [Class]    | 6          | [Primary]       |
+| `Abc`            | [Name]     | 6          | [Primary]       |
+| `(e)`            | [Group]    | 6          | [Primary]       |
+| `e?`             | [Optional] | 5          | [Quantified]    |
+| `e*`             | [Star]     | 5          | [Quantified]    |
+| `e+`             | [Plus]     | 5          | [Quantified]    |
+| `&e`             | [And]      | 4          | [Valued]        |
+| `!e`             | [Not]      | 4          | [Valued]        |
+| `:e` or `name:e` | [Bind]     | 4          | [Valued]        |
+| `e1 e2`          | [Sequence] | 3          | [Sequential]    |
+| (none)           | [Rule]     | 2          | [Applicative]   |
+| `e1 / e2`        | [Choice]   | 1          | [Prioritized]   |
+| `Abc <- e`       | [Grammar]  | 0          | [Definitive]    |
 
 
-## Preliminaries
+## Expression Values and Behavior
+
+##### Niladic
+[Niladic]: #niladic
+
+Expressions with a niladic value type emit no value.
+
+##### Monadic
+[Monadic]: #monadic
+
+Expressions with a monadic value type always emit a single value.
+
+##### Variadic
+[Variadic]: #variadic
+
+Expressions with a variadic value type emit any number of (zero or
+more) values.
+
+Note that the *variadic* type is a generalization which defines an
+expression's behavior in **pe**. For example, a [Sequence] with a
+known number of terminals is better described as "polyadic" (or even
+"dyadic", "triadic", etc.), but its behavior would not differ from a
+true variadic expression (with an a priori unknown number of values)
+such as a [Star] or [Plus]. A *monadic* expression (e.g., `[ab]`) may
+therefore behave differently from a *variadic* expression with a
+single value (e.g., `'a' / 'b'`).
+
+##### Deferred
+[Deferred]: #deferred
+
+Expressions with a deferred value type must resolve the value types of
+their nonterminals or embedded expressions in order to determine their
+own value type.
+
+
+## Parsing Preliminaries
 
 
 ### Identifiers
@@ -235,16 +325,17 @@ Note that for UTF-8 and UTF-16, a single code-point may require more
 than one escape sequence. For all others, one escape sequence
 corresponds to a single character.
 
-## Expressions
+## Operators
 
-This document defines the expressions available to **pe**.
+This document defines the operators available in **pe**.
 
 ### Dot
+[Dot]: #dot
 
 - Notation: `.`
 - Function: Dot()
-- Type: **Primary**
-- Value: **Monadic**
+- Type: [Primary]
+- Value: [Monadic]
 
 The Dot operator always succeeds if there is any remaining input and
 fails otherwise. It consumes a single [character](#characters) and
@@ -252,11 +343,12 @@ emits the same character as its value.
 
 
 ### Literal
+[Literal]: #literal
 
 - Notation: `'abc'` or `"abc"`
 - Function: Literal(*string*)
-- Type: **Primary**
-- Value: **Monadic**
+- Type: [Primary]
+- Value: [Monadic]
 
 A Literal operator (also called a *string literal* or *string*)
 succeeds if the input at the current position matches the given string
@@ -274,11 +366,12 @@ expression more explicit and, thus, more clear.
 
 
 ### Class
+[Class]: #class
 
 - Notation: `[abc]`
 - Function: Class(*ranges*)
-- Type: **Primary**
-- Value: **Monadic**
+- Type: [Primary]
+- Value: [Monadic]
 
 The Class operator (also called a *character class*) succeeds if the
 next [character](#characters) of input is in a set of characters
@@ -305,11 +398,12 @@ range (e.g., `[-abc]`).
 
 
 ### Nonterminal
+[Nonterminal]: #nonterminal
 
 - Notation: `Abc`
 - Function: Nonterminal(*name*)
-- Type: **Primary**
-- Value: **Deferred**
+- Type: [Primary]
+- Value: [Deferred]
 
 A Nonterminal operator is given by an [identifier](#identifiers) in an
 expression. It corresponds to a grammar [rule](#rule) of the same
@@ -333,11 +427,12 @@ A2 <- (e)
 
 
 ### Group
+[Group]: #group
 
 - Notation: `(e)`
-- Function: none
-- Type: **Primary**
-- Value: **Deferred**
+- Function: (none)
+- Type: [Primary]
+- Value: [Deferred]
 
 Groups do not actually refer to a construct in **pe**, but they are used
 to aid in the parsing of a grammar. This is helpful when one wants to
@@ -363,11 +458,12 @@ following function calls:
 
 
 ### Optional
+[Optional]: #optional
 
 - Notation: `e?`
 - Function: Optional(*expression*)
-- Type: **Quantified**
-- Value: **Variadic**
+- Type: [Quantified]
+- Value: [Variadic]
 
 The Optional operator succeeds whether the given expression succeeds
 or fails. If the given expression succeeds, the emitted value and
@@ -379,11 +475,12 @@ remaining input.
 
 
 ### Star
+[Star]: #star
 
 - Notation: `e*`
 - Function: Star(*expression*)
-- Type: **Quantified**
-- Value: **Variadic**
+- Type: [Quantified]
+- Value: [Variadic]
 
 The Star operator succeeds if the given expression succeeds zero or
 more times. The accumulated values of the given expression are
@@ -394,11 +491,12 @@ input.
 
 
 ### Plus
+[Plus]: #plus
 
 - Notation: `e+`
 - Function: Plus(*expression*)
-- Type: **Quantified**
-- Value: **Variadic**
+- Type: [Quantified]
+- Value: [Variadic]
 
 The Plus operator succeeds if the given expression succeeds one or
 more times. The accumulated values of the given expression are
@@ -406,11 +504,12 @@ emitted.
 
 
 ### And
+[And]: #and
 
 - Notation: `&e`
 - Function: And(*expression*)
-- Type: **Evaluated**
-- Value: **Niladic**
+- Type: [Valued]
+- Value: [Niladic]
 
 The And operator (also called *positive lookahead*) succeeds when the
 given expression succeeds at the current position in the input, but no
@@ -419,11 +518,12 @@ consume input) and no values are emitted.
 
 
 ### Not
+[Not]: #not
 
 - Notation: `!e`
 - Function: Not(*expression*)
-- Type: **Evaluated**
-- Value: **Niladic**
+- Type: [Valued]
+- Value: [Niladic]
 
 The Not operator (also called *negative lookahead*) succeeds when the
 given expression fails at the current position in the input, but no
@@ -431,17 +531,17 @@ input is consumed and no values are emitted.
 
 
 ### Bind
+[Bind]: #bind
 
 - Notation: `:e` or `name:e`
-- Function: Bind(*expression*, *name*=None)
-- Type: **Evaluated**
-- Value: **Niladic**
+- Function: Bind(*expression*, *name*)
+- Type: [Valued]
+- Value: [Niladic]
 
 The Bind operator succeeds when the given expression succeeds at the
-current line of input, but no values are emitted. Unlike the
-[And](#and) operator, matching input is consumed. If a name is given,
-the value of the given expression is associated with the name for the
-duration of a rule.
+current line of input. It emits no values, but the value of the given
+expression is bound to the given name. Unlike the [And](#and)
+operator, matching input is consumed.
 
 The bound value depends on the value type of the bound expression:
 
@@ -466,12 +566,26 @@ B <- "a" "b" "c"
 C <- A
 ```
 
+### Discard
+[Discard]: #discard
+
+- Notation: `:e`
+- Function: Discard(*expression*)
+- Type: [Valued]
+- Value: [Niladic]
+
+The Discard operator succeeds when the given expression succeeds at the
+current line of input, but no values are emitted. Unlike the
+[And](#and) operator, matching input is consumed.
+
+
 ### Sequence
+[Sequence]: #sequence
 
 - Notation: `e e`
 - Function: Sequence(*expression*, ...)
-- Type: **Sequence**
-- Value: **Variadic**
+- Type: [Sequential]
+- Value: [Variadic]
 
 The Sequence operator succeeds when all of its given expressions
 succeed, in turn, from the current position in the input. After an
@@ -485,29 +599,13 @@ A Sequence with no given expressions is invalid. A Sequence with one
 given expression is reduced to the given expression only.
 
 
-### Choice
-
-- Notation: `e / e`
-- Function: Choice(*expression*, ...)
-- Type: **Expression**
-- Value: **Variadic**
-
-The Choice operator succeeds when any of its given expressions
-succeeds. If a given expression fails, the next given expression is
-attempted at the current position in the input. If a given expression
-succeeds, the Choice operator succeeds and immediately emits the given
-expression's value and consumes its input.
-
-A Choice with no given expressions is invalid. A Choice with one given
-expression is reduced to the given expression only.
-
-
 ### Rule
+[Rule]: #rule
 
 - Notation: `Abc <- e`
 - Function: Rule(*expression*, *action*=None)
-- Type: **Rule**
-- Value: **Deferred**
+- Type: [Applicative]
+- Value: [Monadic]
 
 A Rule is often associated with a name in the grammar, but the rule
 itself is just a wrapper around a given expression that provides some
@@ -525,5 +623,33 @@ name in the grammar, anonymized rules may appear inside of
 expressions. This situation can occur by defining expressions using
 the API instead of the notation, or as the result of inlining
 optimizations.
+
+
+### Choice
+[Choice]: #choice
+
+- Notation: `e / e`
+- Function: Choice(*expression*, ...)
+- Type: [Prioritized]
+- Value: [Variadic]
+
+The Choice operator succeeds when any of its given expressions
+succeeds. If a given expression fails, the next given expression is
+attempted at the current position in the input. If a given expression
+succeeds, the Choice operator succeeds and immediately emits the given
+expression's value and consumes its input.
+
+A Choice with no given expressions is invalid. A Choice with one given
+expression is reduced to the given expression only.
+
+
+### Grammar
+[Grammar]: #grammar
+
+- Notation: `Abc <- e`
+- Function: Rule(*expression*, *action*=None)
+- Type: [Definitive]
+- Value: [Deferred]
+
 
 [PEG]: https://bford.info/pub/lang/peg
