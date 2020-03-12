@@ -1,4 +1,4 @@
-# <img src="docs/_static/logo.png" width="60" alt="pe logo" /> Parsing Expressions
+# <img src="docs/logo.png" width="60" alt="pe logo" /> Parsing Expressions
 
 **pe** is a library for parsing expressions, including parsing
 expression grammars (PEGs). It aims to join the expressive power of

@@ -21,30 +21,30 @@ their behavior. More detailed information is available in the
 following sections.
 
 
-| [Syntax] | [Operator] | [Type]        | [Value]    | Description                                           |
-| -------  | ---------- | ------------- | ---------- | ----------------------------------------------------- |
-| `.`      | [Dot]      | [Primary]     | [Monadic]  | Match any single character                            |
-| `'abc'`  | [Literal]  | [Primary]     | [Monadic]  | Match the string 'abc'                                |
-| `"abc"`  | [Literal]  | [Primary]     | [Monadic]  | Match the string 'abc'                                |
-| `[abc]`  | [Class]    | [Primary]     | [Monadic]  | Match any one character in 'abc'                      |
-| `A`      | [Symbol]   | [Primary]     | [Deferred] | Match the expression in definition A                  |
-| `(e)`    | [Group]    | [Primary]     | [Deferred] | Match the subexpression e                             |
-| `p`      | (default)  | [Quantified]  | [Deferred] | Match primary term p exactly once                     |
-| `p?`     | [Optional] | [Quantified]  | [Variadic] | Match p zero or one times                             |
-| `p*`     | [Star]     | [Quantified]  | [Variadic] | Match p zero or more times                            |
-| `p+`     | [Plus]     | [Quantified]  | [Variadic] | Match p one or more times                             |
-| `q`      | (default)  | [Valued]      | [Deferred] | Match quantified term q; consume input; emit value    |
-| `&q`     | [And]      | [Valued]      | [Niladic]  | Succeed if q matches; consume no input; emit no value |
-| `!q`     | [Not]      | [Valued]      | [Niladic]  | Fail if q matches; consume no input; emit no value    |
-| `name:q` | [Bind]     | [Valued]      | [Niladic]  | Match q; consume input; bind value to 'name'          |
-| `:q`     | [Bind]     | [Valued]      | [Niladic]  | Match q; consume input; emit no value                 |
-| `v`      | (default)  | [Sequential]  | [Deferred] | Match valued term v                                   |
-| `v s`    | [Sequence] | [Sequential]  | [Variadic] | Match sequential term s only if v succeeded           |
-| `s`      | (default)  | [Applicative] | [Deferred] | Match sequential term s                               |
-| (none)   | [Rule]     | [Applicative] | [Monadic]  | Match sequential term s, apply any defined action     |
-| `a`      | (default)  | [Prioritized] | [Deferred] | Match applicative term a                              |
-| `a / e`  | [Choice]   | [Prioritized] | [Variadic] | Match prioritized term e only if a failed             |
-| `A <- e` | [Grammar]  | [Definitive]  | [Deferred] | Match prioritized term e for start symbol A           |
+| [Syntax] | [Operator]    | [Type]        | [Value Type] | Description                                             |
+| -------  | ------------- | ------------- | ------------ | -----------------------------------------------------   |
+| `.`      | [Dot]         | [Primary]     | [Monadic]    | Match any single character                              |
+| `'abc'`  | [Literal]     | [Primary]     | [Monadic]    | Match the string 'abc'                                  |
+| `"abc"`  | [Literal]     | [Primary]     | [Monadic]    | Match the string 'abc'                                  |
+| `[abc]`  | [Class]       | [Primary]     | [Monadic]    | Match any one character in 'abc'                        |
+| `A`      | [Nonterminal] | [Primary]     | [Deferred]   | Match the expression in definition `A`                  |
+| `(e)`    | [Group]       | [Primary]     | [Deferred]   | Match the subexpression `e`                             |
+| `p`      | (default)     | [Quantified]  | [Deferred]   | Match primary term `p` exactly once                     |
+| `p?`     | [Optional]    | [Quantified]  | [Variadic]   | Match `p` zero or one times                             |
+| `p*`     | [Star]        | [Quantified]  | [Variadic]   | Match `p` zero or more times                            |
+| `p+`     | [Plus]        | [Quantified]  | [Variadic]   | Match `p` one or more times                             |
+| `q`      | (default)     | [Valued]      | [Deferred]   | Match quantified term `q`; consume input; emit value    |
+| `&q`     | [And]         | [Valued]      | [Niladic]    | Succeed if `q` matches; consume no input; emit no value |
+| `!q`     | [Not]         | [Valued]      | [Niladic]    | Fail if `q` matches; consume no input; emit no value    |
+| `name:q` | [Bind]        | [Valued]      | [Niladic]    | Match `q`; consume input; bind value to 'name'          |
+| `:q`     | [Bind]        | [Valued]      | [Niladic]    | Match `q`; consume input; emit no value                 |
+| `v`      | (default)     | [Sequential]  | [Deferred]   | Match valued term `v`                                   |
+| `v s`    | [Sequence]    | [Sequential]  | [Variadic]   | Match sequential term `s` only if `v` succeeded         |
+| `s`      | (default)     | [Applicative] | [Deferred]   | Match sequential term `s`                               |
+| (none)   | [Rule]        | [Applicative] | [Monadic]    | Match sequential term `s`, apply any defined action     |
+| `a`      | (default)     | [Prioritized] | [Deferred]   | Match applicative term `a`                              |
+| `a / e`  | [Choice]      | [Prioritized] | [Variadic]   | Match prioritized term `e` only if `a` failed           |
+| `A <- e` | [Grammar]     | [Definitive]  | [Deferred]   | Match prioritized term `e` for start symbol `A`         |
 
 
 ## Grammar Syntax
@@ -193,17 +193,20 @@ type.
 
 ## Expression Values and Behavior
 
-##### Niladic
+### Value Types
+[Value Type]: #value-types
+
+#### Niladic
 [Niladic]: #niladic
 
 Expressions with a niladic value type emit no value.
 
-##### Monadic
+#### Monadic
 [Monadic]: #monadic
 
 Expressions with a monadic value type always emit a single value.
 
-##### Variadic
+#### Variadic
 [Variadic]: #variadic
 
 Expressions with a variadic value type emit any number of (zero or
@@ -218,12 +221,51 @@ such as a [Star] or [Plus]. A *monadic* expression (e.g., `[ab]`) may
 therefore behave differently from a *variadic* expression with a
 single value (e.g., `'a' / 'b'`).
 
-##### Deferred
+#### Deferred
 [Deferred]: #deferred
 
 Expressions with a deferred value type must resolve the value types of
 their nonterminals or embedded expressions in order to determine their
 own value type.
+
+
+### Emitted and Bound Values
+
+#### Emitted Values
+[emit]: #emitted-values
+
+An emitted value is one that becomes a primary argument for any
+function applied on a [Rule], or is returned as the value of an
+expression. For instance, the following table shows expressions, their
+inputs, and the value of the expression. Emitted values are "passed
+up" by embedded expressions until they are acted upon (used in a
+function, bound, or discarded).
+
+| Expression   | Input | Value             |
+| ------------ | ----- | ----------------- |
+| `'a'`        | `a`   | `'a'`             |
+| `'a'*`       | `aaa` | `['a', 'a', 'a']` |
+| `'a' 'b'`    | `ab`  | `['a', 'b']`      |
+| `x:'a' 'b'`  | `ab`  | `['b']`           |
+| `x:'a' :'b'` | `ab`  | `[]`              |
+| `x:'a'`      | `a`   | `None`            |
+
+
+#### Bound Values
+[bound]: #bound-values
+
+A bound value is removed from the sequence of emitted values and
+associated with (or "bound to") a name. The mapping of names to bound
+values is "passed up" by embedded expressions until they are used in a
+rule, after which all bound values in the current context are cleared.
+
+| Expression    | Input | Values            | Bound Values        |
+| ------------- | ----- | ----------------- | ------------------- |
+| `'a'`         | `a`   | `'a'`             | `{}`                |
+| `x:'a' 'b'`   | `ab`  | `['b']`           | `{'x': 'a'}`        |
+| `x:'a' :'b'`  | `ab`  | `[]`              | `{'x': 'a'}`        |
+| `x:('a' 'b')` | `ab`  | `None`            | `{'x': ['a', 'b']}` |
+| `x:(&'a')`    | `a`   | `None`            | `{'x': None}`       |
 
 
 ## Parsing Preliminaries
@@ -326,6 +368,7 @@ than one escape sequence. For all others, one escape sequence
 corresponds to a single character.
 
 ## Operators
+[Operator]: #operators
 
 This document defines the operators available in **pe**.
 
