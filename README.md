@@ -127,3 +127,4 @@ an iterable while `Match.value()` can return a single object.
 - [TatSu](https://tatsu.readthedocs.io/en/stable/) (Python)
 - [PEG.js](https://github.com/pegjs/pegjs) (Javascript)
 - [Pegged](https://github.com/PhilippeSigaud/Pegged) (D)
+- [pegen](https://github.com/gvanrossum/pegen) (Python / C)

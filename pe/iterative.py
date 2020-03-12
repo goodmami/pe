@@ -1,4 +1,5 @@
 
+from collections import defaultdict
 import re
 
 from pe.constants import FAIL, Operator
@@ -29,16 +30,18 @@ def match(grammar, s: str, pos: int = 0):
     CHC = Operator.CHC
     RUL = Operator.RUL
 
-    memo = {}
+    memo = defaultdict(dict)
     agenda = [State(grammar[grammar.start], pos)]
     index = 0
     slen = len(s)
     while index >= 0:
         state = agenda[index]
         expr = state.expr
+
         op = expr.op
         args = expr.args
-        print(f'pos: {pos}\tindex: {index}\tstate.i: {state.i}\top: {op}')
+        push = False
+        # print(f'pos: {pos}\tindex: {index}\tstate.i: {state.i}\top: {op}')
 
         if op == RPT:
             i = state.i
@@ -46,12 +49,10 @@ def match(grammar, s: str, pos: int = 0):
             if pos == FAIL:  # item failed, ok if it matched enough
                 if i >= min:
                     pos = agenda[index+1].pos  # use last successful pos
-                index -= 1
             elif i == max:  # repeat finished
-                index -= 1
+                pass
             elif pos >= slen and i < min:  # end of string and not enough
                 pos = FAIL
-                index -= 1
             else:
                 if i == 0:  # starting
                     agenda[index+1:] = [State(subexpr, pos)]
@@ -59,23 +60,27 @@ def match(grammar, s: str, pos: int = 0):
                     next_state = agenda[index+1]
                     next_state.pos = pos
                     next_state.i = 0
-                index += 1
-                continue
+                push = True
 
         elif op == SYM:
-            if pos == FAIL:  # rule failed
-                index -= 1
+            # memoization
+            # _id = id(expr)
+            if pos < 0:
+                pass
+            # elif _id in memo[pos]:
+            #     pos, push = memo[pos][_id]
             else:
                 name = args[0]
                 if state.i:  # rule complete
                     # action = grammar.actions[name]
-                    index -= 1
                     # do something
+                    pass
                 else:  # entering rule
                     subexpr = grammar[name]
                     agenda[index+1:] = [State(subexpr, pos)]
-                    index += 1
-                    continue
+                    push = True
+
+                # memo[pos][_id] = (pos, push)
 
         elif op == CHC:
             i = state.i
@@ -84,32 +89,30 @@ def match(grammar, s: str, pos: int = 0):
             if i == 0 or (pos == FAIL and i < len(subexprs)):
                 pos = state.pos
                 agenda[index+1:] = [State(subexprs[i], pos)]
-                index += 1
-                continue
+                push = True
             else:  # all choices failed or one succeeded
-                index -= 1
+                pass
 
         elif op == SEQ:
-            if pos == FAIL:  # sequence item failed
-                index -= 1
+            if pos < 0:
+                pass
             else:
                 subexprs = args[0]
                 i = state.i
                 if i >= len(subexprs):  # sequence complete
-                    index -= 1
+                    pass
                 else:  # next sequence item
                     agenda[index+1:] = [State(subexprs[i], pos)]
-                    index += 1
-                    continue
+                    push = True
 
         elif op == RGX:
             pattern = re.compile(args[0])
+            # pattern = args[0]
             m = pattern.match(s, pos)
             if m is None:
                 pos = FAIL
             else:
                 pos = m.end()
-            index -= 1
 
         elif op == LIT:
             string = args[0]
@@ -118,7 +121,6 @@ def match(grammar, s: str, pos: int = 0):
                 pos += l
             else:
                 pos = FAIL
-            index -= 1
 
         elif op == CLS:
             chars = args[0]
@@ -129,7 +131,6 @@ def match(grammar, s: str, pos: int = 0):
                     pos = FAIL
             except IndexError:
                 pos = FAIL
-            index -= 1
 
         elif op == DOT:
             try:
@@ -138,82 +139,66 @@ def match(grammar, s: str, pos: int = 0):
                 pos = FAIL
             else:
                 pos = pos + 1
-            index -= 1
 
         elif op == OPT:
             if state.i == 0:
                 agenda[index+1:] = [State(args[0], pos)]
-                index += 1
-                continue
+                push = True
             else:
-                if pos != FAIL:
+                if pos == FAIL:
                     pos = state.pos
-                index -= 1
 
         elif op == AND:
             if state.i == 0:
                 agenda[index+1:] = [State(args[0], pos)]
-                index += 1
-                continue
+                push = True
             else:
                 if pos != FAIL:
                     pos = state.pos
-                index -= 1
 
         elif op == NOT:
             if state.i == 0:
                 agenda[index+1:] = [State(args[0], pos)]
-                index += 1
-                continue
+                push = True
             else:
                 if pos == FAIL:
                     pos = state.pos
                 else:
                     pos = FAIL
-                index -= 1
 
         elif op == BND:
             if state.i == 0:
                 agenda[index+1:] = [State(args[1], pos)]
-                index += 1
-                continue
+                push = True
             else:
                 if pos == FAIL:
                     pos = state.pos
                 else:
                     pos = FAIL
-                index -= 1
 
         elif op == DIS:
             if state.i == 0:
                 agenda[index+1:] = [State(args[0], pos)]
-                index += 1
-                continue
-            else:
-                # if pos == FAIL:
-                #     pos = state.pos
-                # else:
-                #     pos = FAIL
-                index -= 1
+                push = True
 
         elif op == RUL:
-            if pos == FAIL:  # rule failed
-                index -= 1
-            else:
-                if state.i:  # rule complete
-                    # action = grammar.actions[name]
-                    index -= 1
-                    # do something
-                else:  # entering rule
-                    subexpr = args[0]
-                    agenda[index+1:] = [State(subexpr, pos)]
-                    index += 1
-                    continue
+            if pos < 0 or state.i:  # rule complete
+                # action = grammar.actions[name]
+                # do something
+                pass
+            else:  # entering rule
+                subexpr = args[0]
+                agenda[index+1:] = [State(subexpr, pos)]
+                push = True
 
         else:
             raise Error(f'invalid operation: {op!r}')
 
-        agenda[index].i += 1  # increment previous state's tally
+        if push:
+            index += 1
+        else:
+            index -= 1
+            agenda[index].i += 1  # increment previous state's tally
 
     # print(f'done\tpos: {pos}')
 

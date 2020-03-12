@@ -208,7 +208,7 @@ class Lookahead(_Expr):
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         end, args, kwargs = self.expression._match(s, pos, memo)
         if self.polarity ^ (end >= 0):
-            return FAIL, args, None
+            return FAIL, [(self, pos)], None
         return pos, (), None
 
 
