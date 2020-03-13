@@ -19,8 +19,20 @@ example:
 ## Features and Goals
 
 * Grammar notation is backward-compatible with standard PEG
+  - Syntactic extensions should be rare
+  - Instead, a [specification](docs/specification.md) describes semantic extensions
 * Parsers are fast and memory efficient
-* API is intuitive
+  - Currently it beats [Lark](https://github.com/lark-parser/lark) at
+    the JSON task (caveat: just one test is not representative)
+  - The plan is to support C or Cython extensions; [initial
+    tests](https://github.com/goodmami/textpy) are promising
+* API is intuitive and familiar
+  - Modeled on the standard API's `re` module
+* Grammar definitions and parser implementations are separate
+  - Optimizations target the abstract grammar definitions
+  - Multiple parsers are available (currently [packrat](pe/packrat.py)
+    does memoizing recursive descent and [iterative](pe/iterative.py)
+    does a proof-of-concept "iterative descent")
 
 
 ## Syntax Overview
