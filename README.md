@@ -15,6 +15,14 @@ example:
 
 [parsing expression grammars]: https://en.wikipedia.org/wiki/Parsing_expression_grammar
 
+
+## Features and Goals
+
+* Grammar notation is backward-compatible with standard PEG
+* Parsers are fast and memory efficient
+* API is intuitive
+
+
 ## Syntax Overview
 
 **pe** is backward compatible with standard PEG syntax and it is
