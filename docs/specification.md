@@ -79,15 +79,14 @@ IdentCont  <- IdentStart / [0-9]
 
 Literal    <- :['] ~( !['] Char )* :['] :Spacing
             / :["] ~( !["] Char )* :["] :Spacing
-
 Class      <- :'[' ~( !']' Range )* :']' :Spacing
 Range      <- Char '-' Char / Char
 Char       <- '\\' [tnvfr"'-\[\\\]]
             / '\\' Oct Oct? Oct?
             / '\\' 'x' Hex Hex
-			/ '\\' 'u' Hex Hex Hex Hex
-			/ '\\' 'U' Hex Hex Hex Hex Hex Hex Hex Hex
-			/ .
+            / '\\' 'u' Hex Hex Hex Hex
+            / '\\' 'U' Hex Hex Hex Hex Hex Hex Hex Hex
+            / !'\\' .
 Oct        <- [0-7]
 Hex        <- [0-9a-fA-F]
 
