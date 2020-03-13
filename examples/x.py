@@ -6,7 +6,7 @@ from pe.actions import join, pack
 
 X = pe.compile(
     r'''
-    Start   <- Expr EOL? EOF
+    Start   <- Expr (EOL Expr)* EOF
     Expr    <- Term PLUS Expr
              / (Sign Sign)+ Term MINUS Expr
              / Term
@@ -18,7 +18,7 @@ X = pe.compile(
              / Atom
     Atom    <- NAME / NUMBER
     NAME    <- [a-bA-B_] [a-bA-B0-9_]* :Spacing
-    NUMBER  <- '0' / [1-9] [0-9]* :Spacing
+    NUMBER  <- ('0' / [1-9] [0-9]*) :Spacing
     PLUS    <- '+' :Spacing
     MINUS   <- '-' :Spacing
     TIMES   <- '*' :Spacing
@@ -26,7 +26,7 @@ X = pe.compile(
     LPAREN  <- '(' :Spacing
     RPAREN  <- ')' :Spacing
     EOL     <- '\r\n' / [\n\r]
-    EOF     <- !.
+    EOF     <- [ \t\n\v\f\r]* !.
     Spacing <- ' '*
     ''',
     flags=Flag.OPTIMIZE)
