@@ -360,6 +360,7 @@ escape sequences or schemes are allowed:
 - `\r`: carriage return
 - `\"`: `"` character
 - `\'`: `'` character
+- `\-`: `-` character
 - `\[`: `[` character
 - `\]`: `]` character
 - `\\`: `\` character
@@ -619,13 +620,13 @@ The bound value depends on the value type of the bound expression:
 - Variadic: the sequence of values emitted by the variadic expression
 
 ```julia
-# Expression        # Input    # Value of 'a'
+# Expression        # Input    # Bound value of 'a'
 a:.                 # abcd     'a'
 a:"abc"             # abcd     'abc'
 a:[abc]             # abcd     'a'
 a:A                 # abcd     'abc'
 a:B                 # abcd     ['a', 'b', 'c']
-a:.*                # abcd     ['a', 'b', 'c']
+a:.*                # abcd     ['a', 'b', 'c', 'd']
 a:("a" / A)         # abcd     ['a']
 a:C                 # abcd     'abc'
 
@@ -671,7 +672,7 @@ given expression is reduced to the given expression only.
 ### Rule
 [Rule]: #rule
 
-- Notation: `Abc <- e`
+- Notation: (none)
 - Function: Rule(*expression*, *action*=None)
 - Type: [Applicative]
 - Value: [Monadic]
