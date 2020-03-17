@@ -78,15 +78,15 @@ _escapes = {
 _unescapes = dict((e, u) for u, e in _escapes.items())
 
 
-def escape(s: str):
+def escape(string: str):
     """Escape special characters for literals and character classes."""
     return re.sub('(' + '|'.join(map(re.escape, _escapes)) + ')',
                   lambda m: _escapes.get(m.group(0), m.group(0)),
-                  s)
+                  string)
 
 
-def unescape(s: str):
+def unescape(string: str):
     """Unescape special characters for literals and character classes."""
     return re.sub('(' + '|'.join(map(re.escape, _unescapes)) + ')',
                   lambda m: _unescapes.get(m.group(0), m.group(0)),
-                  s)
+                  string)
