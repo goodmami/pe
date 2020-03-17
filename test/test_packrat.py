@@ -1,9 +1,8 @@
 
 import pytest
 
-from pe.constants import FAIL, Operator, Flag
-from pe.core import Grammar
-from pe.grammar import Class
+from pe._constants import FAIL
+from pe.grammar import Class, Grammar
 from pe.packrat import (
     Terminal as Trm,
     Optional as Opt,

@@ -2,7 +2,7 @@
 from typing import Union, List, Dict, Tuple, Callable, NamedTuple, Any
 import textwrap
 
-from pe.constants import FAIL, Operator, ValueType, Flag
+from pe._constants import FAIL, Operator, Adicity, Flag
 
 
 class Error(Exception):
@@ -92,11 +92,11 @@ class Expression:
 
 
 def evaluate(args, value_type):
-    if value_type == ValueType.VARIADIC:
+    if value_type == Adicity.VARIADIC:
         return args
-    elif value_type == ValueType.MONADIC:
+    elif value_type == Adicity.MONADIC:
         return args[0]
-    elif value_type == ValueType.NILADIC:
+    elif value_type == Adicity.NILADIC:
         return None
     else:
         raise Error(f'invalid value type: {value_type!r}')

@@ -72,11 +72,10 @@ The syntax is defined as follows::
 """
 
 from typing import Union, Pattern, Callable
-import ast
 
 import pe
-from pe.constants import Operator, Flag
-from pe.core import Error, Expression, Definition, Grammar
+from pe._constants import Operator, Flag
+from pe._core import Error, Expression, Definition, Grammar
 from pe.packrat import PackratParser
 from pe.actions import constant, first, pack, join
 

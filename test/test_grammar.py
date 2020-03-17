@@ -1,10 +1,8 @@
 
-from pe.constants import Operator as Op
-from pe.core import (
-    Definition as Def,
-    Grammar as Grammar,
-)
+from pe._constants import Operator as Op
 from pe.grammar import (
+    Definition as Def,
+    Grammar,
     loads,
     Dot,
     Literal,

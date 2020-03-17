@@ -1,5 +1,5 @@
 
-from pe.core import Match
+from pe import Match
 from pe.packrat import Terminal, Sequence, Bind
 
 One = Terminal('1')

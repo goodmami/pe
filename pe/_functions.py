@@ -2,24 +2,25 @@
 from typing import Dict, Callable
 import re
 
-from pe.constants import Flag
-from pe.core import Error, Expression, Grammar, Definition
+import pe
+from pe._constants import Flag
+from pe._core import Grammar, Definition
 from pe.grammar import loads
 from pe.packrat import PackratParser
-from pe.optimize import inline, merge, regex
+from pe import (inline, merge, regex)
 
 
 def compile(source,
             action: Callable = None,
             actions: Dict[str, Callable] = None,
             parser: str = 'packrat',
-            flags: Flag = Flag.NONE) -> Expression:
+            flags: Flag = Flag.NONE) -> pe.Expression:
     """Compile the parsing expression or grammar in *source*."""
     parsername = parser.lower()
     if parsername == 'packrat':
         make = PackratParser
     else:
-        raise Error(f'unsupported parser: {parser}')
+        raise pe.Error(f'unsupported parser: {parser}')
     g = loads(source, flags=flags)
     if isinstance(g, Definition):
         g = Grammar({'Start': g})
@@ -28,11 +29,11 @@ def compile(source,
         g.actions[g.start] = action
 
     if flags & Flag.INLINE:
-        g = inline(g)
+        g = inline.optimize(g)
     if flags & Flag.MERGE:
-        g = merge(g)
+        g = merge.optimize(g)
     if flags & Flag.REGEX:
-        g = regex(g)
+        g = regex.optimize(g)
     if flags & Flag.DEBUG:
         for name, defn in g.definitions.items():
             print(name, defn)

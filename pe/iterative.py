@@ -2,8 +2,8 @@
 from collections import defaultdict
 import re
 
-from pe.constants import FAIL, Operator
-from pe.core import Error, Grammar
+from pe._constants import FAIL, Operator
+from pe._core import Error, Grammar
 
 
 def match(grammar, s: str, pos: int = 0):

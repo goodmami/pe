@@ -26,7 +26,7 @@ class Operator(enum.Enum):
     RUL = _auto()  # (RUL, (expr, action))
 
 
-class ValueType(enum.Enum):
+class Adicity(enum.Enum):
     NILADIC = 'niladic'
     MONADIC = 'monadic'
     VARIADIC = 'variadic'

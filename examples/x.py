@@ -1,7 +1,6 @@
 
 
 import pe
-from pe.constants import Flag
 from pe.actions import join, pack
 
 X = pe.compile(
@@ -29,12 +28,26 @@ X = pe.compile(
     EOF     <- [ \t\n\v\f\r]* !.
     Spacing <- ' '*
     ''',
-    flags=Flag.OPTIMIZE)
+    flags=pe.OPTIMIZE)
+
+
+def _match(s):
+    return X.match(s, flags=pe.STRICT|pe.MEMOIZE)
+
+
+def test_x():
+    assert _match('--a-b').end == 5
+    assert _match('1 + 2 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + '
+                  '(((((('
+                  '11 * 12 * 13 * 14 * 15 + 16 * 17 + 18 * 19 * 20'
+                  '))))))')
+    assert _match('2*3 + 4*5*6')
+
 
 if __name__ == '__main__':
     import sys
     print(0, end='')
     for i, line in enumerate(open(sys.argv[1]), 1):
         print(f'\r{i}', end='')
-        X.match(line, flags=Flag.STRICT|Flag.MEMOIZE)
+        X.match(line, flags=pe.STRICT|pe.MEMOIZE)
     print('done')

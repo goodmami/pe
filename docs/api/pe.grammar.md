@@ -1,14 +1,28 @@
 
 # API Reference: pe.grammar
 
+## Functions
+
 pe.grammar.**<a id="pe-grammar-load" href="#pe-grammar-load">load</a>**
 (*source*)
 
 pe.grammar.**<a id="pe-grammar-loads" href="#pe-grammar-loads">loads</a>**
 (*source, flags=pe.NONE*)
 
-pe.grammar.**<a id="pe-grammar-Dot" href="#pe-grammar-Dot">Dot</a>**
-(**)
+
+## Classes
+
+*class* pe.core.**<a id="Definition" href="#Definition">Definition</a>**
+(*op, args*)
+
+
+*class* pe.core.**<a id="Grammar" href="#Grammar">Grammar</a>**
+(*definitions=None, actions=None, start='Start'*)
+
+
+## Operator Functions
+
+pe.grammar.**<a id="pe-grammar-Dot" href="#pe-grammar-Dot">Dot</a>**()
 
 pe.grammar.**<a id="pe-grammar-Literal" href="#pe-grammar-Literal">Literal</a>**
 (*string*)

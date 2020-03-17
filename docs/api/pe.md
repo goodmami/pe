@@ -1,19 +1,73 @@
 
 # API Reference: pe
 
-pe.**<a id="match" href="#match">match</a>**
-(*pattern, string, action=None, actions=None, parser='packrat', flags=0*)
+## Functions
 
 pe.**<a id="compile" href="#compile">compile</a>**
-(*source, action=None, actions=None, parser='packrat', flags=0*)
+(*source, actions=None, parser='packrat', flags=pe.NONE*)
+
+Compile the parsing expression or grammar defined in *source* and
+return the [Expression](#Expression) object.
+
+
+pe.**<a id="match" href="#match">match</a>**
+(*pattern, string, actions=None, parser='packrat', flags=pe.NONE*)
+
+Match the parsing expression defined in *pattern* against the input
+*string*.
+
 
 pe.**<a id="escape" href="#escape">escape</a>**
 (*string*)
 
+
+
 pe.**<a id="unescape" href="#unescape">unescape</a>**
 (*string*)
 
-*class* pe.**<a id="error" href="#error">Error</a>**()
 
-Alias for [pe.core.Error](pe.core.md#Error).
+## Classes
 
+*class* pe.core.**<a id="Match" href="#Match">Match</a>**
+(*string, pos, end, pe, args, kwargs*)
+
+
+*class* pe.core.**<a id="Expression" href="#Expression">Expression</a>**
+
+
+pe.core.Expression.**<a id="Expression-match" href="#Expression-match">match</a>**
+(*s, pos=0, flags=pe.NONE*)
+
+
+## Exceptions
+
+*class* pe.**<a id="Error" href="#Error">Error</a>**()
+
+
+*class* pe.core.**<a id="ParseError" href="#ParseError">ParseError</a>**
+(*message=None, filename=None, lineno=None, offset=None, text=None*)
+
+
+## Flags
+
+The following constant values affect grammar compilation or matching
+behavior.
+
+pe.**<a id="NONE" href="#NONE">NONE</a>**
+
+The flag used when no flags are set.
+
+
+pe.**<a id="DEBUG" href="#DEBUG">DEBUG</a>**
+
+Display the compiled grammar for debugging.
+
+
+pe.**<a id="STRICT" href="#STRICT">STRICT</a>**
+
+Raise an error on parse failures rather than returning `None`.
+
+
+pe.**<a id="MEMOIZE" href="#MEMOIZE">MEMOIZE</a>**
+
+Use memoization if the parser allows it.

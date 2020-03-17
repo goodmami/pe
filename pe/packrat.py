@@ -9,8 +9,8 @@ from typing import (
 import re
 from collections import defaultdict
 
-from pe.constants import FAIL, Operator, ValueType, Flag
-from pe.core import (
+from pe._constants import FAIL, Operator, Adicity, Flag
+from pe._core import (
     Error,
     ParseError,
     Match,
@@ -72,7 +72,7 @@ class Terminal(_Expr):
     """An atomic expression."""
 
     __slots__ = '_re',
-    value_type = ValueType.MONADIC
+    value_type = Adicity.MONADIC
 
     def __init__(self, pattern: str, flags: int = 0):
         self._re = re.compile(pattern, flags=flags)
@@ -91,7 +91,7 @@ class Terminal(_Expr):
 class Sequence(_Expr):
 
     __slots__ = 'expressions',
-    value_type = ValueType.VARIADIC
+    value_type = Adicity.VARIADIC
 
     def __init__(self, *expressions: _Expr):
         self.expressions = list(_pair_bindings(expressions))
@@ -117,7 +117,7 @@ class Sequence(_Expr):
 class Choice(_Expr):
 
     __slots__ = 'expressions',
-    value_type = ValueType.VARIADIC
+    value_type = Adicity.VARIADIC
 
     def __init__(self, *expressions: _Expr):
         self.expressions = expressions
@@ -135,7 +135,7 @@ class Choice(_Expr):
 class Repeat(_Expr):
 
     __slots__ = 'expression', 'min', 'max',
-    value_type = ValueType.VARIADIC
+    value_type = Adicity.VARIADIC
 
     def __init__(self,
                  expression: _Expr,
@@ -179,7 +179,7 @@ class Repeat(_Expr):
 class Optional(_Expr):
 
     __slots__ = 'expression',
-    value_type = ValueType.VARIADIC
+    value_type = Adicity.VARIADIC
 
     def __init__(self, expression: _Expr):
         self.expression = expression
@@ -197,7 +197,7 @@ class Lookahead(_Expr):
     """An expression that may match but consumes no input."""
 
     __slots__ = 'expression', 'polarity',
-    value_type = ValueType.NILADIC
+    value_type = Adicity.NILADIC
 
     def __init__(self, expression: _Expr, polarity: bool):
         self.expression = expression
@@ -215,7 +215,7 @@ class Lookahead(_Expr):
 class Bind(_Expr):
 
     __slots__ = 'expression', 'name',
-    value_type = ValueType.NILADIC
+    value_type = Adicity.NILADIC
 
     def __init__(self, expression: _Expr, name: str = None):
         self.expression = expression
@@ -302,11 +302,11 @@ class Rule(_Expr):
     def finalize(self):
         if self._expression:
             if self._action is not None:
-                self.value_type = ValueType.MONADIC
+                self.value_type = Adicity.MONADIC
             else:
                 self.value_type = self._expression.value_type
         else:
-            self.value_type = ValueType.DEFERRED
+            self.value_type = Adicity.DEFERRED
 
 
 class PackratParser(Expression):

@@ -1,6 +1,5 @@
 
 import pe
-from pe.constants import Flag
 from pe.actions import first, constant, pack, join
 
 
@@ -42,12 +41,12 @@ Json = pe.compile(
         'FALSE': constant(False),
         'NULL': constant(None),
     },
-    flags=Flag.OPTIMIZE
+    flags=pe.OPTIMIZE
 )
 
 
 def _match(s):
-    return Json.match(s, flags=Flag.STRICT|Flag.MEMOIZE).value()
+    return Json.match(s, flags=pe.STRICT|pe.MEMOIZE).value()
 
 def test_numbers():
     assert _match('0') == 0
