@@ -72,19 +72,17 @@ class Terminal(_Expr):
     """An atomic expression."""
 
     __slots__ = '_re',
+    value_type = ValueType.MONADIC
 
     def __init__(self, pattern: str, flags: int = 0):
         self._re = re.compile(pattern, flags=flags)
-        if self._re.groups == 0:
-            self.value_type = ValueType.MONADIC
-        else:
-            self.value_type = ValueType.VARIADIC
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
         m = self._re.match(s, pos)
         if not m:
             return FAIL, [(self, pos)], None
-        args = m.groups() if self._re.groups else [m.group(0)]
+        # args = m.groups() if self._re.groups else [m.group(0)]
+        args = [m.group(0)]
         return m.end(), args, None
 
 

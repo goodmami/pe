@@ -73,16 +73,16 @@ def test_regex():
             grm({'A': Sequence(Regex('a'), Nonterminal('B')),
                  'B': Regex('[bc]')}))
     assert (rload(r'A <- "a"* [bc]+') ==
-            grm({'A': Regex(r'(?:a)*(?:[bc])+')}))
+            grm({'A': Regex(r'(?=(?P<_1>(?:a)*))(?P=_1)(?=(?P<_2>(?:[bc])+))(?P=_2)')}))
     assert (rload(r'A <- "a" ([bc] / "d")*') ==
-            grm({'A': Regex(r'a(?:(?:[bc]|d))*')}))
+            grm({'A': Regex(r'a(?=(?P<_2>(?:(?=(?P<_1>[bc]|d))(?P=_1))*))(?P=_2)')}))
 
     assert (rload(r'A <- !"a" .') ==
             grm({'A': Regex(r'[^a]')}))
     assert (rload(r'A <- ![abc] .') ==
             grm({'A': Regex(r'[^abc]')}))
     assert (rload(r'A <- (![abc] .)*') ==
-            grm({'A': Regex(r'(?:[^abc])*')}))
+            grm({'A': Regex(r'(?=(?P<_1>(?:[^abc])*))(?P=_1)')}))
 
     assert pe.compile('A <- "a" :"b" "c"',
                       flags=Flag.NONE).match('abc').value() == ('a', 'c')

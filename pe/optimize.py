@@ -4,7 +4,7 @@ Grammar optimization.
 """
 
 import re
-from itertools import groupby
+from itertools import groupby, count
 
 from pe.constants import Operator
 from pe.grammar import (
@@ -141,14 +141,15 @@ def _merge_chc(g, defn):
 def regex(g: Grammar):
     """Combine adjacent terms into a single regular expression."""
     defs = {}
+    grpid = count(start=1)
     for name in g.definitions:
-        defs[name] = _regex(g, g[name], True)
+        defs[name] = _regex(g, g[name], True, grpid)
     return Grammar(definitions=defs,
                    actions=g.actions,
                    start=g.start)
 
 
-def _regex(g, defn, structured):
+def _regex(g, defn, structured, grpid):
     op = defn.op
     args = defn.args
 
@@ -173,7 +174,7 @@ def _regex(g, defn, structured):
                 _exprs.append(Regex(f'[^{d.args[0].args[0]}]'))
                 i += 2
             else:
-                _exprs.append(_regex(g, d, structured))
+                _exprs.append(_regex(g, d, structured, grpid))
                 i += 1
         # combine adjacent regexes
         _exprs2 = []
@@ -185,41 +186,45 @@ def _regex(g, defn, structured):
         return Sequence(*_exprs2)
 
     elif op == Operator.CHC:
-        exprs = [_regex(g, d, structured) for d in args[0]]
+        exprs = [_regex(g, d, structured, grpid) for d in args[0]]
         _exprs = []
         for k, g in groupby(exprs, key=lambda d: d.op):
             if k == Operator.RGX:
+                gid = f'_{next(grpid)}'
                 _exprs.append(
-                    Regex('(?:' + '|'.join(d.args[0] for d in g) + ')'))
+                    Regex(f'(?=(?P<{gid}>'
+                          + '|'.join(d.args[0] for d in g)
+                          + f'))(?P={gid})'))
             else:
                 _exprs.extend(g)
         return Choice(*_exprs)
 
     elif op == Operator.RPT:
         d, min, max = args
-        d = _regex(g, d, structured)
+        d = _regex(g, d, structured, grpid)
         if d.op == Operator.RGX:
             q = _quantifier_re(min, max)
-            return Regex('(?:' + d.args[0] + f'){q}')
+            gid = f'_{next(grpid)}'
+            return Regex(f'(?=(?P<{gid}>(?:' + d.args[0] + f'){q}))(?P={gid})')
         else:
             return Repeat(d, min, max)
 
     elif op == Operator.OPT:
-        d = _regex(g, args[0], structured)
+        d = _regex(g, args[0], structured, grpid)
         if d.op == Operator.RGX:
             return Regex(f'(?:{d.args[0]})?')
         else:
             return Optional(d)
 
     elif op == Operator.AND:
-        d = _regex(g, args[0], structured)
+        d = _regex(g, args[0], structured, grpid)
         if d.op == Operator.RGX:
             return Regex(f'(?={d.args[0]})')
         else:
             return And(d)
 
     elif op == Operator.NOT:
-        d = _regex(g, args[0], structured)
+        d = _regex(g, args[0], structured, grpid)
         if d.op == Operator.RGX:
             return Regex(f'(?!{d.args[0]})')
         else:
@@ -227,9 +232,9 @@ def _regex(g, defn, structured):
 
     elif op == Operator.BND:
         name, d = args
-        return Bind(_regex(g, d, structured), name=name)
+        return Bind(_regex(g, d, structured, grpid), name=name)
     elif op == Operator.RUL:
-        return Rule(_regex(g, args[0], structured), action=args[1])
+        return Rule(_regex(g, args[0], structured, grpid), action=args[1])
     else:
         return defn
 
