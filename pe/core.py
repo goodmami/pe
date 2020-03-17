@@ -1,5 +1,6 @@
 
 from typing import Union, List, Dict, Tuple, Callable, NamedTuple, Any
+import textwrap
 
 from pe.constants import FAIL, Operator, ValueType, Flag
 
@@ -62,7 +63,11 @@ class Match:
         self._kwargs = kwargs
 
     def __repr__(self):
-        return f'<Match object of: {self.pe!s} >'
+        pos, end = self.pos, self.end
+        string = self.string[pos:end]
+        substr = textwrap.shorten(string, width=20, placeholder='...')
+        return (f'<{type(self).__name__} object;'
+                f' span=({pos}, {end}), match={substr!r}>')
 
     def groups(self):
         return tuple(self._args or ())
