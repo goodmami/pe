@@ -339,16 +339,20 @@ def _grammar_to_packrat(grammar):
     actns = grammar.actions
     exprs = {}
     for name, _def in defns.items():
+        expr = _def_to_expr(_def, defns, exprs)
+        # TODO: this logic could be improved
         if name not in exprs:
-            expr = _def_to_expr(_def, defns, exprs)
             if name in actns:
-                expr = Rule(name, expr, action=actns[name])
+                if not isinstance(expr, Rule):
+                    expr = Rule(name, expr)
+                expr.action = actns[name]
             exprs[name] = expr
         else:
             expr = exprs[name]
-            if isinstance(expr, Rule) and expr.expression is None:
-                expr.expression = _def_to_expr(_def, defns, exprs)
-            expr.action = actns.get(name)
+            assert isinstance(expr, Rule)
+            expr.expression = _def_to_expr(_def, defns, exprs)
+            expr.action = actns.get(name, expr.action)
+
     # ensure all symbols are defined
     for name, expr in exprs.items():
         if expr is None or isinstance(expr, Rule) and expr.expression is None:
