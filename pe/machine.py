@@ -16,10 +16,11 @@ from pe._core import Error, Grammar, Expression, Match
 
 class MachineOp(enum.Flag):
     PASS = enum.auto()
-    BRANCH = enum.auto()
+    BRANCH = enum.auto()  # aka Choice
     COMMIT = enum.auto()
-    UPDATE = enum.auto()
-    RESTORE = enum.auto()
+    UPDATE = enum.auto()  # aka PartialCommit
+    RESTORE = enum.auto() # aka BackCommit
+    FAILTWICE = enum.auto()
     CALL = enum.auto()
     RETURN = enum.auto()
     JUMP = enum.auto()
@@ -48,14 +49,15 @@ class MachineParser(Expression):
               s: str,
               pos: int = 0,
               flags: Flag = Flag.NONE) -> Union[Match, None]:
-        PASS    = MachineOp.PASS
-        BRANCH  = MachineOp.BRANCH
-        COMMIT  = MachineOp.COMMIT
-        UPDATE  = MachineOp.UPDATE
-        RESTORE = MachineOp.RESTORE
-        CALL    = MachineOp.CALL
-        RETURN  = MachineOp.RETURN
-        JUMP    = MachineOp.JUMP
+        PASS      = MachineOp.PASS
+        BRANCH    = MachineOp.BRANCH
+        COMMIT    = MachineOp.COMMIT
+        UPDATE    = MachineOp.UPDATE
+        RESTORE   = MachineOp.RESTORE
+        FAILTWICE = MachineOp.FAILTWICE
+        CALL      = MachineOp.CALL
+        RETURN    = MachineOp.RETURN
+        JUMP      = MachineOp.JUMP
         RGX = Operator.RGX
         LIT = Operator.LIT
         CLS = Operator.CLS
@@ -138,6 +140,10 @@ class MachineParser(Expression):
                 _, i = stack.pop()
                 idx += offset
                 continue
+
+            elif op == FAILTWICE:
+                _, i = stack.pop()
+                idx = -1
 
             elif op == RETURN:
                 idx, _ = stack.pop()
@@ -235,10 +241,9 @@ def _parsing_instructions(defn):
 
     elif op == Operator.NOT:
         pi = _parsing_instructions(args[0])
-        return [(MachineOp.BRANCH, len(pi) + 3),
+        return [(MachineOp.BRANCH, len(pi) + 2),
                 *pi,
-                (MachineOp.COMMIT, 1),
-                (FAIL,)]
+                (MachineOp.FAILTWICE,)]
 
     elif op == Operator.DIS:
         return _parsing_instructions(args[0])
