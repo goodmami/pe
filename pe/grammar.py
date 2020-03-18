@@ -103,10 +103,7 @@ def Literal(string: str):
 
 
 def Class(chars: str):
-    if len(chars) == 1:
-        return Definition(Operator.LIT, (chars,))
-    else:
-        return Definition(Operator.CLS, (chars,))
+    return Definition(Operator.CLS, (chars,))
 
 
 def Regex(pattern: Union[str, Pattern], flags: int = 0):
