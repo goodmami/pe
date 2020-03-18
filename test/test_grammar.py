@@ -10,7 +10,6 @@ from pe.grammar import (
     Regex,
     Sequence,
     Choice,
-    Repeat,
     Optional,
     Star,
     Plus,
@@ -58,26 +57,18 @@ def test_Choice():
     assert Choice(Choice('a', 'b'), 'c') == Choice('a', 'b', 'c')
 
 
-def test_Repeat():
-    assert Repeat(Dot()) == Def(Op.RPT, (Def(Op.DOT, ()), 0, -1))
-    assert Repeat(Dot(), min=1) == Def(Op.RPT, (Def(Op.DOT, ()), 1, -1))
-    assert Repeat(Dot(), max=3) == Def(Op.RPT, (Def(Op.DOT, ()), 0, 3))
-    assert Repeat(Dot(), min=1, max=3) == Def(Op.RPT, (Def(Op.DOT, ()), 1, 3))
-    assert Repeat('foo') == Repeat(Literal('foo'))
-
-
 def test_Optional():
     assert Optional(Dot()) == Def(Op.OPT, (Def(Op.DOT, ()),))
     assert Optional('foo') == Optional(Literal('foo'))
 
 
 def test_Star():
-    assert Star(Dot()) == Def(Op.RPT, (Def(Op.DOT, ()), 0, -1))
+    assert Star(Dot()) == Def(Op.STR, (Def(Op.DOT, ()),))
     assert Star('foo') == Star(Literal('foo'))
 
 
 def test_Plus():
-    assert Plus(Dot()) == Def(Op.RPT, (Def(Op.DOT, ()), 1, -1))
+    assert Plus(Dot()) == Def(Op.PLS, (Def(Op.DOT, ()),))
     assert Plus('foo') == Plus(Literal('foo'))
 
 

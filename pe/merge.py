@@ -11,7 +11,6 @@ from pe.grammar import (
     Sequence,
     Regex,
     Choice,
-    Repeat,
     Optional,
     Star,
     Plus,
@@ -30,7 +29,8 @@ CLS = Operator.CLS
 RGX = Operator.RGX
 SYM = Operator.SYM
 OPT = Operator.OPT
-RPT = Operator.RPT
+STR = Operator.STR
+PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
 DIS = Operator.DIS
@@ -59,11 +59,12 @@ def _merge(g, defn):
     elif op == CHC:
         return _merge_chc(g, defn)
 
-    elif op == RPT:
-        d, min, max = args
-        return Repeat(_merge(g, d), min, max)
     elif op == OPT:
         return Optional(_merge(g, args[0]))
+    elif op == STR:
+        return Star(_merge(g, args[0]))
+    elif op == PLS:
+        return Plus(_merge(g, args[0]))
     elif op == AND:
         return And(_merge(g, args[0]))
     elif op == NOT:

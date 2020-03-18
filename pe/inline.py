@@ -11,7 +11,6 @@ from pe.grammar import (
     Sequence,
     Regex,
     Choice,
-    Repeat,
     Optional,
     Star,
     Plus,
@@ -29,7 +28,8 @@ CLS = Operator.CLS
 RGX = Operator.RGX
 SYM = Operator.SYM
 OPT = Operator.OPT
-RPT = Operator.RPT
+STR = Operator.STR
+PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
 DIS = Operator.DIS
@@ -66,11 +66,12 @@ def _inline(g, defn, visited):
         return Sequence(*(_inline(g, d, visited) for d in args[0]))
     elif op == CHC:
         return Choice(*(_inline(g, d, visited) for d in args[0]))
-    elif op == RPT:
-        d, min, max = args
-        return Repeat(_inline(g, d, visited), min, max)
     elif op == OPT:
         return Optional(_inline(g, args[0], visited))
+    elif op == STR:
+        return Star(_inline(g, args[0], visited))
+    elif op == PLS:
+        return Plus(_inline(g, args[0], visited))
     elif op == AND:
         return And(_inline(g, args[0], visited))
     elif op == NOT:

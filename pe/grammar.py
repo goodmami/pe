@@ -141,20 +141,16 @@ def Choice(*expressions: _Defn):
         return Definition(Operator.CHC, (_exprs,))
 
 
-def Repeat(expression: _Defn, min: int = 0, max: int = -1):
-    return Definition(Operator.RPT, (_validate(expression), min, max))
-
-
 def Optional(expression: _Defn):
     return Definition(Operator.OPT, (_validate(expression),))
 
 
 def Star(expression: _Defn):
-    return Definition(Operator.RPT, (_validate(expression), 0, -1))
+    return Definition(Operator.STR, (_validate(expression),))
 
 
 def Plus(expression: _Defn):
-    return Definition(Operator.RPT, (_validate(expression), 1, -1))
+    return Definition(Operator.PLS, (_validate(expression),))
 
 
 def Nonterminal(name: str):

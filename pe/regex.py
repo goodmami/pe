@@ -14,7 +14,6 @@ from pe.grammar import (
     Sequence,
     Regex,
     Choice,
-    Repeat,
     Optional,
     Star,
     Plus,
@@ -33,7 +32,8 @@ CLS = Operator.CLS
 RGX = Operator.RGX
 SYM = Operator.SYM
 OPT = Operator.OPT
-RPT = Operator.RPT
+STR = Operator.STR
+PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
 DIS = Operator.DIS
@@ -104,22 +104,28 @@ def _regex(g, defn, structured, grpid):
                 _exprs.extend(g)
         return Choice(*_exprs)
 
-    elif op == RPT:
-        d, min, max = args
-        d = _regex(g, d, structured, grpid)
-        if d.op == RGX:
-            q = _quantifier_re(min, max)
-            gid = f'_{next(grpid)}'
-            return Regex(f'(?=(?P<{gid}>(?:' + d.args[0] + f'){q}))(?P={gid})')
-        else:
-            return Repeat(d, min, max)
-
     elif op == OPT:
         d = _regex(g, args[0], structured, grpid)
         if d.op == RGX:
             return Regex(f'(?:{d.args[0]})?')
         else:
             return Optional(d)
+
+    elif op == STR:
+        d = _regex(g, args[0], structured, grpid)
+        if d.op == RGX:
+            gid = f'_{next(grpid)}'
+            return Regex(f'(?=(?P<{gid}>(?:' + d.args[0] + f')*))(?P={gid})')
+        else:
+            return Star(d)
+
+    elif op == PLS:
+        d = _regex(g, args[0], structured, grpid)
+        if d.op == RGX:
+            gid = f'_{next(grpid)}'
+            return Regex(f'(?=(?P<{gid}>(?:' + d.args[0] + f')+))(?P={gid})')
+        else:
+            return Plus(d)
 
     elif op == AND:
         d = _regex(g, args[0], structured, grpid)

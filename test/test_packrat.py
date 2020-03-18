@@ -6,7 +6,8 @@ from pe.grammar import Class, Grammar
 from pe.packrat import (
     Terminal as Trm,
     Optional as Opt,
-    Repeat as Rpt,
+    Star,
+    Plus,
     Lookahead as Look,
     Bind,
     Sequence as Seq,
@@ -66,14 +67,15 @@ data = [
     (Opt, (abseq,), {},       'd',      0, 0,    ((), {}, ())),
     (Opt, (abseq,), {},       'ab',     0, 2,    (('a', 'b'), {}, ('a', 'b'))),
 
-    (Rpt, (abc,), {},         '',       0, 0,    ((), {}, ())),
-    (Rpt, (abc,), {'min': 1}, '',       0, FAIL, None),
-    (Rpt, (abc,), {},         'aabbc',  0, 5,    (('a', 'a', 'b', 'b', 'c',),
+    (Star, (abc,), {},        '',       0, 0,    ((), {}, ())),
+    (Star, (abc,), {},        'aabbc',  0, 5,    (('a', 'a', 'b', 'b', 'c',),
                                                   {},
                                                   ('a', 'a', 'b', 'b', 'c',))),
-    (Rpt, (abc,), {'max': 3}, 'aabbc',  0, 3,    (('a', 'a', 'b',),
+
+    (Plus, (abc,), {},        '',       0, FAIL, None),
+    (Plus, (abc,), {},        'aabbc',  0, 5,    (('a', 'a', 'b', 'b', 'c',),
                                                   {},
-                                                  ('a', 'a', 'b',))),
+                                                  ('a', 'a', 'b', 'b', 'c',))),
 
     (Look, (abc, True), {},   'a',      0, 0,    ((), {}, None)),
     (Look, (abc, True), {},   'd',      0, FAIL, None),
@@ -112,12 +114,3 @@ def test_exprs(type, args, kwargs, input, pos, end, match):
         assert m.groups() == groups
         assert m.groupdict() == groupdict
         assert m.value() == value
-
-
-def test_invalid_Repeat():
-    with pytest.raises(ValueError):
-        Rpt(abc, min=-1)
-    with pytest.raises(ValueError):
-        Rpt(abc, max=-2)
-    with pytest.raises(ValueError):
-        Rpt(abc, min=2, max=1)

@@ -134,25 +134,17 @@ class Choice(_Expr):
 
 class Repeat(_Expr):
 
-    __slots__ = 'expression', 'min', 'max',
+    __slots__ = 'expression', 'min'
     value_type = Adicity.VARIADIC
 
     def __init__(self,
                  expression: _Expr,
-                 min: int = 0,
-                 max: int = -1):
-        if min < 0:
-            raise ValueError('min must be >= 0')
-        if max != -1 and max < min:
-            raise ValueError('max must be -1 (unlimited) or >= min')
+                 min: int):
         self.expression = expression
         self.min = min
-        self.max = max
 
     def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
-        expression = self.expression
-        min = self.min
-        max = self.max
+        match = self.expression._match
         guard = len(s) - pos  # simple guard against runaway left-recursion
 
         args = []
@@ -160,20 +152,38 @@ class Repeat(_Expr):
         ext = args.extend
         upd = kwargs.update()
 
-        count: int = 0
-        while guard > 0 and count != max:
-            end, _args, _kwargs = expression._match(s, pos, memo)
-            if end < 0:
-                break
+        end, _args, _kwargs = match(s, pos, memo)
+        if end < 0 and self.min > 0:
+            return FAIL, (), None
+        while end >= 0 and guard > 0:
             ext(_args)
             if _kwargs:
                 upd(_kwargs)
             pos = end
-            count += 1
+            guard -= 1
+            end, _args, _kwargs = match(s, pos, memo)
 
-        if count < min:
-            return FAIL, [(self, pos)], None
         return pos, args, kwargs
+
+
+class Star(Repeat):
+
+    __slots__ = ()
+    value_type = Adicity.VARIADIC
+
+    def __init__(self,
+                 expression: _Expr):
+        super().__init__(expression, 0)
+
+
+class Plus(Repeat):
+
+    __slots__ = ()
+    value_type = Adicity.VARIADIC
+
+    def __init__(self,
+                 expression: _Expr):
+        super().__init__(expression, 1)
 
 
 class Optional(_Expr):
@@ -335,11 +345,10 @@ class PackratParser(Expression):
 
 
 def _grammar_to_packrat(grammar):
-    defns = grammar.definitions
     actns = grammar.actions
     exprs = {}
-    for name, _def in defns.items():
-        expr = _def_to_expr(_def, defns, exprs)
+    for name, _def in grammar.definitions.items():
+        expr = _def_to_expr(_def, exprs)
         # TODO: this logic could be improved
         if name not in exprs:
             if name in actns:
@@ -350,7 +359,7 @@ def _grammar_to_packrat(grammar):
         else:
             expr = exprs[name]
             assert isinstance(expr, Rule)
-            expr.expression = _def_to_expr(_def, defns, exprs)
+            expr.expression = _def_to_expr(_def, exprs)
             expr.action = actns.get(name, expr.action)
 
     # ensure all symbols are defined
@@ -360,7 +369,7 @@ def _grammar_to_packrat(grammar):
     return exprs
 
 
-def _def_to_expr(_def: Definition, defns, exprs):
+def _def_to_expr(_def: Definition, exprs):
     op = _def.op
     args = _def.args
     if op == Operator.DOT:
@@ -375,27 +384,28 @@ def _def_to_expr(_def: Definition, defns, exprs):
     elif op == Operator.RGX:
         return Terminal(args[0], flags=args[1])
     elif op == Operator.OPT:
-        return Optional(_def_to_expr(args[0], defns, exprs))
-    elif op == Operator.RPT:
-        return Repeat(_def_to_expr(args[0], defns, exprs),
-                      min=args[1], max=args[2])
+        return Optional(_def_to_expr(args[0], exprs))
+    elif op == Operator.STR:
+        return Star(_def_to_expr(args[0], exprs))
+    elif op == Operator.PLS:
+        return Plus(_def_to_expr(args[0], exprs))
     elif op == Operator.SYM:
         return exprs.setdefault(args[0], Rule(args[0], None))
     elif op == Operator.AND:
-        return Lookahead(_def_to_expr(args[0], defns, exprs), True)
+        return Lookahead(_def_to_expr(args[0], exprs), True)
     elif op == Operator.NOT:
-        return Lookahead(_def_to_expr(args[0], defns, exprs), False)
+        return Lookahead(_def_to_expr(args[0], exprs), False)
     elif op == Operator.DIS:
-        return Bind(_def_to_expr(args[0], defns, exprs), name=None)
+        return Bind(_def_to_expr(args[0], exprs), name=None)
     elif op == Operator.BND:
-        return Bind(_def_to_expr(args[1], defns, exprs), name=args[0])
+        return Bind(_def_to_expr(args[1], exprs), name=args[0])
     elif op == Operator.SEQ:
-        return Sequence(*[_def_to_expr(e, defns, exprs) for e in args[0]])
+        return Sequence(*[_def_to_expr(e, exprs) for e in args[0]])
     elif op == Operator.CHC:
-        return Choice(*[_def_to_expr(e, defns, exprs) for e in args[0]])
+        return Choice(*[_def_to_expr(e, exprs) for e in args[0]])
     elif op == Operator.RUL:
         return Rule('<anonymous>',
-                    _def_to_expr(args[0], defns, exprs),
+                    _def_to_expr(args[0], exprs),
                     action=args[1])
     else:
         raise Error(f'invalid definition: {_def!r}')
