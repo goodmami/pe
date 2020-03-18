@@ -11,9 +11,9 @@ Json = pe.compile(
     Member   <- String :COLON Value
     Array    <- :LBRACK (Value (:COMMA Value)*)? :RBRACK
     String   <- ["] (!["\\] .)* ('\\' . / (!["\\] .)+)* ["]
-    Number   <- Float / Integer
+    Number   <- Integer / Float
     Constant <- TRUE / FALSE / NULL
-    Integer  <- INTEGER
+    Integer  <- INTEGER ![.eE]
     Float    <- INTEGER FRACTION? EXPONENT?
     INTEGER  <- "-"? ("0" / [1-9] [0-9]*)
     FRACTION <- "." [0-9]+
@@ -21,10 +21,10 @@ Json = pe.compile(
     TRUE     <- "true"
     FALSE    <- "false"
     NULL     <- "null"
-    LBRACE   <- Spacing "{" Spacing
-    RBRACE   <- Spacing "}" Spacing
-    LBRACK   <- Spacing "[" Spacing
-    RBRACK   <- Spacing "]" Spacing
+    LBRACE   <- "{" Spacing
+    RBRACE   <- Spacing "}"
+    LBRACK   <- "[" Spacing
+    RBRACK   <- Spacing "]"
     COMMA    <- Spacing "," Spacing
     COLON    <- Spacing ":" Spacing
     Spacing  <- [\t\n\f\r ]*
