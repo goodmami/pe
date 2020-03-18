@@ -7,6 +7,7 @@ from pe._constants import Flag
 from pe._core import Grammar, Definition
 from pe.grammar import loads
 from pe.packrat import PackratParser
+from pe.machine import MachineParser
 from pe import (inline, merge, regex)
 
 
@@ -19,6 +20,8 @@ def compile(source,
     parsername = parser.lower()
     if parsername == 'packrat':
         make = PackratParser
+    elif parsername == 'machine':
+        make = MachineParser
     else:
         raise pe.Error(f'unsupported parser: {parser}')
     g = loads(source, flags=flags)

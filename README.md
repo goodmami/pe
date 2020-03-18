@@ -31,8 +31,11 @@ example:
 * Grammar definitions and parser implementations are separate
   - Optimizations target the abstract grammar definitions
   - Multiple parsers are available (currently [packrat](pe/packrat.py)
-    does memoizing recursive descent and [iterative](pe/iterative.py)
-    does a proof-of-concept "iterative descent")
+    for memoizing recursive descent and [machine](pe/machine.py) for
+    an iterative "parsing machine" as from [Medeiros and
+    Ierusalimschy, 2008].
+
+[Medeiros and Ierusalimschy, 2008]: http://www.inf.puc-rio.br/~roberto/docs/ry08-4.pdf
 
 
 ## Syntax Overview
@@ -148,3 +151,4 @@ an iterable while `Match.value()` can return a single object.
 - [PEG.js](https://github.com/pegjs/pegjs) (Javascript)
 - [Pegged](https://github.com/PhilippeSigaud/Pegged) (D)
 - [pegen](https://github.com/gvanrossum/pegen) (Python / C)
+- [LPeg](http://www.inf.puc-rio.br/~roberto/lpeg/) (Lua)
