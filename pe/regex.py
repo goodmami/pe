@@ -67,42 +67,22 @@ def _regex(g, defn, structured, grpid):
         return Regex(f'[{args[0]}]')
 
     elif op == SEQ:
-        exprs = args[0]
-        _exprs = []
-        i = 0
-        # Special case: ![abc] . -> [^abc]
-        while i < len(exprs):
-            d = exprs[i]
-            if (i != len(exprs) - 1
-                    and d.op == NOT
-                    and _single_char(d.args[0])
-                    and exprs[i+1].op == DOT):
-                _exprs.append(Regex(f'[^{d.args[0].args[0]}]'))
-                i += 2
-            else:
-                _exprs.append(_regex(g, d, structured, grpid))
-                i += 1
-        # combine adjacent regexes
-        _exprs2 = []
-        for k, g in groupby(_exprs, key=lambda d: d.op):
-            if k == RGX:
-                _exprs2.append(Regex(''.join(d.args[0] for d in g)))
-            else:
-                _exprs2.extend(g)
-        return Sequence(*_exprs2)
+        exprs = _seq_first_pass(g, args[0], structured, grpid)
+        exprs = _seq_join_unstructured(exprs, structured)
+        return Sequence(*exprs)
 
     elif op == CHC:
         exprs = [_regex(g, d, structured, grpid) for d in args[0]]
         _exprs = []
-        for k, g in groupby(exprs, key=lambda d: d.op):
+        for k, grp in groupby(exprs, key=lambda d: d.op):
             if k == RGX:
                 gid = f'_{next(grpid)}'
                 _exprs.append(
                     Regex(f'(?=(?P<{gid}>'
-                          + '|'.join(d.args[0] for d in g)
+                          + '|'.join(d.args[0] for d in grp)
                           + f'))(?P={gid})'))
             else:
-                _exprs.extend(g)
+                _exprs.extend(grp)
         return Choice(*_exprs)
 
     elif op == OPT:
@@ -180,3 +160,33 @@ def _quantifier_re(min, max):
 def _single_char(defn):
     return (defn.op == CLS
             or defn.op == LIT and len(defn.args[0]) == 1)
+
+
+def _seq_first_pass(g, exprs, structured, grpid):
+    i = 0
+    # Special case: ![abc] . -> [^abc]
+    while i < len(exprs):
+        d = exprs[i]
+        if (i != len(exprs) - 1
+                and d.op == NOT
+                and _single_char(d.args[0])
+                and exprs[i+1].op == DOT):
+            yield Regex(f'[^{d.args[0].args[0]}]')
+            i += 2
+        else:
+            yield _regex(g, d, structured, grpid)
+            i += 1
+
+
+def _seq_join_unstructured(exprs, structured):
+    for k, grp in groupby(exprs, key=lambda d: d.op):
+        # only join regexes in sequence if unstructured
+        if k == RGX and not structured:
+            yield Regex(''.join(d.args[0] for d in grp))
+        # sequences of discarded things can get joined (e.g., ':"a" :"b"')
+        elif k == DIS:
+            discarded = [d.args[0] for d in grp]
+            for d in _seq_join_unstructured(discarded, False):
+                yield Discard(d)
+        else:
+            yield from grp
