@@ -193,6 +193,7 @@ type.
 | `e+`             | [Plus]     | 5          | [Quantified]    |
 | `&e`             | [And]      | 4          | [Valued]        |
 | `!e`             | [Not]      | 4          | [Valued]        |
+| `~e`             | [Raw]      | 4          | [Valued]        |
 | `:e` or `name:e` | [Bind]     | 4          | [Valued]        |
 | `e1 e2`          | [Sequence] | 3          | [Sequential]    |
 | (none)           | [Rule]     | 2          | [Applicative]   |
@@ -293,7 +294,7 @@ The following ASCII punctuation characters, in addition to
 not necessarily inside [string literals](#literal) or [character
 classes](#class); for these see below):
 
-    ! " # & ' ( ) * + . / : ? [ \ ] _
+    ! " # & ' ( ) * + . / : ? [ \ ] _ ~
 
 Special characters inside [string literals](#literal) and [character
 classes](#class) are different. For both, the `\` character is used
@@ -308,7 +309,7 @@ escaped:
 The other ASCII punctuation characters are currently unused but are
 reserved in expressions for potential future uses:
 
-    $ % , - ; < = > @ ` { | } ~
+    $ % , - ; < = > @ ` { | }
 
 
 ### Whitespace

@@ -65,6 +65,9 @@ e1 / e2      # ordered choice of e1 and e2
 &e           # positive lookahead
 !e           # negative lookahead
 
+# (extension) raw substring
+~e           # result of e is matched substring
+
 # (extension) binding
 :e           # discard result after match
 name:e       # bind result of e to 'name'
