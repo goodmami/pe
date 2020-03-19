@@ -20,6 +20,7 @@ class Operator(enum.Enum):
     PLS = _auto()  # (PLS, (expr,))
     AND = _auto()  # (AND, (expr,))
     NOT = _auto()  # (NOT, (expr,))
+    RAW = _auto()  # (RAW, (expr,))
     DIS = _auto()  # (DIS, (expr,))
     BND = _auto()  # (BND, (name, expr))
     SEQ = _auto()  # (SEQ, (exprs,))

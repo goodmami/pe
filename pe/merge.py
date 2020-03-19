@@ -17,6 +17,7 @@ from pe.grammar import (
     Nonterminal,
     And,
     Not,
+    Raw,
     Discard,
     Bind,
     Rule,
@@ -34,6 +35,7 @@ STR = Operator.STR
 PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
+RAW = Operator.RAW
 DIS = Operator.DIS
 BND = Operator.BND
 SEQ = Operator.SEQ
@@ -70,6 +72,8 @@ def _merge(g, defn):
         return And(_merge(g, args[0]))
     elif op == NOT:
         return Not(_merge(g, args[0]))
+    elif op == RAW:
+        return Raw(_merge(g, args[0]))
     elif op == DIS:
         return Discard(_merge(g, args[0]))
     elif op == BND:

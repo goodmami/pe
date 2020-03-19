@@ -20,6 +20,7 @@ from pe.grammar import (
     Nonterminal,
     And,
     Not,
+    Raw,
     Bind,
     Discard,
     Rule,
@@ -37,6 +38,7 @@ STR = Operator.STR
 PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
+RAW = Operator.RAW
 DIS = Operator.DIS
 BND = Operator.BND
 SEQ = Operator.SEQ
@@ -121,6 +123,9 @@ def _regex(g, defn, structured, grpid):
             return Regex(f'(?!{d.args[0]})')
         else:
             return Not(d)
+
+    elif op == RAW:
+        return Raw(_regex(g, args[0], False, grpid))
 
     elif op == BND:
         name, d = args

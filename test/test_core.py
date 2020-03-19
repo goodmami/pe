@@ -1,9 +1,9 @@
 
 from pe import Match
-from pe.packrat import Terminal, Sequence, Bind
+from pe.packrat import Terminal, Sequence, Discard
 
 One = Terminal('1')
-NullOne = Bind(One)
+NullOne = Discard(One)
 OneTwo = Sequence(One, Terminal('2'))
 
 

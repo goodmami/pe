@@ -17,6 +17,7 @@ from pe.grammar import (
     Nonterminal,
     And,
     Not,
+    Raw,
     Discard,
     Bind,
     Rule,
@@ -33,6 +34,7 @@ STR = Operator.STR
 PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
+RAW = Operator.RAW
 DIS = Operator.DIS
 BND = Operator.BND
 SEQ = Operator.SEQ
@@ -77,6 +79,8 @@ def _inline(g, defn, visited):
         return And(_inline(g, args[0], visited))
     elif op == NOT:
         return Not(_inline(g, args[0], visited))
+    elif op == RAW:
+        return Raw(_inline(g, args[0], visited))
     elif op == DIS:
         return Discard(_inline(g, args[0], visited))
     elif op == BND:

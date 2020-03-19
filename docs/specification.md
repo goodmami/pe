@@ -36,6 +36,7 @@ following sections.
 | `q`      | (default)     | [Valued]      | [Deferred] | Match quantified term `q`; consume input; emit value    |
 | `&q`     | [And]         | [Valued]      | [Empty]    | Succeed if `q` matches; consume no input; emit no value |
 | `!q`     | [Not]         | [Valued]      | [Empty]    | Fail if `q` matches; consume no input; emit no value    |
+| `~q`     | [Raw]         | [Valued]      | [Atomic]   | Match `q`; consume input; emit substring matched by `q` |
 | `name:q` | [Bind]        | [Valued]      | [Empty]    | Match `q`; consume input; bind value to 'name'          |
 | `:q`     | [Bind]        | [Valued]      | [Empty]    | Match `q`; consume input; emit no value                 |
 | `v`      | (default)     | [Sequential]  | [Deferred] | Match valued term `v`                                   |
@@ -64,8 +65,8 @@ Operator   <- Spacing LEFTARROW
 Expression <- Sequence (SLASH Sequence)*
 Sequence   <- Valued*
 Valued     <- Prefix? Quantified
-Prefix     <- AND / NOT / Binding
-Binding    <- Identifier? ':' :Spacing
+Prefix     <- AND / NOT / TILDE / Binding / COLON
+Binding    <- Identifier COLON
 Quantified <- Primary Quantifier?
 Quantifier <- QUESTION / STAR / PLUS
 Primary    <- Name / Group / Literal / Class / DOT
@@ -94,6 +95,8 @@ LEFTARROW  <- '<-' :Spacing
 SLASH      <- '/' :Spacing
 AND        <- '&' :Spacing
 NOT        <- '!' :Spacing
+TILDE      <- '~' :Spacing
+COLON      <- ':' :Spacing
 QUESTION   <- '?' :Spacing
 STAR       <- '*' :Spacing
 PLUS       <- '+' :Spacing
@@ -383,7 +386,7 @@ This document defines the operators available in **pe**.
 [Dot]: #dot
 
 - Notation: `.`
-- Function: Dot()
+- Function: [Dot](api/pe.grammar.md#Dot)()
 - Type: [Primary]
 - Value: [Atomic]
 
@@ -396,7 +399,7 @@ emits the same character as its value.
 [Literal]: #literal
 
 - Notation: `'abc'` or `"abc"`
-- Function: Literal(*string*)
+- Function: [Literal](api/pe.grammar.md#Literal)(*string*)
 - Type: [Primary]
 - Value: [Atomic]
 
@@ -419,7 +422,7 @@ expression more explicit and, thus, more clear.
 [Class]: #class
 
 - Notation: `[abc]`
-- Function: Class(*ranges*)
+- Function: [Class](api/pe.grammar.md#Class)(*ranges*)
 - Type: [Primary]
 - Value: [Atomic]
 
@@ -467,7 +470,7 @@ in regular expression engines which may undergird the **pe** parser.
 [Nonterminal]: #nonterminal
 
 - Notation: `Abc`
-- Function: Nonterminal(*name*)
+- Function: [Nonterminal](api/pe.grammar.md#Nonterminal)(*name*)
 - Type: [Primary]
 - Value: [Deferred]
 
@@ -527,7 +530,7 @@ following function calls:
 [Optional]: #optional
 
 - Notation: `e?`
-- Function: Optional(*expression*)
+- Function: [Optional](api/pe.grammar.md#Optional)(*expression*)
 - Type: [Quantified]
 - Value: [Iterable]
 
@@ -544,7 +547,7 @@ remaining input.
 [Star]: #star
 
 - Notation: `e*`
-- Function: Star(*expression*)
+- Function: [Star](api/pe.grammar.md#Star)(*expression*)
 - Type: [Quantified]
 - Value: [Iterable]
 
@@ -560,7 +563,7 @@ input.
 [Plus]: #plus
 
 - Notation: `e+`
-- Function: Plus(*expression*)
+- Function: [Plus](api/pe.grammar.md#Plus)(*expression*)
 - Type: [Quantified]
 - Value: [Iterable]
 
@@ -573,7 +576,7 @@ emitted.
 [And]: #and
 
 - Notation: `&e`
-- Function: And(*expression*)
+- Function: [And](api/pe.grammar.md#And)(*expression*)
 - Type: [Valued]
 - Value: [Empty]
 
@@ -587,7 +590,7 @@ consume input) and no values are emitted.
 [Not]: #not
 
 - Notation: `!e`
-- Function: Not(*expression*)
+- Function: [Not](api/pe.grammar.md#Not)(*expression*)
 - Type: [Valued]
 - Value: [Empty]
 
@@ -596,18 +599,33 @@ given expression fails at the current position in the input, but no
 input is consumed and no values are emitted.
 
 
+### Raw
+[Raw]: #raw
+
+- Notation: `~e`
+- Function: [Raw](api/pe.grammar.md#Raw)(*expression*)
+- Type: [Valued]
+- Value: [Atomic]
+
+The Raw operator succeeds when the given expression succeeds at the
+current position in the input. It ignores any values and bindings from
+the given expression and emits the substring matched by the given
+expression. The substring is directly taken from the input and
+includes even bound or discarded matches in the given expression.
+
+
 ### Bind
 [Bind]: #bind
 
 - Notation: `:e` or `name:e`
-- Function: Bind(*expression*, *name*)
+- Function: [Bind](api/pe.grammar.md#Bind)(*expression, name*)
 - Type: [Valued]
 - Value: [Empty]
 
 The Bind operator succeeds when the given expression succeeds at the
-current line of input. It emits no values, but the value of the given
-expression is bound to the given name. Unlike the [And](#and)
-operator, matching input is consumed.
+current position in the input. It emits no values, but the value of
+the given expression is bound to the given name. Unlike the
+[And](#and) operator, matching input is consumed.
 
 The bound value depends on the value type of the bound expression:
 
@@ -636,20 +654,20 @@ C <- A
 [Discard]: #discard
 
 - Notation: `:e`
-- Function: Discard(*expression*)
+- Function: [Discard](api/pe.grammar.md#Discard)(*expression*)
 - Type: [Valued]
 - Value: [Empty]
 
 The Discard operator succeeds when the given expression succeeds at
-the current line of input, but no values are emitted. Unlike the
-[And](#and) operator, matching input is consumed.
+the current position in the input, but no values are emitted. Unlike
+the [And](#and) operator, matching input is consumed.
 
 
 ### Sequence
 [Sequence]: #sequence
 
 - Notation: `e e`
-- Function: Sequence(*expression*, ...)
+- Function: [Sequence](api/pe.grammar.md#Sequence)(*expression*, ...)
 - Type: [Sequential]
 - Value: [Iterable]
 
@@ -669,7 +687,7 @@ given expression is reduced to the given expression only.
 [Rule]: #rule
 
 - Notation: (none)
-- Function: Rule(*expression*, *action*=None)
+- Function: [Rule](api/pe.grammar.md#Rule)(*expression, action=None*)
 - Type: [Applicative]
 - Value: [Atomic]
 
@@ -695,7 +713,7 @@ optimizations.
 [Choice]: #choice
 
 - Notation: `e / e`
-- Function: Choice(*expression*, ...)
+- Function: [Choice](api/pe.grammar.md#Choice)(*expression*, ...)
 - Type: [Prioritized]
 - Value: [Iterable]
 
@@ -713,7 +731,7 @@ expression is reduced to the given expression only.
 [Grammar]: #grammar
 
 - Notation: `Abc <- e`
-- Function: Rule(*expression*, *action*=None)
+- Function: [Grammar](api/pe.grammar.md#Grammar)(*definitions=None, actions=None, start='Start'*)
 - Type: [Definitive]
 - Value: [Deferred]
 

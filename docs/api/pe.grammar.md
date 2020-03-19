@@ -3,10 +3,10 @@
 
 ## Functions
 
-pe.grammar.**<a id="pe-grammar-load" href="#pe-grammar-load">load</a>**
+pe.grammar.**<a id="load" href="#load">load</a>**
 (*source*)
 
-pe.grammar.**<a id="pe-grammar-loads" href="#pe-grammar-loads">loads</a>**
+pe.grammar.**<a id="loads" href="#loads">loads</a>**
 (*source, flags=pe.NONE*)
 
 
@@ -22,49 +22,52 @@ pe.grammar.**<a id="pe-grammar-loads" href="#pe-grammar-loads">loads</a>**
 
 ## Operator Functions
 
-pe.grammar.**<a id="pe-grammar-Dot" href="#pe-grammar-Dot">Dot</a>**()
+pe.grammar.**<a id="Dot" href="#Dot">Dot</a>**()
 
-pe.grammar.**<a id="pe-grammar-Literal" href="#pe-grammar-Literal">Literal</a>**
+pe.grammar.**<a id="Literal" href="#Literal">Literal</a>**
 (*string*)
 
-pe.grammar.**<a id="pe-grammar-Class" href="#pe-grammar-Class">Class</a>**
+pe.grammar.**<a id="Class" href="#Class">Class</a>**
 (*chars*)
 
-pe.grammar.**<a id="pe-grammar-Regex" href="#pe-grammar-Regex">Regex</a>**
+pe.grammar.**<a id="Regex" href="#Regex">Regex</a>**
 (*pattern, flags=0*)
 
-pe.grammar.**<a id="pe-grammar-Sequence" href="#pe-grammar-Sequence">Sequence</a>**
+pe.grammar.**<a id="Sequence" href="#Sequence">Sequence</a>**
 (*\*expressions*)
 
-pe.grammar.**<a id="pe-grammar-Choice" href="#pe-grammar-Choice">Choice</a>**
+pe.grammar.**<a id="Choice" href="#Choice">Choice</a>**
 (*\*expressions*)
 
-pe.grammar.**<a id="pe-grammar-Repeat" href="#pe-grammar-Repeat">Repeat</a>**
+pe.grammar.**<a id="Repeat" href="#Repeat">Repeat</a>**
 (*expression, min=0, max=-1*)
 
-pe.grammar.**<a id="pe-grammar-Optional" href="#pe-grammar-Optional">Optional</a>**
+pe.grammar.**<a id="Optional" href="#Optional">Optional</a>**
 (*expression*)
 
-pe.grammar.**<a id="pe-grammar-Star" href="#pe-grammar-Star">Star</a>**
+pe.grammar.**<a id="Star" href="#Star">Star</a>**
 (*expression*)
 
-pe.grammar.**<a id="pe-grammar-Plus" href="#pe-grammar-Plus">Plus</a>**
+pe.grammar.**<a id="Plus" href="#Plus">Plus</a>**
 (*expression*)
 
-pe.grammar.**<a id="pe-grammar-Nonterminal" href="#pe-grammar-Nonterminal">Nonterminal</a>**
+pe.grammar.**<a id="Nonterminal" href="#Nonterminal">Nonterminal</a>**
 (*name*)
 
-pe.grammar.**<a id="pe-grammar-And" href="#pe-grammar-And">And</a>**
+pe.grammar.**<a id="And" href="#And">And</a>**
 (*expression*)
 
-pe.grammar.**<a id="pe-grammar-Not" href="#pe-grammar-Not">Not</a>**
+pe.grammar.**<a id="Not" href="#Not">Not</a>**
 (*expression*)
 
-pe.grammar.**<a id="pe-grammar-Discard" href="#pe-grammar-Discard">Discard</a>**
+pe.grammar.**<a id="Raw" href="#Raw">Raw</a>**
 (*expression*)
 
-pe.grammar.**<a id="pe-grammar-Bind" href="#pe-grammar-Bind">Bind</a>**
+pe.grammar.**<a id="Discard" href="#Discard">Discard</a>**
+(*expression*)
+
+pe.grammar.**<a id="Bind" href="#Bind">Bind</a>**
 (*expression, name=None*)
 
-pe.grammar.**<a id="pe-grammar-Rule" href="#pe-grammar-Rule">Rule</a>**
+pe.grammar.**<a id="Rule" href="#Rule">Rule</a>**
 (*expression, action*)

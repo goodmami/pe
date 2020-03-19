@@ -1,6 +1,6 @@
 
 import pe
-from pe.actions import first, constant, pack, join
+from pe.actions import first, constant, pack
 
 
 Json = pe.compile(
@@ -10,11 +10,11 @@ Json = pe.compile(
     Object   <- :LBRACE (Member (:COMMA Member)*)? :RBRACE
     Member   <- String :COLON Value
     Array    <- :LBRACK (Value (:COMMA Value)*)? :RBRACK
-    String   <- ["] (!["\\] .)* ('\\' . / (!["\\] .)+)* ["]
+    String   <- ~( ["] (!["\\] .)* ('\\' . / (!["\\] .)+)* ["] )
     Number   <- Integer / Float
     Constant <- TRUE / FALSE / NULL
-    Integer  <- INTEGER ![.eE]
-    Float    <- INTEGER FRACTION? EXPONENT?
+    Integer  <- ~( INTEGER ![.eE] )
+    Float    <- ~( INTEGER FRACTION? EXPONENT? )
     INTEGER  <- "-"? ("0" / [1-9] [0-9]*)
     FRACTION <- "." [0-9]+
     EXPONENT <- [eE] [-+]? [0-9]+
@@ -34,9 +34,9 @@ Json = pe.compile(
         'Object': pack(dict),
         'Member': pack(tuple),
         'Array': pack(list),
-        'String': join(lambda s: s[1:-1]),
-        'Integer': join(int),
-        'Float': join(float),
+        'String': lambda s: s[1:-1],
+        'Integer': int,
+        'Float': float,
         'TRUE': constant(True),
         'FALSE': constant(False),
         'NULL': constant(None),

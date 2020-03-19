@@ -20,6 +20,7 @@ from pe._core import (
     Grammar,
 )
 
+
 _MatchResult = Tuple[int, SeqType, Union[Dict, None]]
 Memo = Dict[int, Dict[int, _MatchResult]]
 
@@ -150,7 +151,7 @@ class Repeat(_Expr):
         args = []
         kwargs = {}
         ext = args.extend
-        upd = kwargs.update()
+        upd = kwargs.update
 
         end, _args, _kwargs = match(s, pos, memo)
         if end < 0 and self.min > 0:
@@ -222,12 +223,43 @@ class Lookahead(_Expr):
 
 # Value-changing Expressions
 
+class Raw(_Expr):
+    __slots__ = 'expression',
+    value_type = Value.ATOMIC
+
+    def __init__(self, expression: _Expr):
+        self.expression = expression
+
+    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
+        expr = self.expression
+        end, args, kwargs = expr._match(s, pos, memo)
+        if end < 0:
+            return FAIL, args, None
+        return end, [s[pos:end]], None
+
+
+class Discard(_Expr):
+
+    __slots__ = 'expression',
+    value_type = Value.EMPTY
+
+    def __init__(self, expression: _Expr):
+        self.expression = expression
+
+    def _match(self, s: str, pos: int, memo: Memo) -> _MatchResult:
+        expr = self.expression
+        end, args, kwargs = expr._match(s, pos, memo)
+        if end < 0:
+            return FAIL, args, None
+        return end, (), None
+
+
 class Bind(_Expr):
 
     __slots__ = 'expression', 'name',
     value_type = Value.EMPTY
 
-    def __init__(self, expression: _Expr, name: str = None):
+    def __init__(self, expression: _Expr, name: str):
         self.expression = expression
         self.name = name
 
@@ -236,13 +268,9 @@ class Bind(_Expr):
         end, args, kwargs = expr._match(s, pos, memo)
         if end < 0:
             return FAIL, args, None
-        name = self.name
-        if name:
-            if not kwargs:
-                kwargs = {}
-            kwargs[name] = evaluate(args, expr.value_type)
-        else:
-            kwargs = None
+        if not kwargs:
+            kwargs = {}
+        kwargs[self.name] = evaluate(args, expr.value_type)
         return end, (), kwargs
 
 
@@ -301,8 +329,9 @@ class Rule(_Expr):
 
             expr = self.expression
             end, args, kwargs = expr._match(s, pos, memo)
-            if end >= 0 and self.action:
-                args = [self.action(*args, **(kwargs or {}))]
+            action = self.action
+            if end >= 0 and action:
+                args = [action(*args, **(kwargs or {}))]
 
             if memo is not None:
                 memo[pos][_id] = (end, args, kwargs)
@@ -395,8 +424,10 @@ def _def_to_expr(_def: Definition, exprs):
         return Lookahead(_def_to_expr(args[0], exprs), True)
     elif op == Operator.NOT:
         return Lookahead(_def_to_expr(args[0], exprs), False)
+    elif op == Operator.RAW:
+        return Raw(_def_to_expr(args[0], exprs))
     elif op == Operator.DIS:
-        return Bind(_def_to_expr(args[0], exprs), name=None)
+        return Discard(_def_to_expr(args[0], exprs))
     elif op == Operator.BND:
         return Bind(_def_to_expr(args[1], exprs), name=args[0])
     elif op == Operator.SEQ:
@@ -433,5 +464,7 @@ def _pair_bindings(expressions):
     for expr in expressions:
         if isinstance(expr, Bind):
             yield (expr.name, expr.expression)
+        elif isinstance(expr, Discard):
+            yield (None, expr.expression)
         else:
             yield (False, expr)

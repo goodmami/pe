@@ -16,6 +16,7 @@ from pe.grammar import (
     Nonterminal,
     And,
     Not,
+    Raw,
     Bind,
     Discard,
 )
@@ -85,9 +86,13 @@ def test_Not():
     assert Not('foo') == Not(Literal('foo'))
 
 
+def test_Raw():
+    assert Raw(Dot()) == Def(Op.RAW, (Def(Op.DOT, ()),))
+    assert Raw('foo') == Raw(Literal('foo'))
+
+
 def test_Bind():
     assert Bind(Dot(), name='x') == Def(Op.BND, ('x', Def(Op.DOT, ())))
-    assert Bind('foo') == Bind(Literal('foo'))
     assert Bind('foo', name='bar') == Bind(Literal('foo'), name='bar')
 
 
@@ -162,6 +167,11 @@ def test_loads_and():
 def test_loads_not():
     assert loads('!"a"') == Not('a')
     assert loads('!"a"  # comment') == Not('a')
+
+
+def test_loads_raw():
+    assert loads('~"a"') == Raw('a')
+    assert loads('~"a"  # comment') == Raw('a')
 
 
 def test_loads_bind():

@@ -245,6 +245,10 @@ def _parsing_instructions(defn):
                 *pi,
                 (MachineOp.FAILTWICE,)]
 
+    elif op == Operator.RAW:
+        pi = _parsing_instructions(args[0])
+        return pi  # TODO: raw
+
     elif op == Operator.DIS:
         return _parsing_instructions(args[0])
         # return [(op,)] + pi

@@ -25,7 +25,7 @@ The syntax is defined as follows::
   Expression <- Sequence (:SLASH Sequence)*
   Sequence   <- Evaluated*
   Evaluated  <- prefix:Prefix? Quantified
-  Prefix     <- AND / NOT / Binding / COLON
+  Prefix     <- AND / NOT / TILDE / Binding / COLON
   Binding    <- Identifier ':' :Spacing
   Quantified <- Primary quantifier:Quantifier?
   Quantifier <- QUESTION / STAR / PLUS
@@ -56,6 +56,7 @@ The syntax is defined as follows::
   SLASH      <- '/' Spacing
   AND        <- '&' Spacing
   NOT        <- '!' Spacing
+  TILDE      <- '~' Spacing
   COLON      <- ':' Spacing
   QUESTION   <- '?' Spacing
   STAR       <- '*' Spacing
@@ -162,11 +163,16 @@ def Not(expression: _Defn):
     return Definition(Operator.NOT, (_validate(expression),))
 
 
+def Raw(expression: _Defn):
+    return Definition(Operator.RAW, (_validate(expression),))
+
+
 def Discard(expression: _Defn):
     return Definition(Operator.DIS, (_validate(expression),))
 
 
-def Bind(expression: _Defn, name: str = None):
+def Bind(expression: _Defn, name: str):
+    assert isinstance(name, str)
     return Definition(Operator.BND, (name, _validate(expression),))
 
 
@@ -204,6 +210,8 @@ def _make_evaluated(quantified, prefix=None):
         return And(quantified)
     elif prefix == '!':
         return Not(quantified)
+    elif prefix == '~':
+        return Raw(quantified)
     elif prefix == ':':
         return Discard(quantified)
     elif prefix.endswith(':'):
@@ -240,19 +248,20 @@ def _make_grammar(*defs):
 # Lexical productions do not need to go in the grammar
 
 # Whitespace and comments
-_EOF        = Bind(Not(Dot()))
-_EOL        = Bind(Choice('\r\n', '\n', '\r'))
+_EOF        = Discard(Not(Dot()))
+_EOL        = Discard(Choice('\r\n', '\n', '\r'))
 _Comment    = Sequence('#',
                        Star(Sequence(Not(_EOL), Dot())),
                        Optional(_EOL))
 _Space      = Choice(Class(' \t'), _EOL)
-_Spacing    = Bind(Star(Choice(_Space, _Comment)))
+_Spacing    = Discard(Star(Choice(_Space, _Comment)))
 
 # Tokens
 _LEFTARROW  = Sequence('<-', _Spacing)
 _SLASH      = Sequence('/', _Spacing)
 _AND        = Sequence('&', _Spacing)
 _NOT        = Sequence('!', _Spacing)
+_TILDE      = Sequence('~', _Spacing)
 _QUESTION   = Sequence('?', _Spacing)
 _STAR       = Sequence('*', _Spacing)
 _PLUS       = Sequence('+', _Spacing)
@@ -261,7 +270,7 @@ _CLOSE      = Sequence(')', _Spacing)
 _DOT        = Sequence('.', _Spacing)
 
 # Non-recursive patterns
-_Operator   = Sequence(_Spacing, Bind(_LEFTARROW))
+_Operator   = Sequence(_Spacing, Discard(_LEFTARROW))
 _Special    = Class('-tnvfr"\'[]\\\\')
 _Oct        = Class('0-7')
 _Hex        = Class('0-9a-fA-F')
@@ -277,14 +286,14 @@ _Char       = Choice(Sequence('\\', Choice(_Special,
                      Sequence(Not('\\'), Dot()))
 _Range      = Choice(Sequence(_Char, '-', _Char), _Char)
 _Class      = Sequence(
-    Bind('['),
+    Discard('['),
     Star(Sequence(Not(']'), _Range)),
-    Bind(']'),
+    Discard(']'),
     _Spacing)
 _Literal    = Sequence(
     Choice(
-        Sequence(Bind("'"), Star(Sequence(Not("'"), _Char)), Bind("'")),
-        Sequence(Bind('"'), Star(Sequence(Not('"'), _Char)), Bind('"'))),
+        Sequence(Discard("'"), Star(Sequence(Not("'"), _Char)), Discard("'")),
+        Sequence(Discard('"'), Star(Sequence(Not('"'), _Char)), Discard('"'))),
     _Spacing)
 _IdentStart = Class('a-zA-Z_')
 _IdentCont  = Class('a-zA-Z_0-9')
@@ -292,7 +301,7 @@ _Identifier = Sequence(_IdentStart, Star(_IdentCont))
 _Name       = Sequence(_Identifier, _Spacing, Not(_Operator))
 _Quantifier = Choice(_QUESTION, _STAR, _PLUS)
 _Binding    = Sequence(Optional(_Identifier), ':', _Spacing)
-_Prefix     = Choice(_AND, _NOT, _Binding)
+_Prefix     = Choice(_AND, _NOT, _TILDE, _Binding)
 
 PEG = Grammar(
     definitions={
@@ -307,7 +316,7 @@ PEG = Grammar(
                                _Operator,
                                Nonterminal('Expression')),
         'Expression': Sequence(Nonterminal('Sequence'),
-                               Star(Sequence(Bind(_SLASH),
+                               Star(Sequence(Discard(_SLASH),
                                              Nonterminal('Sequence')))),
         'Sequence':   Plus(Nonterminal('Evaluated')),
         'Evaluated':  Sequence(Bind(Optional(Nonterminal('Prefix')),
@@ -322,13 +331,13 @@ PEG = Grammar(
                              Nonterminal('Dot')),
         'Identifier': _Identifier,
         'Name':       _Name,
-        'Group':      Sequence(Bind(_OPEN),
+        'Group':      Sequence(Discard(_OPEN),
                                Nonterminal('Expression'),
-                               Bind(_CLOSE)),
+                               Discard(_CLOSE)),
         'Literal':    _Literal,
         'Class':      _Class,
         'Prefix':     _Prefix,
-        'Dot':        Bind(_DOT),
+        'Dot':        Discard(_DOT),
     },
     actions={
         'Start': first,
