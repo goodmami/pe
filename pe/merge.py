@@ -80,12 +80,18 @@ def _merge(g, defn):
     else:
         return defn
 
+
+def _seq_mergeable(defn):
+    return (defn.op == LIT
+            or defn.op == CLS and len(defn.args[0]) == 1)
+
+
 def _merge_seq(g, defn):
     exprs = defn.args[0]
     _exprs = [_merge(g, exprs[0])]
     prev = _exprs[-1]
     for expr in exprs[1:]:
-        if expr.op == prev.op == LIT:
+        if (_seq_mergeable(expr) and _seq_mergeable(prev)):
             _exprs[-1] = prev = Literal(prev.args[0] + expr.args[0])
         else:
             _exprs.append(expr)
@@ -93,7 +99,7 @@ def _merge_seq(g, defn):
     return Sequence(*_exprs)
 
 
-def _single_char(defn):
+def _chc_mergeable(defn):
     return (defn.op == CLS
             or defn.op == LIT and len(defn.args[0]) == 1)
 
@@ -103,7 +109,7 @@ def _merge_chc(g, defn):
     _exprs = [_merge(g, exprs[0])]
     prev = _exprs[-1]
     for expr in exprs[1:]:
-        if (_single_char(expr) and _single_char(prev)):
+        if (_chc_mergeable(expr) and _chc_mergeable(prev)):
             _exprs[-1] = prev = Class(prev.args[0] + expr.args[0])
         else:
             _exprs.append(expr)
