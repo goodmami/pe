@@ -17,6 +17,7 @@ from pe.grammar import (
     Nonterminal,
     And,
     Not,
+    Discard,
     Bind,
     Rule,
     Grammar,
@@ -69,6 +70,8 @@ def _merge(g, defn):
         return And(_merge(g, args[0]))
     elif op == NOT:
         return Not(_merge(g, args[0]))
+    elif op == DIS:
+        return Discard(_merge(g, args[0]))
     elif op == BND:
         name, d = args
         return Bind(_merge(g, d), name=name)

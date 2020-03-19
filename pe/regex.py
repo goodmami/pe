@@ -21,6 +21,7 @@ from pe.grammar import (
     And,
     Not,
     Bind,
+    Discard,
     Rule,
     Grammar,
 )
@@ -144,6 +145,11 @@ def _regex(g, defn, structured, grpid):
     elif op == BND:
         name, d = args
         return Bind(_regex(g, d, structured, grpid), name=name)
+
+    elif op == DIS:
+        d = _regex(g, args[0], False, grpid)
+        return Discard(d)
+
     elif op == RUL:
         return Rule(_regex(g, args[0], structured, grpid), action=args[1])
     else:

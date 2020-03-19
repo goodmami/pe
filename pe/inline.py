@@ -17,6 +17,7 @@ from pe.grammar import (
     Nonterminal,
     And,
     Not,
+    Discard,
     Bind,
     Rule,
     Grammar,
@@ -76,6 +77,8 @@ def _inline(g, defn, visited):
         return And(_inline(g, args[0], visited))
     elif op == NOT:
         return Not(_inline(g, args[0], visited))
+    elif op == DIS:
+        return Discard(_inline(g, args[0], visited))
     elif op == BND:
         name, d = args
         return Bind(_inline(g, d, visited), name=name)
