@@ -27,19 +27,19 @@ class Operator(enum.Enum):
     RUL = _auto()  # (RUL, (expr, action))
 
 
-class Adicity(enum.Enum):
-    NILADIC = 'niladic'
-    MONADIC = 'monadic'
-    VARIADIC = 'variadic'
+class Value(enum.Enum):
+    EMPTY    = 'empty'
+    ATOMIC   = 'atomic'
+    ITERABLE = 'iterable'
     DEFERRED = 'deferred'
 
 
 class Flag(enum.Flag):
-    NONE = 0
-    DEBUG = _auto()    # print debugging info for compiled expression
-    STRICT = _auto()   # raise error on match failure
-    MEMOIZE = _auto()  # use a packrat memo
-    INLINE = _auto()   # inline non-recursive rules
-    MERGE = _auto()    # merge adjacent terms if possible
-    REGEX = _auto()    # combine adjacent terms into a single regex
+    NONE     = 0
+    DEBUG    = _auto()  # print debugging info for compiled expression
+    STRICT   = _auto()  # raise error on match failure
+    MEMOIZE  = _auto()  # use a packrat memo
+    INLINE   = _auto()  # inline non-recursive rules
+    MERGE    = _auto()  # merge adjacent terms if possible
+    REGEX    = _auto()  # combine adjacent terms into a single regex
     OPTIMIZE = INLINE | REGEX # | MERGE disabled while behavior differs

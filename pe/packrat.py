@@ -9,7 +9,7 @@ from typing import (
 import re
 from collections import defaultdict
 
-from pe._constants import FAIL, Operator, Adicity, Flag
+from pe._constants import FAIL, Operator, Value, Flag
 from pe._core import (
     Error,
     ParseError,
@@ -72,7 +72,7 @@ class Terminal(_Expr):
     """An atomic expression."""
 
     __slots__ = '_re',
-    value_type = Adicity.MONADIC
+    value_type = Value.ATOMIC
 
     def __init__(self, pattern: str, flags: int = 0):
         self._re = re.compile(pattern, flags=flags)
@@ -91,7 +91,7 @@ class Terminal(_Expr):
 class Sequence(_Expr):
 
     __slots__ = 'expressions',
-    value_type = Adicity.VARIADIC
+    value_type = Value.ITERABLE
 
     def __init__(self, *expressions: _Expr):
         self.expressions = list(_pair_bindings(expressions))
@@ -117,7 +117,7 @@ class Sequence(_Expr):
 class Choice(_Expr):
 
     __slots__ = 'expressions',
-    value_type = Adicity.VARIADIC
+    value_type = Value.ITERABLE
 
     def __init__(self, *expressions: _Expr):
         self.expressions = expressions
@@ -135,7 +135,7 @@ class Choice(_Expr):
 class Repeat(_Expr):
 
     __slots__ = 'expression', 'min'
-    value_type = Adicity.VARIADIC
+    value_type = Value.ITERABLE
 
     def __init__(self,
                  expression: _Expr,
@@ -169,7 +169,7 @@ class Repeat(_Expr):
 class Star(Repeat):
 
     __slots__ = ()
-    value_type = Adicity.VARIADIC
+    value_type = Value.ITERABLE
 
     def __init__(self,
                  expression: _Expr):
@@ -179,7 +179,7 @@ class Star(Repeat):
 class Plus(Repeat):
 
     __slots__ = ()
-    value_type = Adicity.VARIADIC
+    value_type = Value.ITERABLE
 
     def __init__(self,
                  expression: _Expr):
@@ -189,7 +189,7 @@ class Plus(Repeat):
 class Optional(_Expr):
 
     __slots__ = 'expression',
-    value_type = Adicity.VARIADIC
+    value_type = Value.ITERABLE
 
     def __init__(self, expression: _Expr):
         self.expression = expression
@@ -207,7 +207,7 @@ class Lookahead(_Expr):
     """An expression that may match but consumes no input."""
 
     __slots__ = 'expression', 'polarity',
-    value_type = Adicity.NILADIC
+    value_type = Value.EMPTY
 
     def __init__(self, expression: _Expr, polarity: bool):
         self.expression = expression
@@ -225,7 +225,7 @@ class Lookahead(_Expr):
 class Bind(_Expr):
 
     __slots__ = 'expression', 'name',
-    value_type = Adicity.NILADIC
+    value_type = Value.EMPTY
 
     def __init__(self, expression: _Expr, name: str = None):
         self.expression = expression
@@ -312,11 +312,11 @@ class Rule(_Expr):
     def finalize(self):
         if self._expression:
             if self._action is not None:
-                self.value_type = Adicity.MONADIC
+                self.value_type = Value.ATOMIC
             else:
                 self.value_type = self._expression.value_type
         else:
-            self.value_type = Adicity.DEFERRED
+            self.value_type = Value.DEFERRED
 
 
 class PackratParser(Expression):
