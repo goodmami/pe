@@ -91,12 +91,12 @@ class Expression:
         raise NotImplementedError()
 
 
-def evaluate(args, value_type):
-    if value_type == Value.VARIADIC:
+def evaluate(args, value_type: Value):
+    if value_type == Value.ITERABLE:
         return args
-    elif value_type == Value.MONADIC:
+    elif value_type == Value.ATOMIC:
         return args[0]
-    elif value_type == Value.NILADIC:
+    elif value_type == Value.EMPTY:
         return None
     else:
         raise Error(f'invalid value type: {value_type!r}')
