@@ -5,7 +5,7 @@ Grammar Definition Merging
 
 import pe
 from pe._constants import Operator
-from pe.grammar import (
+from pe.operators import (
     Literal,
     Class,
     Sequence,

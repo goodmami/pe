@@ -6,13 +6,14 @@ Inspired by Medeiros and Ierusalimschy, 2008, "A Parsing Machine for PEGs"
 
 """
 
-from typing import Union
+from typing import Union, Tuple, List
 import enum
 from collections import defaultdict
 import re
 
 from pe._constants import FAIL, Operator, Flag
-from pe._core import Error, Grammar, Expression, Match
+from pe._core import Error, Grammar, Definition, Expression, Match
+
 
 class MachineOp(enum.Flag):
     PASS = enum.auto()

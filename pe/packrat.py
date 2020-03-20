@@ -16,6 +16,8 @@ from pe._core import (
     Match,
     Expression,
     evaluate,
+)
+from pe.operators import (
     Definition,
     Grammar,
 )
@@ -350,11 +352,12 @@ class Rule(_Expr):
 
 class PackratParser(Expression):
 
-    __slots__ = 'grammar', '_exprs',
+    __slots__ = 'grammar', 'flags', '_exprs',
 
-    def __init__(self, grammar: Grammar):
+    def __init__(self, grammar: Grammar, flags=Flag.NONE):
         self.grammar = grammar
-        self._exprs: Dict[str, _Expr] = _grammar_to_packrat(grammar)
+        self.flags = flags
+        self._exprs: Dict[str, _Expr] = _grammar_to_packrat(grammar, flags)
 
     @property
     def start(self):
@@ -373,7 +376,10 @@ class PackratParser(Expression):
         return self._exprs[self.start].match(s, pos=pos, flags=flags)
 
 
-def _grammar_to_packrat(grammar):
+def _grammar_to_packrat(grammar, flags):
+    if not grammar.final:
+        grammar.finalize()
+
     actns = grammar.actions
     exprs = {}
     for name, _def in grammar.definitions.items():

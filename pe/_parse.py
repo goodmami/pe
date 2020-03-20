@@ -1,4 +1,3 @@
-
 r"""
 Self-hosted parser for pe's grammar format.
 
@@ -72,123 +71,40 @@ The syntax is defined as follows::
   EndOfFile  <- !.
 """
 
-from typing import Union, Pattern, Callable
+from typing import Union
 
 import pe
-from pe._constants import Operator, Flag
-from pe._core import Error, Expression, Definition, Grammar
+from pe._core import Error, Expression
+from pe.operators import (
+    Dot,
+    Literal,
+    Class,
+    Nonterminal,
+    Optional,
+    Star,
+    Plus,
+    And,
+    Not,
+    Raw,
+    Discard,
+    Bind,
+    Sequence,
+    Rule,
+    Choice,
+    Grammar,
+)
 from pe.packrat import PackratParser
 from pe.actions import constant, first, pack, join
 
 
-_Defn = Union[str, Definition]
-
-
-def _validate(arg: _Defn):
-    if isinstance(arg, str):
-        return Literal(arg)
-    elif not isinstance(arg, Definition):
-        raise ValueError(f'not a valid definition: {arg!r}')
-    elif not isinstance(arg.op, Operator):
-        raise ValueError(f'not a valid operator: {arg.op!r}')
-    else:
-        return arg
-
-
-def Dot():
-    return Definition(Operator.DOT, ())
-
-
-def Literal(string: str):
-    return Definition(Operator.LIT, (string,))
-
-
-def Class(chars: str):
-    return Definition(Operator.CLS, (chars,))
-
-
-def Regex(pattern: Union[str, Pattern], flags: int = 0):
-    return Definition(Operator.RGX, (pattern, flags))
-
-
-def Sequence(*expressions: _Defn):
-    exprs = list(map(_validate, expressions))
-    if len(exprs) == 1:
-        return exprs[0]
-    else:
-        _exprs = []
-        for expr in exprs:
-            if expr.op == Operator.SEQ:
-                _exprs.extend(expr.args[0])
-            else:
-                _exprs.append(expr)
-        return Definition(Operator.SEQ, (_exprs,))
-
-
-def Choice(*expressions: _Defn):
-    exprs = list(map(_validate, expressions))
-    if len(exprs) == 1:
-        return exprs[0]
-    else:
-        _exprs = []
-        for expr in exprs:
-            if expr.op == Operator.CHC:
-                _exprs.extend(expr.args[0])
-            else:
-                _exprs.append(expr)
-        return Definition(Operator.CHC, (_exprs,))
-
-
-def Optional(expression: _Defn):
-    return Definition(Operator.OPT, (_validate(expression),))
-
-
-def Star(expression: _Defn):
-    return Definition(Operator.STR, (_validate(expression),))
-
-
-def Plus(expression: _Defn):
-    return Definition(Operator.PLS, (_validate(expression),))
-
-
-def Nonterminal(name: str):
-    return Definition(Operator.SYM, (name,))
-
-
-def And(expression: _Defn):
-    return Definition(Operator.AND, (_validate(expression),))
-
-
-def Not(expression: _Defn):
-    return Definition(Operator.NOT, (_validate(expression),))
-
-
-def Raw(expression: _Defn):
-    return Definition(Operator.RAW, (_validate(expression),))
-
-
-def Discard(expression: _Defn):
-    return Definition(Operator.DIS, (_validate(expression),))
-
-
-def Bind(expression: _Defn, name: str):
-    assert isinstance(name, str)
-    return Definition(Operator.BND, (name, _validate(expression),))
-
-
-def Rule(expression: _Defn, action: Callable):
-    return Definition(Operator.RUL, (_validate(expression), action))
-
-
 def _make_literal(*xs):
     s = ''.join(xs)
-    # TODO: proper unescaping
     return Literal(pe.unescape(s))
 
 
 def _make_quantified(primary, quantifier=None):
     if not quantifier:
-        return _validate(primary)
+        return primary
     assert len(quantifier) == 1
     quantifier = quantifier[0]
     if quantifier == '?':
@@ -201,9 +117,9 @@ def _make_quantified(primary, quantifier=None):
         raise Error(f'invalid quantifier: {quantifier!r}')
 
 
-def _make_evaluated(quantified, prefix=None):
+def _make_valued(quantified, prefix=None):
     if not prefix:
-        return _validate(quantified)
+        return quantified
     assert len(prefix) == 1
     prefix = prefix[0]
     if prefix == '&':
@@ -221,18 +137,18 @@ def _make_evaluated(quantified, prefix=None):
         raise Error(f'invalid prefix: {prefix!r}')
 
 
-def _make_sequence(exprs):
+def _make_sequential(exprs):
     if len(exprs) == 1:
-        return _validate(exprs[0])
+        return exprs[0]
     elif len(exprs) > 1:
         return Sequence(*exprs)
     else:
         raise Error(f'empty sequence: {exprs}')
 
 
-def _make_choice(exprs):
+def _make_prioritized(exprs):
     if len(exprs) == 1:
-        return _validate(exprs[0])
+        return exprs[0]
     elif len(exprs) > 1:
         return Choice(*exprs)
     else:
@@ -343,13 +259,13 @@ PEG = Grammar(
         'Start': first,
         'Grammar': _make_grammar,
         'Definition': pack(tuple),
-        'Expression': pack(_make_choice),
-        'Sequence': pack(_make_sequence),
-        'Evaluated': _make_evaluated,
+        'Expression': pack(_make_prioritized),
+        'Sequence': pack(_make_sequential),
+        'Evaluated': _make_valued,
         'Prefix': join(str),
         'Quantified': _make_quantified,
         'Identifier': join(str),
-        'Group': _validate,
+        # 'Group': _validate,
         'Name': join(Nonterminal),
         'Literal': _make_literal,
         'Class': join(Class),
@@ -360,10 +276,9 @@ PEG = Grammar(
 _parser = PackratParser(PEG)
 
 
-def loads(source: str,
-          flags: Flag = Flag.NONE) -> Union[Grammar, Expression]:
+def loads(source: str) -> Union[Grammar, Expression]:
     """Parse the PEG at *source* and return a grammar definition."""
-    m = _parser.match(source, flags=Flag.STRICT)
+    m = _parser.match(source, flags=pe.STRICT)
     if not m:
         raise Error('invalid grammar')
     return m.value()

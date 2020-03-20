@@ -2,6 +2,6 @@
 # API Reference: pe.packrat
 
 
-*class* pe.packrat.**<a id="parser" href="#parser">Parser</a>**
-(*grammar*)
+*class* pe.packrat.**<a id="PackratParser" href="#PackratParser">PackratParser</a>**
+(*grammar, flags=pe.NONE*)
 

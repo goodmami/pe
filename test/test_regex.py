@@ -1,13 +1,13 @@
 
 import pe
-from pe.grammar import (
-    loads,
+from pe.operators import (
     Grammar,
     Regex,
     Sequence,
     Nonterminal,
     Discard
 )
+from pe._parse import loads
 from pe.regex import optimize
 
 

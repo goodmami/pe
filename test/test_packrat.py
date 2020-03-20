@@ -2,7 +2,7 @@
 import pytest
 
 from pe._constants import FAIL
-from pe.grammar import Class, Grammar
+from pe.operators import Class, Grammar
 from pe.packrat import (
     Terminal as Trm,
     Optional as Opt,

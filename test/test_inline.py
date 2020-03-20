@@ -1,6 +1,6 @@
 
 import pe
-from pe.grammar import loads
+from pe._parse import loads
 from pe.inline import optimize
 
 def iload(s): return optimize(loads(s))

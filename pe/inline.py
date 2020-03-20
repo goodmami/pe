@@ -5,7 +5,7 @@ Grammar Definition Inlining
 
 import pe
 from pe._constants import Operator
-from pe.grammar import (
+from pe.operators import (
     Literal,
     Class,
     Sequence,
@@ -51,17 +51,18 @@ def optimize(g: Grammar):
                    actions=g.actions,
                    start=g.start)
 
+
 def _inline(g, defn, visited):
     op = defn.op
     args = defn.args
 
     if op == SYM:
         name = args[0]
-        if name in visited:
+        if name in visited:  # recursive rule
             return defn
         else:
             defn = _inline(g, g[name], visited | {name})
-            if name in g.actions:
+            if name in g.actions and defn.op != RUL:
                 defn = Rule(defn, action=g.actions[name])
             return defn
 

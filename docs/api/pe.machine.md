@@ -2,6 +2,6 @@
 # API Reference: pe.machine
 
 
-*class* pe.machine.**<a id="parser" href="#parser">Parser</a>**
-(*grammar*)
+*class* pe.machine.**<a id="MachineParser" href="#MachineParser">MachineParser</a>**
+(*grammar, flags=pe.NONE*)
 
