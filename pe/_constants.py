@@ -3,9 +3,11 @@ import enum
 
 _auto = enum.auto
 
-# Scan results
+# Basic constants
 
 FAIL = -1  # TODO: Use typing.Final from Python 3.8
+
+ANONYMOUS = '<anonymous>'  # name for unnamed rules
 
 # Processing Operators
 
@@ -22,10 +24,10 @@ class Operator(enum.Enum):
     NOT = _auto()  # (NOT, (expr,))
     RAW = _auto()  # (RAW, (expr,))
     DIS = _auto()  # (DIS, (expr,))
-    BND = _auto()  # (BND, (name, expr))
+    BND = _auto()  # (BND, (expr, name))
     SEQ = _auto()  # (SEQ, (exprs,))
     CHC = _auto()  # (CHC, (exprs,))
-    RUL = _auto()  # (RUL, (expr, action))
+    RUL = _auto()  # (RUL, (expr, action, name))
 
 
 class Value(enum.Enum):

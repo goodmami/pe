@@ -2,7 +2,7 @@
 
 from typing import Union, Tuple, Dict, Pattern, Callable, Any
 
-from pe._constants import Operator
+from pe._constants import ANONYMOUS, Operator
 from pe._core import Error
 
 
@@ -21,10 +21,10 @@ class Definition:
         return (self.op == other.op) and (self.args == other.args)
 
 
-_Defn = Union[str, Definition]
+_Def = Union[str, Definition]
 
 
-def _validate(arg: _Defn):
+def _validate(arg: _Def):
     if isinstance(arg, str):
         return Literal(arg)
     elif not isinstance(arg, Definition):
@@ -51,7 +51,7 @@ def Regex(pattern: Union[str, Pattern], flags: int = 0):
     return Definition(Operator.RGX, (pattern, flags))
 
 
-def Sequence(*expressions: _Defn):
+def Sequence(*expressions: _Def):
     exprs = list(map(_validate, expressions))
     if len(exprs) == 1:
         return exprs[0]
@@ -65,7 +65,7 @@ def Sequence(*expressions: _Defn):
         return Definition(Operator.SEQ, (_exprs,))
 
 
-def Choice(*expressions: _Defn):
+def Choice(*expressions: _Def):
     exprs = list(map(_validate, expressions))
     if len(exprs) == 1:
         return exprs[0]
@@ -79,15 +79,15 @@ def Choice(*expressions: _Defn):
         return Definition(Operator.CHC, (_exprs,))
 
 
-def Optional(expression: _Defn):
+def Optional(expression: _Def):
     return Definition(Operator.OPT, (_validate(expression),))
 
 
-def Star(expression: _Defn):
+def Star(expression: _Def):
     return Definition(Operator.STR, (_validate(expression),))
 
 
-def Plus(expression: _Defn):
+def Plus(expression: _Def):
     return Definition(Operator.PLS, (_validate(expression),))
 
 
@@ -95,28 +95,28 @@ def Nonterminal(name: str):
     return Definition(Operator.SYM, (name,))
 
 
-def And(expression: _Defn):
+def And(expression: _Def):
     return Definition(Operator.AND, (_validate(expression),))
 
 
-def Not(expression: _Defn):
+def Not(expression: _Def):
     return Definition(Operator.NOT, (_validate(expression),))
 
 
-def Raw(expression: _Defn):
+def Raw(expression: _Def):
     return Definition(Operator.RAW, (_validate(expression),))
 
 
-def Discard(expression: _Defn):
+def Discard(expression: _Def):
     return Definition(Operator.DIS, (_validate(expression),))
 
 
-def Bind(expression: _Defn, name: str):
+def Bind(expression: _Def, name: str):
     assert isinstance(name, str)
-    return Definition(Operator.BND, (name, _validate(expression),))
+    return Definition(Operator.BND, (_validate(expression), name))
 
 
-def Rule(expression: _Defn, action: Callable, name: str = '<anonymous>'):
+def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
     return Definition(Operator.RUL, (_validate(expression), action, name))
 
 
@@ -151,5 +151,31 @@ class Grammar:
     def finalize(self):
         if self.final:
             raise Error('grammar is already finalized')
-
+        defs = self.definitions
+        acts = self.actions
+        for name in defs:
+            expr = defs[name]
+            if name in acts:
+                if expr.op == Operator.RUL:
+                    # check if name is same or None?
+                    expr = expr.args[0]
+                expr = Rule(expr, acts[name], name=name)
+                defs[name] = expr
+            _check_closed(expr, defs)
         self.final = True
+
+
+def _check_closed(expr, defs):
+    op = expr.op
+    args = expr.args
+    if op == Operator.SYM:
+        if args[0] not in defs:
+            raise Error(f'undefined nonterminal: {args[0]}')
+    elif op in (Operator.DOT, Operator.LIT, Operator.CLS, Operator.RGX):
+        pass
+    elif op in (Operator.SEQ, Operator.CHC):
+        for term in args[0]:
+            _check_closed(term, defs)
+    else:
+        _check_closed(args[0], defs)
+

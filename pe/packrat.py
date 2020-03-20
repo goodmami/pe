@@ -9,7 +9,7 @@ from typing import (
 import re
 from collections import defaultdict
 
-from pe._constants import FAIL, Operator, Value, Flag
+from pe._constants import FAIL, ANONYMOUS, Operator, Value, Flag
 from pe._core import (
     Error,
     ParseError,
@@ -21,6 +21,7 @@ from pe.operators import (
     Definition,
     Grammar,
 )
+from pe import inline, regex
 
 
 _MatchResult = Tuple[int, SeqType, Union[Dict, None]]
@@ -289,9 +290,9 @@ class Rule(_Expr):
     __slots__ = '_expression', '_action', 'name'
 
     def __init__(self,
-                 name: str,
                  expression: Union[_Expr, None],
-                 action: Callable = None):
+                 action: Callable = None,
+                 name: str = ANONYMOUS):
         self.name = name
         self._expression = expression
         self._action = action
@@ -380,22 +381,26 @@ def _grammar_to_packrat(grammar, flags):
     if not grammar.final:
         grammar.finalize()
 
-    actns = grammar.actions
+    if flags & Flag.INLINE:
+        grammar = inline.optimize(grammar)
+    if flags & Flag.REGEX:
+        grammar = regex.optimize(grammar)
+
     exprs = {}
     for name, _def in grammar.definitions.items():
         expr = _def_to_expr(_def, exprs)
-        # TODO: this logic could be improved
-        if name not in exprs:
-            if name in actns:
-                if not isinstance(expr, Rule):
-                    expr = Rule(name, expr)
-                expr.action = actns[name]
-            exprs[name] = expr
+        # if name is already in exprs, that means it was seen as a
+        # nonterminal in some other rule, so don't replace the object
+        # or the call chain will break.
+        if name in exprs:
+            existing = exprs[name]
+            if isinstance(expr, Rule):
+                existing.expression = expr.expression
+                existing.action = expr.action
+            else:
+                existing.expression = expr
         else:
-            expr = exprs[name]
-            assert isinstance(expr, Rule)
-            expr.expression = _def_to_expr(_def, exprs)
-            expr.action = actns.get(name, expr.action)
+            exprs[name] = expr
 
     # ensure all symbols are defined
     for name, expr in exprs.items():
@@ -425,7 +430,7 @@ def _def_to_expr(_def: Definition, exprs):
     elif op == Operator.PLS:
         return Plus(_def_to_expr(args[0], exprs))
     elif op == Operator.SYM:
-        return exprs.setdefault(args[0], Rule(args[0], None))
+        return exprs.setdefault(args[0], Rule(None, None, name=args[0]))
     elif op == Operator.AND:
         return Lookahead(_def_to_expr(args[0], exprs), True)
     elif op == Operator.NOT:
@@ -435,15 +440,16 @@ def _def_to_expr(_def: Definition, exprs):
     elif op == Operator.DIS:
         return Discard(_def_to_expr(args[0], exprs))
     elif op == Operator.BND:
-        return Bind(_def_to_expr(args[1], exprs), name=args[0])
+        return Bind(_def_to_expr(args[0], exprs), name=args[1])
     elif op == Operator.SEQ:
         return Sequence(*[_def_to_expr(e, exprs) for e in args[0]])
     elif op == Operator.CHC:
         return Choice(*[_def_to_expr(e, exprs) for e in args[0]])
     elif op == Operator.RUL:
-        return Rule('<anonymous>',
-                    _def_to_expr(args[0], exprs),
-                    action=args[1])
+        _def, action, name = args
+        return Rule(_def_to_expr(_def, exprs),
+                    action=action,
+                    name=name)
     else:
         raise Error(f'invalid definition: {_def!r}')
 

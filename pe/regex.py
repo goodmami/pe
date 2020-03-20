@@ -128,7 +128,7 @@ def _regex(g, defn, structured, grpid):
         return Raw(_regex(g, args[0], False, grpid))
 
     elif op == BND:
-        name, d = args
+        d, name = args
         return Bind(_regex(g, d, structured, grpid), name=name)
 
     elif op == DIS:

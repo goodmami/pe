@@ -66,7 +66,7 @@ def _inline(g, defn, visited):
                 defn = Rule(defn, action=g.actions[name])
             return defn
 
-    if op == SEQ:
+    elif op == SEQ:
         return Sequence(*(_inline(g, d, visited) for d in args[0]))
     elif op == CHC:
         return Choice(*(_inline(g, d, visited) for d in args[0]))
@@ -85,7 +85,7 @@ def _inline(g, defn, visited):
     elif op == DIS:
         return Discard(_inline(g, args[0], visited))
     elif op == BND:
-        name, d = args
+        d, name = args
         return Bind(_inline(g, d, visited), name=name)
     elif op == RUL:
         return Rule(_inline(g, args[0], visited), action=args[1])

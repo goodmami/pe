@@ -77,7 +77,7 @@ def _merge(g, defn):
     elif op == DIS:
         return Discard(_merge(g, args[0]))
     elif op == BND:
-        name, d = args
+        d, name = args
         return Bind(_merge(g, d), name=name)
     elif op == RUL:
         return Rule(_merge(g, args[0]), action=args[1])

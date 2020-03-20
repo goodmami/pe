@@ -89,7 +89,6 @@ from pe.operators import (
     Discard,
     Bind,
     Sequence,
-    Rule,
     Choice,
     Grammar,
 )
