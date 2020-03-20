@@ -33,7 +33,7 @@ example:
   - Multiple parsers are available (currently [packrat](pe/packrat.py)
     for memoizing recursive descent and [machine](pe/machine.py) for
     an iterative "parsing machine" as from [Medeiros and
-    Ierusalimschy, 2008].
+    Ierusalimschy, 2008] and implemented in [LPeg]).
 
 [Medeiros and Ierusalimschy, 2008]: http://www.inf.puc-rio.br/~roberto/docs/ry08-4.pdf
 
@@ -154,4 +154,6 @@ an iterable while `Match.value()` can return a single object.
 - [PEG.js](https://github.com/pegjs/pegjs) (Javascript)
 - [Pegged](https://github.com/PhilippeSigaud/Pegged) (D)
 - [pegen](https://github.com/gvanrossum/pegen) (Python / C)
-- [LPeg](http://www.inf.puc-rio.br/~roberto/lpeg/) (Lua)
+- [LPeg] (Lua)
+
+[LPeg]: http://www.inf.puc-rio.br/~roberto/lpeg/

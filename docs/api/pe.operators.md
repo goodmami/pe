@@ -61,4 +61,4 @@ pe.operators.**<a id="Bind" href="#Bind">Bind</a>**
 (*expression, name=None*)
 
 pe.operators.**<a id="Rule" href="#Rule">Rule</a>**
-(*expression, action*)
+(*expression, action, name='\<anonymous\>'*)

@@ -42,7 +42,7 @@ following sections.
 | `v`      | (default)     | [Sequential]  | [Deferred] | Match valued term `v`                                   |
 | `v s`    | [Sequence]    | [Sequential]  | [Iterable] | Match sequential term `s` only if `v` succeeded         |
 | `s`      | (default)     | [Applicative] | [Deferred] | Match sequential term `s`                               |
-| (none)   | [Rule]        | [Applicative] | [Atomic]   | Match sequential term `s`, apply any defined action     |
+| (none)   | [Rule]        | [Applicative] | [Atomic]   | Match sequential term `s`, apply the defined action     |
 | `a`      | (default)     | [Prioritized] | [Deferred] | Match applicative term `a`                              |
 | `a / e`  | [Choice]      | [Prioritized] | [Iterable] | Match prioritized term `e` only if `a` failed           |
 | `A <- e` | [Grammar]     | [Definitive]  | [Deferred] | Match prioritized term `e` for start symbol `A`         |
@@ -688,26 +688,25 @@ given expression is reduced to the given expression only.
 [Rule]: #rule
 
 - Notation: (none)
-- Function: [Rule](api/pe.grammar.md#Rule)(*expression, action=None*)
+- Function: [Rule](api/pe.grammar.md#Rule)(*expression, action, name='\<anonymous\>'*)
 - Type: [Applicative]
 - Value: [Atomic]
 
 A Rule is often associated with a name in the grammar, but the rule
 itself is just a wrapper around a given expression that provides some
 additional behavior. The rule thus succeeds when the given expression
-succeeds, emitting the given expressions value and consuming its
-input. If an action is defined, the value type of the rule is *atomic*
-and it emits the result of applying the action with any emitted or
-bound values. If no action is defined, the value type of the Rule is
-the resolved value type of the given expression. After the rule
-completes, any bound values are cleared, regardless of whether an
-action was defined.
+succeeds, and it consumes the input of the given expression. The value
+of a rule is the result of applying the action to the values of the
+given expression, and thus the value type is *atomic*. After the rule
+completes, any bound values are cleared.
 
 Note that, while Rules may only be defined in the PEG notation with a
 name in the grammar, anonymized rules may appear inside of
 expressions. This situation can occur by defining expressions using
 the API instead of the notation, or as the result of inlining
-optimizations.
+optimizations. To help with debugging a grammar with inlined rules,
+the name of an associated nonterminal is kept with the rule, even
+though it has no other use.
 
 
 ### Choice
