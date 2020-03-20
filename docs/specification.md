@@ -365,18 +365,16 @@ escape sequences or schemes are allowed:
 - `\]`: `]` character
 - `\\`: `\` character
 - `\N`, `\NN`, `\NNN`: octal sequence of one to three octal digits; the
-  maximum value is `\777`; leading zeros are permitted; the value
-  denotes a unicode character and not a byte
-- `\xNN`: UTF-8 character sequence of exactly 2 hexadecimal digits
-- `\uNNNN`: UTF-16 character sequence of exactly 4 hexadecimal digits
-- `\UNNNNNNNN`: UTF-32 character sequence of exactly 8 hexadecimal
-  digits
+  maximum value is `\777`; leading zeros are permitted
+- `\xNN`: sequence of exactly 2 hexidecimal digits
+- `\uNNNN`: sequence of exactly 4 hexadecimal digits
+- `\UNNNNNNNN`: sequence of exactly 8 hexadecimal digits
 
 All other escape sequences are invalid.
 
-Note that for UTF-8 and UTF-16, a single code-point may require more
-than one escape sequence. For all others, one escape sequence
-corresponds to a single character.
+Note that for the octal and hexadecimal escapes, each sequence
+corresponds to a single character. That is, multiple UTF-8 or UTF-16
+escapes are not combined into a single character.
 
 ## Operators
 [Operator]: #operators
@@ -387,7 +385,7 @@ This document defines the operators available in **pe**.
 [Dot]: #dot
 
 - Notation: `.`
-- Function: [Dot](api/pe.grammar.md#Dot)()
+- Function: [Dot](api/pe.operators.md#Dot)()
 - Type: [Primary]
 - Value: [Atomic]
 
@@ -400,7 +398,7 @@ emits the same character as its value.
 [Literal]: #literal
 
 - Notation: `'abc'` or `"abc"`
-- Function: [Literal](api/pe.grammar.md#Literal)(*string*)
+- Function: [Literal](api/pe.operators.md#Literal)(*string*)
 - Type: [Primary]
 - Value: [Atomic]
 
@@ -423,7 +421,7 @@ expression more explicit and, thus, more clear.
 [Class]: #class
 
 - Notation: `[abc]`
-- Function: [Class](api/pe.grammar.md#Class)(*ranges*)
+- Function: [Class](api/pe.operators.md#Class)(*ranges*)
 - Type: [Primary]
 - Value: [Atomic]
 
@@ -471,7 +469,7 @@ in regular expression engines which may undergird the **pe** parser.
 [Nonterminal]: #nonterminal
 
 - Notation: `Abc`
-- Function: [Nonterminal](api/pe.grammar.md#Nonterminal)(*name*)
+- Function: [Nonterminal](api/pe.operators.md#Nonterminal)(*name*)
 - Type: [Primary]
 - Value: [Deferred]
 
@@ -531,7 +529,7 @@ following function calls:
 [Optional]: #optional
 
 - Notation: `e?`
-- Function: [Optional](api/pe.grammar.md#Optional)(*expression*)
+- Function: [Optional](api/pe.operators.md#Optional)(*expression*)
 - Type: [Quantified]
 - Value: [Iterable]
 
@@ -548,7 +546,7 @@ remaining input.
 [Star]: #star
 
 - Notation: `e*`
-- Function: [Star](api/pe.grammar.md#Star)(*expression*)
+- Function: [Star](api/pe.operators.md#Star)(*expression*)
 - Type: [Quantified]
 - Value: [Iterable]
 
@@ -564,7 +562,7 @@ input.
 [Plus]: #plus
 
 - Notation: `e+`
-- Function: [Plus](api/pe.grammar.md#Plus)(*expression*)
+- Function: [Plus](api/pe.operators.md#Plus)(*expression*)
 - Type: [Quantified]
 - Value: [Iterable]
 
@@ -577,7 +575,7 @@ emitted.
 [And]: #and
 
 - Notation: `&e`
-- Function: [And](api/pe.grammar.md#And)(*expression*)
+- Function: [And](api/pe.operators.md#And)(*expression*)
 - Type: [Valued]
 - Value: [Empty]
 
@@ -591,7 +589,7 @@ consume input) and no values are emitted.
 [Not]: #not
 
 - Notation: `!e`
-- Function: [Not](api/pe.grammar.md#Not)(*expression*)
+- Function: [Not](api/pe.operators.md#Not)(*expression*)
 - Type: [Valued]
 - Value: [Empty]
 
@@ -604,7 +602,7 @@ input is consumed and no values are emitted.
 [Raw]: #raw
 
 - Notation: `~e`
-- Function: [Raw](api/pe.grammar.md#Raw)(*expression*)
+- Function: [Raw](api/pe.operators.md#Raw)(*expression*)
 - Type: [Valued]
 - Value: [Atomic]
 
@@ -619,7 +617,7 @@ includes even bound or discarded matches in the given expression.
 [Bind]: #bind
 
 - Notation: `:e` or `name:e`
-- Function: [Bind](api/pe.grammar.md#Bind)(*expression, name*)
+- Function: [Bind](api/pe.operators.md#Bind)(*expression, name*)
 - Type: [Valued]
 - Value: [Empty]
 
@@ -655,7 +653,7 @@ C <- A
 [Discard]: #discard
 
 - Notation: `:e`
-- Function: [Discard](api/pe.grammar.md#Discard)(*expression*)
+- Function: [Discard](api/pe.operators.md#Discard)(*expression*)
 - Type: [Valued]
 - Value: [Empty]
 
@@ -668,7 +666,7 @@ the [And](#and) operator, matching input is consumed.
 [Sequence]: #sequence
 
 - Notation: `e e`
-- Function: [Sequence](api/pe.grammar.md#Sequence)(*expression*, ...)
+- Function: [Sequence](api/pe.operators.md#Sequence)(*expression*, ...)
 - Type: [Sequential]
 - Value: [Iterable]
 
@@ -688,7 +686,7 @@ given expression is reduced to the given expression only.
 [Rule]: #rule
 
 - Notation: (none)
-- Function: [Rule](api/pe.grammar.md#Rule)(*expression, action, name='\<anonymous\>'*)
+- Function: [Rule](api/pe.operators.md#Rule)(*expression, action, name='\<anonymous\>'*)
 - Type: [Applicative]
 - Value: [Atomic]
 
@@ -713,7 +711,7 @@ though it has no other use.
 [Choice]: #choice
 
 - Notation: `e / e`
-- Function: [Choice](api/pe.grammar.md#Choice)(*expression*, ...)
+- Function: [Choice](api/pe.operators.md#Choice)(*expression*, ...)
 - Type: [Prioritized]
 - Value: [Iterable]
 
@@ -731,7 +729,7 @@ expression is reduced to the given expression only.
 [Grammar]: #grammar
 
 - Notation: `Abc <- e`
-- Function: [Grammar](api/pe.grammar.md#Grammar)(*definitions=None, actions=None, start='Start'*)
+- Function: [Grammar](api/pe.operators.md#Grammar)(*definitions=None, actions=None, start='Start'*)
 - Type: [Definitive]
 - Value: [Deferred]
 

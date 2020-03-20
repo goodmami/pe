@@ -1,5 +1,5 @@
 
-from typing import Dict, Callable
+from typing import Dict, Callable, Match as reMatch
 import re
 
 from pe._constants import Flag
@@ -39,7 +39,6 @@ def compile(source,
 
 def match(pattern: str,
           string: str,
-          action: Callable = None,
           actions: Dict[str, Callable] = None,
           parser: str = 'packrat',
           flags: Flag = Flag.NONE):
@@ -51,7 +50,6 @@ def match(pattern: str,
         '-12345'
     """
     expr = compile(pattern,
-                   action=action,
                    actions=actions,
                    parser=parser,
                    flags=Flag.OPTIMIZE)
@@ -72,7 +70,16 @@ _escapes = {
     ']'  : '\\]',
 }
 _unescapes = dict((e, u) for u, e in _escapes.items())
-
+_unescape_re = re.compile(
+    '({})'.format(
+        '|'.join(list(map(re.escape, _unescapes))
+                   + ['\\\\[0-7]{1,3}',       # oct
+                      '\\\\x[0-9a-fA-F]{2}',  # hex
+                      '\\\\u[0-9a-fA-F]{4}',  # hex
+                      '\\\\U[0-9a-fA-F]{8}']  # hex
+                 )
+    )
+)
 
 def escape(string: str):
     """Escape special characters for literals and character classes."""
@@ -81,8 +88,16 @@ def escape(string: str):
                   string)
 
 
+def _unescape(m: reMatch):
+    x = m.group(0)
+    c = _unescapes.get(x)
+    if not c:
+        if x[1].isdigit():
+            c = chr(int(x[1:], 8))
+        else:
+            c = chr(int(x[2:], 16))
+    return c
+
 def unescape(string: str):
     """Unescape special characters for literals and character classes."""
-    return re.sub('(' + '|'.join(map(re.escape, _unescapes)) + ')',
-                  lambda m: _unescapes.get(m.group(0), m.group(0)),
-                  string)
+    return _unescape_re.sub(_unescape, string)

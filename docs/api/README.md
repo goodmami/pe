@@ -7,6 +7,6 @@
 
 * [pe](pe.md)
 * [pe.actions](pe.actions.md)
-* [pe.grammar](pe.grammar.md)
 * [pe.machine](pe.machine.md)
+* [pe.operators](pe.operators.md)
 * [pe.packrat](pe.packrat.md)
