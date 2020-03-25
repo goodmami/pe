@@ -1,6 +1,8 @@
 
-from typing import Union, List, Dict, Tuple, Callable, NamedTuple, Any
+from typing import (
+    Union, List, Dict, Tuple, Callable, NamedTuple, Any)
 import textwrap
+from collections import defaultdict
 
 from pe._constants import FAIL, Operator, Value, Flag
 
@@ -79,6 +81,10 @@ class Match:
         return evaluate(self._args, self.pe.value_type)
 
 
+RawMatch = Tuple[int, List, Union[Dict, None]]
+Memo = Dict[int, Dict[int, RawMatch]]
+
+
 class Expression:
     """A compiled parsing expression."""
 
@@ -88,6 +94,31 @@ class Expression:
               s: str,
               pos: int = 0,
               flags: Flag = Flag.NONE) -> Union[Match, None]:
+        memo: Union[Memo, None] = None
+        if flags & Flag.MEMOIZE:
+            memo = defaultdict(dict)
+
+        end, args, kwargs = self._match(s, pos, memo)
+
+        if end < 0:
+            if memo:
+                pos = max(memo)
+                args = [_args for _, _args, _ in memo[pos].values()]
+            else:
+                args = [args]
+            if flags & Flag.STRICT:
+                exc = _make_parse_error(s, pos, args)
+                raise exc
+            else:
+                return None
+
+        args = tuple(args or ())
+        if kwargs is None:
+            kwargs = {}
+
+        return Match(s, pos, end, self, args, kwargs)
+
+    def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         raise NotImplementedError()
 
 
@@ -100,3 +131,21 @@ def evaluate(args, value_type: Value):
         return None
     else:
         raise Error(f'invalid value type: {value_type!r}')
+
+
+def _make_parse_error(s, pos, failures):
+    try:
+        start = s.rindex('\n', 0, pos)
+    except ValueError:
+        start = 0
+    try:
+        end = s.index('\n', start + 1)
+    except ValueError:
+        end = len(s)
+    lineno = s.count('\n', 0, start + 1)
+    line = s[start:end]
+    failures = ', or '.join(str(pe) for err in failures for pe, _ in err)
+    return ParseError(f'failed to parse {failures}',
+                      lineno=lineno,
+                      offset=pos - start,
+                      text=line)

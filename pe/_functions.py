@@ -1,5 +1,5 @@
 
-from typing import Dict, Callable, Match as reMatch
+from typing import List, Dict, Callable, Match as reMatch
 import re
 
 from pe._constants import Flag
@@ -16,9 +16,9 @@ def compile(source,
     """Compile the parsing expression or grammar in *source*."""
     parsername = parser.lower()
     if parsername == 'packrat':
-        from pe.packrat import PackratParser as parser
+        from pe.packrat import PackratParser as parser_class
     elif parsername == 'machine':
-        from pe.machine import MachineParser as parser
+        from pe.machine import MachineParser as parser_class  # type: ignore
     else:
         raise Error(f'unsupported parser: {parser}')
 
@@ -32,7 +32,7 @@ def compile(source,
     g.actions = actions or {}
     g.finalize()
 
-    p = parser(g, flags=flags)
+    p = parser_class(g, flags=flags)
 
     if flags & Flag.DEBUG:
         for name, defn in g.definitions.items():
@@ -60,7 +60,7 @@ def match(pattern: str,
     return expr.match(string)
 
 
-_escapes = {
+_escapes: Dict[str, str] = {
     '\t' : '\\t',
     '\n' : '\\n',
     '\v' : '\\v',
@@ -73,17 +73,18 @@ _escapes = {
     '\\' : '\\\\',
     ']'  : '\\]',
 }
+_codepoint_escapes: List[str] = [
+    '\\\\[0-7]{1,3}',       # oct
+    '\\\\x[0-9a-fA-F]{2}',  # hex
+    '\\\\u[0-9a-fA-F]{4}',  # hex
+    '\\\\U[0-9a-fA-F]{8}',  # hex
+]
 _unescapes = dict((e, u) for u, e in _escapes.items())
 _unescape_re = re.compile(
     '({})'.format(
         '|'.join(list(map(re.escape, _unescapes))
-                   + ['\\\\[0-7]{1,3}',       # oct
-                      '\\\\x[0-9a-fA-F]{2}',  # hex
-                      '\\\\u[0-9a-fA-F]{4}',  # hex
-                      '\\\\U[0-9a-fA-F]{8}']  # hex
-                 )
-    )
-)
+                 + _codepoint_escapes)))
+
 
 def escape(string: str):
     """Escape special characters for literals and character classes."""

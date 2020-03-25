@@ -74,7 +74,7 @@ The syntax is defined as follows::
 from typing import Union
 
 import pe
-from pe._core import Error, Expression
+from pe._core import Error
 from pe.operators import (
     Definition,
     Dot,
@@ -276,7 +276,7 @@ PEG = Grammar(
 _parser = PackratParser(PEG)
 
 
-def loads(source: str) -> Union[Grammar, Expression]:
+def loads(source: str) -> Union[Grammar, Definition]:
     """Parse the PEG at *source* and return a grammar definition."""
     m = _parser.match(source, flags=pe.STRICT)
     if not m:

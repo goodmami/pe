@@ -17,7 +17,9 @@ class Definition:
     def __repr__(self):
         return f'({self.op}, {self.args!r})'
 
-    def __eq__(self, other: 'Definition'):
+    def __eq__(self, other: object):
+        if not isinstance(other, Definition):
+            return NotImplemented
         return (self.op == other.op) and (self.args == other.args)
 
 
@@ -143,7 +145,9 @@ class Grammar:
     def __getitem__(self, name):
         return self.definitions[name]
 
-    def __eq__(self, other: 'Grammar'):
+    def __eq__(self, other: object):
+        if not isinstance(other, Grammar):
+            return NotImplemented
         return (self.start == other.start
                 and self.definitions == other.definitions
                 and self.actions == other.actions)
