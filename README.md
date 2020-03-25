@@ -15,6 +15,12 @@ example:
 
 [parsing expression grammars]: https://en.wikipedia.org/wiki/Parsing_expression_grammar
 
+## Current Status
+
+Please note that **pe** is very new and is currently *alpha*-level
+software. The API or behavior may change significantly as things are
+finalized.
+
 
 ## Features and Goals
 
