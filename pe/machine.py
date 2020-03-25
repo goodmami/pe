@@ -12,7 +12,8 @@ from collections import defaultdict
 import re
 
 from pe._constants import FAIL, Operator, Flag
-from pe._core import Error, Grammar, Definition, Expression, Match
+from pe._core import Error, Expression, Match
+from pe.operators import Grammar, Definition
 
 
 class MachineOp(enum.Flag):
@@ -27,11 +28,20 @@ class MachineOp(enum.Flag):
     JUMP = enum.auto()
 
 
+_StackState = Tuple[int, int, int]  # (op_index, pos, capture_index)
+_Capture = Tuple[int, int, Definition]
+
+
 class MachineParser(Expression):
     __slots__ = 'grammar', 'pi', '_index',
 
-    def __init__(self, grammar: Grammar):
+    def __init__(self, grammar: Grammar, flags: Flag = Flag.NONE):
+        if isinstance(grammar, Definition):
+            grammar = Grammar({'Start': grammar})
+
         self.grammar = grammar
+        # for name in grammar.definitions:
+        #     print(name, grammar[name])
         pi, index = _make_program(grammar)
         self.pi = pi
         self._index = index
@@ -50,6 +60,10 @@ class MachineParser(Expression):
               s: str,
               pos: int = 0,
               flags: Flag = Flag.NONE) -> Union[Match, None]:
+        end, args, kwargs = self._match(s, pos)
+        return Match(s, pos, end, self, args, kwargs)
+
+    def _match(self, s: str, pos: int):
         PASS      = MachineOp.PASS
         BRANCH    = MachineOp.BRANCH
         COMMIT    = MachineOp.COMMIT
@@ -68,28 +82,36 @@ class MachineParser(Expression):
         RUL = Operator.RUL
 
         pi = self.pi
-        stack = [(0, 0),
-                 (-1, -1)]
+        stack: List[_StackState] = [
+            (0, 0, -1),    # failure (top-level backtrack entry)
+            (-1, -1, -1),  # success
+        ]
+        caps: List[_Capture] = []
         fails = []
         idx = self._index[self.start]
         i = pos
-        while True:
+        while stack:
             step = pi[idx]
             op = step[0]
-            # print(f'idx: {idx}\ti: {i}\tstep: {step}')
-            # print(stack)
+            print(f'\nidx: {idx}\ti: {i}\tstep: {step}')
+            print('stack', stack)
+            print('capts', caps)
             if op == RGX:
                 m = step[1].match(s, i)
                 if m is None:
                     idx = FAIL
                 else:
-                    i = m.end()
+                    end = m.end()
+                    # caps.append((i, end, step[-1]))
+                    i = end
 
             elif op == LIT:
                 string = step[1]
                 sl = len(string)
                 if s[i:i+sl] == string:
-                    i += sl
+                    end = i + sl
+                    # caps.append((i, end, step[-1]))
+                    i = end
                 else:
                     idx = FAIL
 
@@ -97,7 +119,9 @@ class MachineParser(Expression):
                 chars = step[1]
                 try:
                     if s[i] in chars:
-                        i += 1
+                        end = i + 1
+                        # caps.append((i, end, step[-1]))
+                        i = end
                     else:
                         idx = FAIL
                 except IndexError:
@@ -109,17 +133,19 @@ class MachineParser(Expression):
                 except IndexError:
                     idx = FAIL
                 else:
-                    i += 1
+                    end = i + 1
+                    # caps.append((i, end, step[-1]))
+                    i = end
 
             elif op == BRANCH:
                 offset = step[1]
-                stack.append((idx + offset, i))
+                stack.append((idx + offset, i, len(caps)))
                 idx += 1
                 continue
 
             elif op == CALL:
                 name = step[1]
-                stack.append((idx + 1, -1))
+                stack.append((idx + 1, -1, len(caps)))
                 idx = self._index[name]
                 continue
 
@@ -131,23 +157,23 @@ class MachineParser(Expression):
 
             elif op == UPDATE:
                 offset = step[1]
-                next_idx, _ = stack.pop()
-                stack.append((next_idx, i))
+                next_idx, _, _ = stack.pop()
+                stack.append((next_idx, i, len(caps)))
                 idx += offset
                 continue
 
             elif op == RESTORE:
                 offset = step[1]
-                _, i = stack.pop()
+                _, i, _ = stack.pop()
                 idx += offset
                 continue
 
             elif op == FAILTWICE:
-                _, i = stack.pop()
+                _, i, _ = stack.pop()
                 idx = -1
 
             elif op == RETURN:
-                idx, _ = stack.pop()
+                idx, _, _ = stack.pop()
                 continue
 
             elif op in (DIS, BND, RUL):
@@ -163,12 +189,12 @@ class MachineParser(Expression):
             if idx == FAIL:
                 n = _n_to_backtrack(stack)
                 # fails = stack[n:] + [(idx, i)]
-                idx, i = stack[n]
+                idx, i, _ = stack[n]
                 stack[n:] = []
             else:
                 idx += 1
 
-        return i
+        return i, [], {}
 
 
 def _n_to_backtrack(stack):
@@ -202,47 +228,47 @@ def _parsing_instructions(defn):
     args = defn.args
 
     if op == Operator.DOT:
-        return [(op,)]
+        return [(op, defn)]
     elif op == Operator.LIT:
-        return [(op, args[0])]
+        return [(op, args[0], defn)]
     elif op == Operator.CLS:
-        return [(Operator.RGX, re.compile(f'[{args[0]}]'))]
+        return [(Operator.RGX, re.compile(f'[{args[0]}]'), defn)]
         # return [(op, args[0])]  # TODO: validate ranges
     elif op == Operator.RGX:
-        return [(op, re.compile(args[0], flags=args[1]))]
+        return [(op, re.compile(args[0], flags=args[1]), defn)]
 
     elif op == Operator.OPT:
         pi = _parsing_instructions(args[0])
-        return [(MachineOp.BRANCH, len(pi) + 2),
+        return [(MachineOp.BRANCH, len(pi) + 2, defn),
                 *pi,
                 (MachineOp.COMMIT, 1)]
 
     elif op == Operator.STR:
         pi = _parsing_instructions(args[0])
-        return [(MachineOp.BRANCH, len(pi) + 2),
+        return [(MachineOp.BRANCH, len(pi) + 2, defn),
                 *pi,
                 (MachineOp.UPDATE, -len(pi))]
 
     elif op == Operator.PLS:
         pi = _parsing_instructions(args[0])
         return [*pi,
-                (MachineOp.BRANCH, len(pi) + 2),
+                (MachineOp.BRANCH, len(pi) + 2, defn),
                 *pi,
                 (MachineOp.UPDATE, -len(pi))]
 
     elif op == Operator.SYM:
-        return [(MachineOp.CALL, args[0])]
+        return [(MachineOp.CALL, args[0], defn)]
 
     elif op == Operator.AND:
         pi = _parsing_instructions(args[0])
-        return [(MachineOp.BRANCH, len(pi) + 2),
+        return [(MachineOp.BRANCH, len(pi) + 2, defn),
                 *pi,
                 (MachineOp.RESTORE, 2),
                 (FAIL,)]
 
     elif op == Operator.NOT:
         pi = _parsing_instructions(args[0])
-        return [(MachineOp.BRANCH, len(pi) + 2),
+        return [(MachineOp.BRANCH, len(pi) + 2, defn),
                 *pi,
                 (MachineOp.FAILTWICE,)]
 
@@ -266,7 +292,7 @@ def _parsing_instructions(defn):
         pis = [_parsing_instructions(d) for d in args[0]]
         pi = pis[-1]
         for _pi in reversed(pis[:-1]):
-            pi = [(MachineOp.BRANCH, len(_pi) + 2),
+            pi = [(MachineOp.BRANCH, len(_pi) + 2, defn),
                   *_pi,
                   (MachineOp.COMMIT, len(pi) + 1),
                   *pi]
