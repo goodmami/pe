@@ -76,6 +76,7 @@ from typing import Union
 import pe
 from pe._core import Error, Expression
 from pe.operators import (
+    Definition,
     Dot,
     Literal,
     Class,
@@ -281,8 +282,3 @@ def loads(source: str) -> Union[Grammar, Expression]:
     if not m:
         raise Error('invalid grammar')
     return m.value()
-
-
-def load(source: str) -> Grammar:
-    """Parse the PEG at *source* and return a grammar definition."""
-    pass

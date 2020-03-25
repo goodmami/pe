@@ -355,7 +355,10 @@ class PackratParser(Expression):
 
     __slots__ = 'grammar', 'flags', '_exprs',
 
-    def __init__(self, grammar: Grammar, flags=Flag.NONE):
+    def __init__(self, grammar: Union[Grammar, Definition],
+                 flags: Flag = Flag.NONE):
+        if isinstance(grammar, Definition):
+            grammar = Grammar({'Start': grammar})
         self.grammar = grammar
         self.flags = flags
         self._exprs: Dict[str, _Expr] = _grammar_to_packrat(grammar, flags)

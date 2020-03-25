@@ -22,9 +22,13 @@ def compile(source,
     else:
         raise Error(f'unsupported parser: {parser}')
 
-    g = loads(source)
-    if isinstance(g, Definition):
-        g = Grammar({'Start': g})
+    if isinstance(source, (Definition, Grammar)):
+        g = source
+    elif hasattr(source, 'read'):
+        g = loads(source.read())
+    else:
+        g = loads(source)
+
     g.actions = actions or {}
     g.finalize()
 
