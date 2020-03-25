@@ -91,7 +91,7 @@ def test_Raw():
 
 
 def test_Bind():
-    assert Bind(Dot(), name='x') == Def(Op.BND, ('x', Def(Op.DOT, ())))
+    assert Bind(Dot(), name='x') == Def(Op.BND, (Def(Op.DOT, ()), 'x'))
     assert Bind('foo', name='bar') == Bind(Literal('foo'), name='bar')
 
 
