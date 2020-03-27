@@ -29,6 +29,9 @@ def compile(source,
     else:
         g = loads(source)
 
+    if isinstance(g, Definition):
+        g = Grammar({'Start': g})
+
     g.actions = actions or {}
     g.finalize()
 
