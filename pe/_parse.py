@@ -74,9 +74,12 @@ The syntax is defined as follows::
 from typing import Union
 
 import pe
-from pe._core import Error
-from pe.operators import (
+from pe._core import (
+    Error,
     Definition,
+)
+from pe._grammar import Grammar
+from pe.operators import (
     Dot,
     Literal,
     Class,
@@ -91,7 +94,6 @@ from pe.operators import (
     Bind,
     Sequence,
     Choice,
-    Grammar,
 )
 from pe.packrat import PackratParser
 from pe.actions import constant, first, pack, join
@@ -191,9 +193,9 @@ _Special    = Class('-tnvfr"\'[]\\\\')
 _Oct        = Class('0-7')
 _Hex        = Class('0-9a-fA-F')
 _Octal      = Sequence(_Oct, Optional(_Oct), Optional(_Oct))
-_UTF8       = Sequence('x', _Hex, _Hex)
-_UTF16      = Sequence('u', _Hex, _Hex, _Hex, _Hex)
-_UTF32      = Sequence('U', _Hex, _Hex, _Hex, _Hex, _Hex, _Hex, _Hex, _Hex)
+_UTF8       = Sequence('x', *([_Hex] * 2))
+_UTF16      = Sequence('u', *([_Hex] * 4))
+_UTF32      = Sequence('U', *([_Hex] * 8))
 _Char       = Choice(Sequence('\\', Choice(_Special,
                                            _Octal,
                                            _UTF8,

@@ -3,8 +3,9 @@ from typing import List, Dict, Callable, Match as reMatch
 import re
 
 from pe._constants import Flag
-from pe._core import Error, Expression
-from pe.operators import Grammar, Definition
+from pe._core import Error, Definition
+from pe._parser import Parser
+from pe._grammar import Grammar
 from pe._parse import loads
 from pe import (inline, merge, regex)
 
@@ -12,7 +13,7 @@ from pe import (inline, merge, regex)
 def compile(source,
             actions: Dict[str, Callable] = None,
             parser: str = 'packrat',
-            flags: Flag = Flag.NONE) -> Expression:
+            flags: Flag = Flag.NONE) -> Parser:
     """Compile the parsing expression or grammar in *source*."""
     parsername = parser.lower()
     if parsername == 'packrat':

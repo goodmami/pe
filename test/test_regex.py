@@ -1,12 +1,12 @@
 
 import pe
 from pe.operators import (
-    Grammar,
     Regex,
     Sequence,
     Nonterminal,
     Discard
 )
+from pe._grammar import Grammar
 from pe._parse import loads
 from pe.regex import optimize
 

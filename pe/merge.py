@@ -5,6 +5,7 @@ Grammar Definition Merging
 
 import pe
 from pe._constants import Operator
+from pe._grammar import Grammar
 from pe.operators import (
     Literal,
     Class,
@@ -21,7 +22,6 @@ from pe.operators import (
     Discard,
     Bind,
     Rule,
-    Grammar,
 )
 
 

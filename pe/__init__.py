@@ -9,7 +9,8 @@ MERGE    = Flag.MERGE
 REGEX    = Flag.REGEX
 OPTIMIZE = Flag.OPTIMIZE
 
-from pe._core import Error, ParseError, Match, Expression
+from pe._core import Error, ParseError, GrammarError, Match
+from pe._parser import Parser
 from pe._functions import compile, match, escape, unescape
 
 

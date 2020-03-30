@@ -1,7 +1,7 @@
 
+from pe._core import Definition
+from pe._grammar import Grammar
 from pe.operators import (
-    Definition as Def,
-    Grammar,
     Dot,
     Literal,
     Class,

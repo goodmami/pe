@@ -19,17 +19,53 @@ from pe._constants import (
 )
 from pe._core import (
     Error,
+    ParseError,
+    Definition,
     Match,
     RawMatch,
     Memo,
-    Expression,
     evaluate,
 )
-from pe.operators import (
-    Definition,
-    Grammar,
-)
+from pe._grammar import Grammar
+from pe._parser import Parser
 from pe import inline, regex
+
+
+class Expression:
+    """A compiled parsing expression."""
+
+    __slots__ = 'value_type',
+
+    def match(self,
+              s: str,
+              pos: int = 0,
+              flags: Flag = Flag.NONE) -> Union[Match, None]:
+        memo: Union[Memo, None] = None
+        if flags & Flag.MEMOIZE:
+            memo = defaultdict(dict)
+
+        end, args, kwargs = self._match(s, pos, memo)
+
+        if end < 0:
+            if memo:
+                pos = max(memo)
+                args = [_args for _, _args, _ in memo[pos].values()]
+            else:
+                args = [args]
+            if flags & Flag.STRICT:
+                exc = _make_parse_error(s, pos, args)
+                raise exc
+            else:
+                return None
+
+        args = tuple(args or ())
+        if kwargs is None:
+            kwargs = {}
+
+        return Match(s, pos, end, self, args, kwargs)
+
+    def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
+        raise NotImplementedError()
 
 
 # Terms (Dot, Literal, Class)
@@ -313,16 +349,11 @@ class Rule(Expression):
             self.value_type = Value.DEFERRED
 
 
-class PackratParser(Expression):
-
-    __slots__ = 'grammar', 'flags', '_exprs',
+class PackratParser(Parser):
 
     def __init__(self, grammar: Union[Grammar, Definition],
                  flags: Flag = Flag.NONE):
-        if isinstance(grammar, Definition):
-            grammar = Grammar({'Start': grammar})
-        self.grammar = grammar
-        self.flags = flags
+        super().__init__(grammar, flags=flags)
         self._exprs: Dict[str, Expression] = _grammar_to_packrat(
             grammar, flags)
 
@@ -344,6 +375,8 @@ class PackratParser(Expression):
 
 
 def _grammar_to_packrat(grammar, flags):
+    if isinstance(grammar, Definition):
+        grammar = Grammar({'Start': grammar})
     if not grammar.final:
         grammar.finalize()
 
@@ -428,3 +461,21 @@ def _pair_bindings(expressions):
             yield (None, expr.expression)
         else:
             yield (False, expr)
+
+
+def _make_parse_error(s, pos, failures):
+    try:
+        start = s.rindex('\n', 0, pos)
+    except ValueError:
+        start = 0
+    try:
+        end = s.index('\n', start + 1)
+    except ValueError:
+        end = len(s)
+    lineno = s.count('\n', 0, start + 1)
+    line = s[start:end]
+    failures = ', or '.join(str(pe) for err in failures for pe, _ in err)
+    return ParseError(f'failed to parse {failures}',
+                      lineno=lineno,
+                      offset=pos - start,
+                      text=line)
