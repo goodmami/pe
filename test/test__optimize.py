@@ -8,11 +8,33 @@ from pe.operators import (
 )
 from pe._grammar import Grammar
 from pe._parse import loads
-from pe.regex import optimize
+from pe._optimize import optimize
 
 
-def rload(s): return optimize(loads(s))
+def iload(s): return optimize(loads(s), inline=True, regex=False)
+def rload(s): return optimize(loads(s), inline=False, regex=True)
 def grm(d): return Grammar(definitions=d, start=next(iter(d)))
+
+
+def test_inline():
+    assert (iload(r'A <- "a"') ==
+            loads(r'A <- "a"'))
+    assert (iload(r'A <- B  B <- "a"') ==
+            loads(r'A <- "a" B <- "a"'))
+    assert (iload(r'A <- B  B <- C  C <- "a"') ==
+            loads(r'A <- "a"  B <- "a"  C <- "a"'))
+    assert (iload(r'A <- "a" A') ==
+            loads(r'A <- "a" A'))
+    assert (iload(r'A <- "a" B  B <- A') ==
+            loads(r'A <- "a" A  B <- "a" B'))
+    assert (iload(r'A <- "a" B  B <- "b" A') ==
+            loads(r'A <- "a" "b" A  B <- "b" "a" B'))
+
+    assert pe.compile('A <- "a" B  B <- "b"',
+                      flags=pe.NONE).match('ab').value() == ('a', 'b')
+    assert pe.compile('A <- "a" B  B <- "b"',
+                      flags=pe.INLINE).match('ab').value() == ('a', 'b')
+
 
 def test_regex():
     assert (rload(r'A <- "a"') ==

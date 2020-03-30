@@ -74,10 +74,8 @@ The syntax is defined as follows::
 from typing import Union
 
 import pe
-from pe._core import (
-    Error,
-    Definition,
-)
+from pe._errors import Error
+from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
     Dot,

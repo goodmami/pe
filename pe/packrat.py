@@ -17,18 +17,13 @@ from pe._constants import (
     Value,
     Flag,
 )
-from pe._core import (
-    Error,
-    ParseError,
-    Definition,
-    Match,
-    RawMatch,
-    Memo,
-    evaluate,
-)
+from pe._errors import Error, ParseError
+from pe._definition import Definition
+from pe._match import Match, evaluate
+from pe._types import RawMatch, Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
-from pe import inline, regex
+from pe._optimize import optimize
 
 
 class Expression:
@@ -380,10 +375,9 @@ def _grammar_to_packrat(grammar, flags):
     if not grammar.final:
         grammar.finalize()
 
-    if flags & Flag.INLINE:
-        grammar = inline.optimize(grammar)
-    if flags & Flag.REGEX:
-        grammar = regex.optimize(grammar)
+    grammar = optimize(grammar,
+                       inline=flags & Flag.INLINE,
+                       regex=flags & Flag.REGEX)
 
     exprs = {}
     for name, _def in grammar.definitions.items():

@@ -2,8 +2,10 @@
 from typing import Union
 
 from pe._constants import Flag
-from pe._core import Match, Definition
+from pe._match import Match
+from pe._definition import Definition
 from pe._grammar import Grammar
+
 
 class Parser:
     def __init__(self,

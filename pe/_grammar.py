@@ -2,8 +2,10 @@
 from typing import Dict, Callable
 
 from pe._constants import Operator
-from pe._core import Definition
+from pe._errors import Error
+from pe._definition import Definition
 from pe.operators import Rule
+
 
 
 class Grammar:

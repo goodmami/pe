@@ -1,6 +1,6 @@
 
 from pe._constants import Operator as Op
-from pe._core import Definition as Def
+from pe._definition import Definition as Def
 from pe._grammar import Grammar
 from pe.operators import (
     Dot,

@@ -16,22 +16,30 @@ DEL_MEMO_SIZE = 500   # positions to clear when limit is reached
 # Processing Operators
 
 class Operator(enum.Enum):
-    DOT = _auto()  # (DOT, ())
-    LIT = _auto()  # (LIT, (string,))
-    CLS = _auto()  # (CLS, (chars,))
-    RGX = _auto()  # (RGX, (pattern, flags))
-    SYM = _auto()  # (SYM, (name,))
-    OPT = _auto()  # (OPT, (expr,))
-    STR = _auto()  # (STR, (expr,))
-    PLS = _auto()  # (PLS, (expr,))
-    AND = _auto()  # (AND, (expr,))
-    NOT = _auto()  # (NOT, (expr,))
-    RAW = _auto()  # (RAW, (expr,))
-    DIS = _auto()  # (DIS, (expr,))
-    BND = _auto()  # (BND, (expr, name))
-    SEQ = _auto()  # (SEQ, (exprs,))
-    CHC = _auto()  # (CHC, (exprs,))
-    RUL = _auto()  # (RUL, (expr, action, name))
+    DOT = (_auto(), 6, 'Primary')      # (DOT, ())
+    LIT = (_auto(), 6, 'Primary')      # (LIT, (string,))
+    CLS = (_auto(), 6, 'Primary')      # (CLS, (chars,))
+    RGX = (_auto(), 6, 'Primary')      # (RGX, (pattern, flags))
+    SYM = (_auto(), 6, 'Primary')      # (SYM, (name,))
+    OPT = (_auto(), 5, 'Quantified')   # (OPT, (expr,))
+    STR = (_auto(), 5, 'Quantified')   # (STR, (expr,))
+    PLS = (_auto(), 5, 'Quantified')   # (PLS, (expr,))
+    AND = (_auto(), 4, 'Valued')       # (AND, (expr,))
+    NOT = (_auto(), 4, 'Valued')       # (NOT, (expr,))
+    RAW = (_auto(), 4, 'Valued')       # (RAW, (expr,))
+    DIS = (_auto(), 4, 'Valued')       # (DIS, (expr,))
+    BND = (_auto(), 4, 'Valued')       # (BND, (expr, name))
+    SEQ = (_auto(), 3, 'Sequential')   # (SEQ, (exprs,))
+    RUL = (_auto(), 2, 'Applicative')  # (RUL, (expr, action, name))
+    CHC = (_auto(), 1, 'Prioritized')  # (CHC, (exprs,))
+
+    @property
+    def precedence(self):
+        return self.value[1]
+
+    @property
+    def type(self):
+        return self.value[2]
 
 
 class Value(enum.Enum):

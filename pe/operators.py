@@ -3,7 +3,27 @@
 from typing import Union, Tuple, Dict, Pattern, Callable, Any
 
 from pe._constants import ANONYMOUS, Operator
-from pe._core import Error, GrammarError, Definition
+from pe._errors import Error, GrammarError
+from pe._definition import Definition
+from pe._escape import escape
+
+
+DOT = Operator.DOT
+LIT = Operator.LIT
+CLS = Operator.CLS
+RGX = Operator.RGX
+SYM = Operator.SYM
+OPT = Operator.OPT
+STR = Operator.STR
+PLS = Operator.PLS
+AND = Operator.AND
+NOT = Operator.NOT
+RAW = Operator.RAW
+DIS = Operator.DIS
+BND = Operator.BND
+SEQ = Operator.SEQ
+CHC = Operator.CHC
+RUL = Operator.RUL
 
 
 _Def = Union[str, Definition]
@@ -21,19 +41,19 @@ def _validate(arg: _Def):
 
 
 def Dot():
-    return Definition(Operator.DOT, ())
+    return Definition(DOT, ())
 
 
 def Literal(string: str):
-    return Definition(Operator.LIT, (string,))
+    return Definition(LIT, (string,))
 
 
 def Class(chars: str):
-    return Definition(Operator.CLS, (chars,))
+    return Definition(CLS, (chars,))
 
 
 def Regex(pattern: Union[str, Pattern], flags: int = 0):
-    return Definition(Operator.RGX, (pattern, flags))
+    return Definition(RGX, (pattern, flags))
 
 
 def Sequence(*expressions: _Def):
@@ -43,11 +63,11 @@ def Sequence(*expressions: _Def):
     else:
         _exprs = []
         for expr in exprs:
-            if expr.op == Operator.SEQ:
+            if expr.op == SEQ:
                 _exprs.extend(expr.args[0])
             else:
                 _exprs.append(expr)
-        return Definition(Operator.SEQ, (_exprs,))
+        return Definition(SEQ, (_exprs,))
 
 
 def Choice(*expressions: _Def):
@@ -57,58 +77,58 @@ def Choice(*expressions: _Def):
     else:
         _exprs = []
         for expr in exprs:
-            if expr.op == Operator.CHC:
+            if expr.op == CHC:
                 _exprs.extend(expr.args[0])
             else:
                 _exprs.append(expr)
-        return Definition(Operator.CHC, (_exprs,))
+        return Definition(CHC, (_exprs,))
 
 
 def Optional(expression: _Def):
     expression = _validate(expression)
-    if expression.op in (Operator.OPT, Operator.STR, Operator.PLS):
+    if expression.op in (OPT, STR, PLS):
         raise GrammarError('multiple repeat operators')
-    return Definition(Operator.OPT, (expression,))
+    return Definition(OPT, (expression,))
 
 
 def Star(expression: _Def):
     expression = _validate(expression)
-    if expression.op in (Operator.OPT, Operator.STR, Operator.PLS):
+    if expression.op in (OPT, STR, PLS):
         raise GrammarError('multiple repeat operators')
-    return Definition(Operator.STR, (expression,))
+    return Definition(STR, (expression,))
 
 
 def Plus(expression: _Def):
     expression = _validate(expression)
-    if expression.op in (Operator.OPT, Operator.STR, Operator.PLS):
+    if expression.op in (OPT, STR, PLS):
         raise GrammarError('multiple repeat operators')
-    return Definition(Operator.PLS, (expression,))
+    return Definition(PLS, (expression,))
 
 
 def Nonterminal(name: str):
-    return Definition(Operator.SYM, (name,))
+    return Definition(SYM, (name,))
 
 
 def And(expression: _Def):
-    return Definition(Operator.AND, (_validate(expression),))
+    return Definition(AND, (_validate(expression),))
 
 
 def Not(expression: _Def):
-    return Definition(Operator.NOT, (_validate(expression),))
+    return Definition(NOT, (_validate(expression),))
 
 
 def Raw(expression: _Def):
-    return Definition(Operator.RAW, (_validate(expression),))
+    return Definition(RAW, (_validate(expression),))
 
 
 def Discard(expression: _Def):
-    return Definition(Operator.DIS, (_validate(expression),))
+    return Definition(DIS, (_validate(expression),))
 
 
 def Bind(expression: _Def, name: str):
     assert isinstance(name, str)
-    return Definition(Operator.BND, (_validate(expression), name))
+    return Definition(BND, (_validate(expression), name))
 
 
 def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
-    return Definition(Operator.RUL, (_validate(expression), action, name))
+    return Definition(RUL, (_validate(expression), action, name))

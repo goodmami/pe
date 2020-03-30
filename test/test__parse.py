@@ -1,5 +1,5 @@
 
-from pe._core import Definition
+from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
     Dot,
