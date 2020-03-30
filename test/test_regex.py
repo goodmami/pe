@@ -32,13 +32,6 @@ def test_regex():
                 Regex(r'a'),
                 Discard(Regex(r'(?=(?P<_2>(?:(?=(?P<_1>[bc]|d))(?P=_1))*))(?P=_2)')))}))
 
-    assert (rload(r'A <- !"a" .') ==
-            grm({'A': Regex(r'[^a]')}))
-    assert (rload(r'A <- ![abc] .') ==
-            grm({'A': Regex(r'[^abc]')}))
-    assert (rload(r'A <- (![abc] .)*') ==
-            grm({'A': Regex(r'(?=(?P<_1>(?:[^abc])*))(?P=_1)')}))
-
     assert pe.compile('A <- "a" "b"',
                       flags=pe.NONE).match('ab').value() == ('a', 'b')
     assert pe.compile('A <- "a" "b"',
@@ -47,3 +40,13 @@ def test_regex():
                       flags=pe.NONE).match('abc').value() == ('a', 'c')
     assert pe.compile('A <- "a" :"b" "c"',
                       flags=pe.REGEX).match('abc').value() == ('a', 'c')
+
+
+def test_regex_not_dot():
+    assert (rload(r'A <- !"a" .')   == grm({'A': Regex(r'[^a]')}))
+    assert (rload(r'A <- !"\\" .')  == grm({'A': Regex(r'[^\\]')}))
+    assert (rload(r'A <- ![\\] .')  == grm({'A': Regex(r'[^\\]')}))
+    assert (rload(r'A <- ![abc] .') == grm({'A': Regex(r'[^abc]')}))
+    assert (rload(r'A <- (![abc] .)*') ==
+            grm({'A': Regex(r'(?=(?P<_1>(?:[^abc])*))(?P=_1)')}))
+

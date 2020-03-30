@@ -19,8 +19,8 @@ from pe.operators import (
     Sequence as Seq,
     Choice as Chc,
     Rule as Rul,
-    Grammar as Grm,
 )
+from pe._grammar import Grammar as Grm
 from pe.packrat import PackratParser
 
 

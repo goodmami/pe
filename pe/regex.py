@@ -172,15 +172,19 @@ def _seq_first_pass(g, exprs, structured, grpid):
     # Special case: ![abc] . -> [^abc]
     while i < len(exprs):
         d = exprs[i]
-        if (i != len(exprs) - 1
-                and d.op == NOT
-                and _single_char(d.args[0])
-                and exprs[i+1].op == DOT):
-            yield Regex(f'[^{d.args[0].args[0]}]')
-            i += 2
+        if (i != len(exprs) - 1 and d.op == NOT and exprs[i+1].op == DOT):
+            notd = d.args[0]
+            if notd.op == CLS:
+                yield Regex(f'[^{notd.args[0]}]')
+                i += 1
+            elif notd.op == LIT and len(notd.args[0]) == 1:
+                yield Regex(f'[^{re.escape(notd.args[0])}]')
+                i += 1
+            else:
+                yield _regex(g, d, structured, grpid)
         else:
             yield _regex(g, d, structured, grpid)
-            i += 1
+        i += 1
 
 
 def _seq_join_unstructured(exprs, structured):
