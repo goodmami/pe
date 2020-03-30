@@ -65,15 +65,24 @@ def Choice(*expressions: _Def):
 
 
 def Optional(expression: _Def):
-    return Definition(Operator.OPT, (_validate(expression),))
+    expression = _validate(expression)
+    if expression.op in (Operator.OPT, Operator.STR, Operator.PLS):
+        raise GrammarError('multiple repeat operators')
+    return Definition(Operator.OPT, (expression,))
 
 
 def Star(expression: _Def):
-    return Definition(Operator.STR, (_validate(expression),))
+    expression = _validate(expression)
+    if expression.op in (Operator.OPT, Operator.STR, Operator.PLS):
+        raise GrammarError('multiple repeat operators')
+    return Definition(Operator.STR, (expression,))
 
 
 def Plus(expression: _Def):
-    return Definition(Operator.PLS, (_validate(expression),))
+    expression = _validate(expression)
+    if expression.op in (Operator.OPT, Operator.STR, Operator.PLS):
+        raise GrammarError('multiple repeat operators')
+    return Definition(Operator.PLS, (expression,))
 
 
 def Nonterminal(name: str):
