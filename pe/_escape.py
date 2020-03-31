@@ -16,6 +16,9 @@ _escapes: Dict[str, str] = {
     '\\' : '\\\\',
     ']'  : '\\]',
 }
+_escape_re = re.compile(
+    '({})'.format(
+        '|'.join(map(re.escape, _escapes))))
 _codepoint_escapes: List[str] = [
     '\\\\[0-7]{1,3}',       # oct
     '\\\\x[0-9a-fA-F]{2}',  # hex
@@ -29,11 +32,17 @@ _unescape_re = re.compile(
                  + _codepoint_escapes)))
 
 
-def escape(string: str):
+def escape(string: str, ignore=''):
     """Escape special characters for literals and character classes."""
-    return re.sub('(' + '|'.join(map(re.escape, _escapes)) + ')',
-                  lambda m: _escapes.get(m.group(0), m.group(0)),
-                  string)
+
+    def _escape(m: reMatch):
+        c = m.group(0)
+        if c in ignore:
+            return c
+        else:
+            return _escapes.get(m.group(0), m.group(0))
+
+    return _escape_re.sub(_escape, string)
 
 
 def _unescape(m: reMatch):

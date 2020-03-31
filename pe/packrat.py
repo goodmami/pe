@@ -29,7 +29,7 @@ from pe._optimize import optimize
 class Expression:
     """A compiled parsing expression."""
 
-    __slots__ = 'value_type',
+    __slots__ = 'value',
 
     def match(self,
               s: str,
@@ -69,10 +69,10 @@ class Terminal(Expression):
     """An atomic expression."""
 
     __slots__ = '_re',
-    value_type = Value.ATOMIC
 
-    def __init__(self, pattern: str, flags: int = 0):
+    def __init__(self, pattern: str, flags: int, value: Value):
         self._re = re.compile(pattern, flags=flags)
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         m = self._re.match(s, pos)
@@ -88,10 +88,10 @@ class Terminal(Expression):
 class Sequence(Expression):
 
     __slots__ = 'expressions',
-    value_type = Value.ITERABLE
 
-    def __init__(self, *expressions: Expression):
+    def __init__(self, expressions: Expression, value: Value):
         self.expressions = list(_pair_bindings(expressions))
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         args = []
@@ -104,7 +104,7 @@ class Sequence(Expression):
                 if _kwargs:
                     kwargs.update(_kwargs)
                 if bind:
-                    kwargs[bind] = evaluate(_args, expr.value_type)
+                    kwargs[bind] = evaluate(_args, expr.value)
                 else:
                     args.extend(_args)
             pos = end
@@ -114,10 +114,10 @@ class Sequence(Expression):
 class Choice(Expression):
 
     __slots__ = 'expressions',
-    value_type = Value.ITERABLE
 
-    def __init__(self, *expressions: Expression):
+    def __init__(self, expressions: Expression, value: Value):
         self.expressions = expressions
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         failargs = []
@@ -132,13 +132,14 @@ class Choice(Expression):
 class Repeat(Expression):
 
     __slots__ = 'expression', 'min'
-    value_type = Value.ITERABLE
 
     def __init__(self,
                  expression: Expression,
-                 min: int):
+                 min: int,
+                 value: Value):
         self.expression = expression
         self.min = min
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         match = self.expression._match
@@ -163,33 +164,13 @@ class Repeat(Expression):
         return pos, args, kwargs
 
 
-class Star(Repeat):
-
-    __slots__ = ()
-    value_type = Value.ITERABLE
-
-    def __init__(self,
-                 expression: Expression):
-        super().__init__(expression, 0)
-
-
-class Plus(Repeat):
-
-    __slots__ = ()
-    value_type = Value.ITERABLE
-
-    def __init__(self,
-                 expression: Expression):
-        super().__init__(expression, 1)
-
-
 class Optional(Expression):
 
     __slots__ = 'expression',
-    value_type = Value.ITERABLE
 
-    def __init__(self, expression: Expression):
+    def __init__(self, expression: Expression, value: Value):
         self.expression = expression
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         end, args, kwargs = self.expression._match(s, pos, memo)
@@ -204,11 +185,11 @@ class Lookahead(Expression):
     """An expression that may match but consumes no input."""
 
     __slots__ = 'expression', 'polarity',
-    value_type = Value.EMPTY
 
-    def __init__(self, expression: Expression, polarity: bool):
+    def __init__(self, expression: Expression, polarity: bool, value: Value):
         self.expression = expression
         self.polarity = polarity
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         end, args, kwargs = self.expression._match(s, pos, memo)
@@ -221,10 +202,10 @@ class Lookahead(Expression):
 
 class Raw(Expression):
     __slots__ = 'expression',
-    value_type = Value.ATOMIC
 
-    def __init__(self, expression: Expression):
+    def __init__(self, expression: Expression, value: Value):
         self.expression = expression
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         expr = self.expression
@@ -237,10 +218,10 @@ class Raw(Expression):
 class Discard(Expression):
 
     __slots__ = 'expression',
-    value_type = Value.EMPTY
 
-    def __init__(self, expression: Expression):
+    def __init__(self, expression: Expression, value: Value):
         self.expression = expression
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         expr = self.expression
@@ -253,11 +234,11 @@ class Discard(Expression):
 class Bind(Expression):
 
     __slots__ = 'expression', 'name',
-    value_type = Value.EMPTY
 
-    def __init__(self, expression: Expression, name: str):
+    def __init__(self, expression: Expression, name: str, value: Value):
         self.expression = expression
         self.name = name
+        self.value = value
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         expr = self.expression
@@ -266,7 +247,7 @@ class Bind(Expression):
             return FAIL, args, None
         if not kwargs:
             kwargs = {}
-        kwargs[self.name] = evaluate(args, expr.value_type)
+        kwargs[self.name] = evaluate(args, expr.value)
         return end, (), kwargs
 
 
@@ -280,37 +261,20 @@ class Rule(Expression):
     itself, but it helps with debugging.
     """
 
-    __slots__ = '_expression', '_action', 'name'
+    __slots__ = 'expression', 'action', 'name'
 
     def __init__(self,
                  expression: Union[Expression, None],
-                 action: Callable = None,
-                 name: str = ANONYMOUS):
+                 action: Union[Callable, None],
+                 name: str,
+                 value: Value):
         self.name = name
-        self._expression = expression
-        self._action = action
-        self.finalize()
+        self.expression = expression
+        self.action = action
+        self.value = value
 
     def __repr__(self):
         return f'<{type(self).__name__} ({self.name}) object at {id(self)}>'
-
-    @property
-    def expression(self):
-        return self._expression
-
-    @expression.setter
-    def expression(self, expression: Expression):
-        self._expression = expression
-        self.finalize()
-
-    @property
-    def action(self):
-        return self._action
-
-    @action.setter
-    def action(self, action: Union[Callable, None]):
-        self._action = action
-        self.finalize()
 
     def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
         _id = id(self)
@@ -334,15 +298,6 @@ class Rule(Expression):
 
         return end, args, {}
 
-    def finalize(self):
-        if self._expression:
-            if self._action is not None:
-                self.value_type = Value.ATOMIC
-            else:
-                self.value_type = self._expression.value_type
-        else:
-            self.value_type = Value.DEFERRED
-
 
 class PackratParser(Parser):
 
@@ -356,9 +311,6 @@ class PackratParser(Parser):
     def start(self):
         return self.grammar.start
 
-    def __getitem__(self, name: str) -> Expression:
-        return self._exprs[name]
-
     def __contains__(self, name: str) -> bool:
         return name in self._exprs
 
@@ -366,7 +318,29 @@ class PackratParser(Parser):
               s: str,
               pos: int = 0,
               flags: Flag = Flag.NONE) -> Union[Match, None]:
-        return self._exprs[self.start].match(s, pos=pos, flags=flags)
+        memo: Union[Memo, None] = None
+        if flags & Flag.MEMOIZE:
+            memo = defaultdict(dict)
+
+        end, args, kwargs = self._exprs[self.start]._match(s, pos, memo)
+
+        if end < 0:
+            if memo:
+                pos = max(memo)
+                args = [_args for _, _args, _ in memo[pos].values()]
+            else:
+                args = [args]
+            if flags & Flag.STRICT:
+                exc = _make_parse_error(s, pos, args)
+                raise exc
+            else:
+                return None
+
+        args = tuple(args or ())
+        if kwargs is None:
+            kwargs = {}
+
+        return Match(s, pos, end, self.grammar[self.start], args, kwargs)
 
 
 def _grammar_to_packrat(grammar, flags):
@@ -405,44 +379,43 @@ def _grammar_to_packrat(grammar, flags):
 def _def_to_expr(_def: Definition, exprs):
     op = _def.op
     args = _def.args
+    val = _def.value
     if op == Operator.DOT:
-        return Terminal('.')
+        return Terminal('.', 0, val)
     elif op == Operator.LIT:
-        return Terminal(re.escape(args[0]))
+        return Terminal(re.escape(args[0]), 0, val)
     elif op == Operator.CLS:
         s = (args[0]
              .replace('[', '\\[')
              .replace(']', '\\]'))
-        return Terminal(f'[{s}]')  # TODO: validate ranges
+        return Terminal(f'[{s}]', 0, val)  # TODO: validate ranges
     elif op == Operator.RGX:
-        return Terminal(args[0], flags=args[1])
+        return Terminal(args[0], args[1], val)
     elif op == Operator.OPT:
-        return Optional(_def_to_expr(args[0], exprs))
+        return Optional(_def_to_expr(args[0], exprs), val)
     elif op == Operator.STR:
-        return Star(_def_to_expr(args[0], exprs))
+        return Repeat(_def_to_expr(args[0], exprs), 0, val)
     elif op == Operator.PLS:
-        return Plus(_def_to_expr(args[0], exprs))
+        return Repeat(_def_to_expr(args[0], exprs), 1, val)
     elif op == Operator.SYM:
-        return exprs.setdefault(args[0], Rule(None, None, name=args[0]))
+        return exprs.setdefault(args[0], Rule(None, None, args[0], val))
     elif op == Operator.AND:
-        return Lookahead(_def_to_expr(args[0], exprs), True)
+        return Lookahead(_def_to_expr(args[0], exprs), True, val)
     elif op == Operator.NOT:
-        return Lookahead(_def_to_expr(args[0], exprs), False)
+        return Lookahead(_def_to_expr(args[0], exprs), False, val)
     elif op == Operator.RAW:
-        return Raw(_def_to_expr(args[0], exprs))
+        return Raw(_def_to_expr(args[0], exprs), val)
     elif op == Operator.DIS:
-        return Discard(_def_to_expr(args[0], exprs))
+        return Discard(_def_to_expr(args[0], exprs), val)
     elif op == Operator.BND:
-        return Bind(_def_to_expr(args[0], exprs), name=args[1])
+        return Bind(_def_to_expr(args[0], exprs), args[1], val)
     elif op == Operator.SEQ:
-        return Sequence(*[_def_to_expr(e, exprs) for e in args[0]])
+        return Sequence([_def_to_expr(e, exprs) for e in args[0]], val)
     elif op == Operator.CHC:
-        return Choice(*[_def_to_expr(e, exprs) for e in args[0]])
+        return Choice([_def_to_expr(e, exprs) for e in args[0]], val)
     elif op == Operator.RUL:
         _def, action, name = args
-        return Rule(_def_to_expr(_def, exprs),
-                    action=action,
-                    name=name)
+        return Rule(_def_to_expr(_def, exprs), action, name, val)
     else:
         raise Error(f'invalid definition: {_def!r}')
 

@@ -1,10 +1,10 @@
 
 from pe import Match
-from pe.packrat import Terminal, Sequence, Discard
+from pe.operators import Literal, Sequence, Discard
 
-One = Terminal('1')
+One = Literal('1')
 NullOne = Discard(One)
-OneTwo = Sequence(One, Terminal('2'))
+OneTwo = Sequence(One, Literal('2'))
 
 
 def test_noniterable_Match_empty_args():

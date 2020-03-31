@@ -1,11 +1,10 @@
 
 from typing import Dict, Callable
 
-from pe._constants import Operator
+from pe._constants import Operator, Value
 from pe._errors import Error
 from pe._definition import Definition
-from pe.operators import Rule
-
+from pe.operators import Rule, Nonterminal
 
 
 class Grammar:
@@ -16,7 +15,7 @@ class Grammar:
                  actions: Dict[str, Callable] = None,
                  start: str = 'Start'):
         self.start = start
-        self.definitions = definitions or {}
+        self.definitions = dict(definitions or [])
         self.actions = actions or {}
         self.final = False
 
@@ -25,11 +24,22 @@ class Grammar:
                 f'actions={self.actions!r}, '
                 f'start={self.start!r})')
 
+    def __str__(self):
+        defs = []
+        width = max(len(name) for name in self.definitions)
+        for name in self.definitions:
+            defn = self[name].format(len(name) + 2)
+            defs.append(f'{name:{width}} <- {defn}')
+        return '\n'.join(defs)
+
     def __setitem__(self, name: str, definition: Definition):
         self.definitions[name] = definition
 
     def __getitem__(self, name):
-        return self.definitions[name]
+        if name not in self.definitions:
+            return Nonterminal(name)
+        else:
+            return self.definitions[name]
 
     def __eq__(self, other: object):
         if not isinstance(other, Grammar):
@@ -41,23 +51,52 @@ class Grammar:
     def finalize(self):
         if self.final:
             raise Error('grammar is already finalized')
-        defs = self.definitions
-        acts = self.actions
-        for name in defs:
-            expr = defs[name]
-            if name in acts:
-                if expr.op == Operator.RUL:
-                    # check if name is same or None?
-                    expr = expr.args[0]
-                expr = Rule(expr, acts[name], name=name)
-                defs[name] = expr
-            _check_closed(expr, defs)
+        defs = _insert_rules(self.definitions, self.actions)
+        _resolve_deferred(defs)
+        # now recursively finalize expressions
+        for expr in defs.values():
+            _finalize(expr, defs, True)
         self.final = True
 
 
-def _check_closed(expr, defs):
+def _insert_rules(defs, acts):
+    for name in defs:
+        expr = defs[name]
+        if name in acts:
+            if expr.op == Operator.RUL:
+                # check if name is same or None?
+                expr = expr.args[0]
+            expr = Rule(expr, acts[name], name=name)
+            defs[name] = expr
+    return defs
+
+
+def _resolve_deferred(defs):
+    resolved = {}
+    for name, expr in defs.items():
+        if expr.value != Value.DEFERRED:
+            resolved[name] = expr.value
+    to_resolve = set(defs).difference(resolved)
+    while to_resolve:
+        found = False
+        for name in to_resolve:
+            expr = defs[name]
+            if expr.op == Operator.SYM and expr.args[0] in resolved:
+                expr.value = resolved[expr.args[0]]
+                resolved[name] = expr.value
+                to_resolve.remove(name)
+                found = True
+                break
+        if not found:
+            raise GrammarError('could not resolve expressions: {}'
+                               .format(', '.join(to_resolve)))
+
+
+def _finalize(expr, defs, structured):
     op = expr.op
     args = expr.args
+    if not structured:
+        expr.value = Value.EMPTY
     if op == Operator.SYM:
         if args[0] not in defs:
             raise Error(f'undefined nonterminal: {args[0]}')
@@ -65,6 +104,8 @@ def _check_closed(expr, defs):
         pass
     elif op in (Operator.SEQ, Operator.CHC):
         for term in args[0]:
-            _check_closed(term, defs)
+            _finalize(term, defs, structured)
+    elif op in (Operator.DIS, Operator.RAW):
+        _finalize(args[0], defs, False)
     else:
-        _check_closed(args[0], defs)
+        _finalize(args[0], defs, structured)

@@ -38,8 +38,7 @@ def compile(source,
     p = parser_class(g, flags=flags)
 
     if flags & Flag.DEBUG:
-        for name, defn in g.definitions.items():
-            print(name, defn)
+        print(g)
 
     return p
 

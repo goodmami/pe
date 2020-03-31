@@ -39,15 +39,15 @@ class Match:
         return dict(self._kwargs or ())
 
     def value(self):
-        return evaluate(self._args, self.pe.value_type)
+        return evaluate(self._args, self.pe.value)
 
 
-def evaluate(args, value_type: Value):
-    if value_type == Value.ITERABLE:
+def evaluate(args, value: Value):
+    if value == Value.ITERABLE:
         return args
-    elif value_type == Value.ATOMIC:
+    elif value == Value.ATOMIC:
         return args[0]
-    elif value_type == Value.EMPTY:
+    elif value == Value.EMPTY:
         return None
     else:
-        raise Error(f'invalid value type: {value_type!r}')
+        raise Error(f'invalid value type: {value!r}')

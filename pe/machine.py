@@ -12,8 +12,12 @@ from collections import defaultdict
 import re
 
 from pe._constants import FAIL, Operator, Flag
-from pe._core import Error, Match, Memo, Expression
-from pe.operators import Grammar, Definition
+from pe._errors import Error
+from pe._definition import Definition
+from pe._match import Match
+from pe._types import Memo
+from pe._grammar import Grammar
+from pe._parser import Parser
 
 
 class MachineOp(enum.Flag):
@@ -32,7 +36,7 @@ _StackState = Tuple[int, int, int]  # (op_index, pos, capture_index)
 _Capture = Tuple[int, int, Definition]
 
 
-class MachineParser(Expression):
+class MachineParser(Parser):
     __slots__ = 'grammar', 'pi', '_index',
 
     def __init__(self, grammar: Union[Grammar, Definition],
@@ -56,12 +60,12 @@ class MachineParser(Expression):
     def __contains__(self, name: str) -> bool:
         return name in self._index
 
-    # def match(self,
-    #           s: str,
-    #           pos: int = 0,
-    #           flags: Flag = Flag.NONE) -> Union[Match, None]:
-    #     end, args, kwargs = self._match(s, pos)
-    #     return Match(s, pos, end, self, args, kwargs)
+    def match(self,
+              s: str,
+              pos: int = 0,
+              flags: Flag = Flag.NONE) -> Union[Match, None]:
+        end, args, kwargs = self._match(s, pos, None)
+        return Match(s, pos, end, self.grammar[self.start], args, kwargs)
 
     def _match(self, s: str, pos: int, memo: Memo):
         PASS      = MachineOp.PASS
