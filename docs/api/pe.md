@@ -28,20 +28,24 @@ pe.**<a id="unescape" href="#unescape">unescape</a>**
 
 ## Classes
 
+*class* pe.core.**<a id="Parser" href="#Parser">Parser</a>**
+(*grammar, flags=pe.NONE*)
+
+
+pe.core.Parser.**<a id="Parser-match" href="#Parser-match">match</a>**
+(*s, pos=0, flags=pe.NONE*)
+
+
 *class* pe.core.**<a id="Match" href="#Match">Match</a>**
 (*string, pos, end, pe, args, kwargs*)
-
-
-*class* pe.core.**<a id="Expression" href="#Expression">Expression</a>**
-
-
-pe.core.Expression.**<a id="Expression-match" href="#Expression-match">match</a>**
-(*s, pos=0, flags=pe.NONE*)
 
 
 ## Exceptions
 
 *class* pe.**<a id="Error" href="#Error">Error</a>**()
+
+
+*class* pe.**<a id="GrammarError" href="#GrammarError">GrammarError</a>**()
 
 
 *class* pe.core.**<a id="ParseError" href="#ParseError">ParseError</a>**

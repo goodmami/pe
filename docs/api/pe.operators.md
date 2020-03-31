@@ -3,12 +3,8 @@
 
 ## Classes
 
-*class* pe.operators.**<a id="Definition" href="#Definition">Definition</a>**
+*class* pe.operators.**<a id="SymbolTable" href="#SymbolTable">SymbolTable</a>**
 (*op, args*)
-
-
-*class* pe.operators.**<a id="Grammar" href="#Grammar">Grammar</a>**
-(*definitions=None, actions=None, start='Start'*)
 
 
 ## Operator Functions
@@ -30,9 +26,6 @@ pe.operators.**<a id="Sequence" href="#Sequence">Sequence</a>**
 pe.operators.**<a id="Choice" href="#Choice">Choice</a>**
 (*\*expressions*)
 
-pe.operators.**<a id="Repeat" href="#Repeat">Repeat</a>**
-(*expression, min=0, max=-1*)
-
 pe.operators.**<a id="Optional" href="#Optional">Optional</a>**
 (*expression*)
 
@@ -52,9 +45,6 @@ pe.operators.**<a id="Not" href="#Not">Not</a>**
 (*expression*)
 
 pe.operators.**<a id="Raw" href="#Raw">Raw</a>**
-(*expression*)
-
-pe.operators.**<a id="Discard" href="#Discard">Discard</a>**
 (*expression*)
 
 pe.operators.**<a id="Bind" href="#Bind">Bind</a>**

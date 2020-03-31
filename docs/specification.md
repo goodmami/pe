@@ -23,10 +23,10 @@ following sections.
 
 | [Syntax] | [Operator]    | [Type]        | [Value]    | Description                                             |
 | -------  | ------------- | ------------- | ---------- | ------------------------------------------------------- |
-| `.`      | [Dot]         | [Primary]     | [Atomic]   | Match any single character                              |
-| `'abc'`  | [Literal]     | [Primary]     | [Atomic]   | Match the string 'abc'                                  |
-| `"abc"`  | [Literal]     | [Primary]     | [Atomic]   | Match the string 'abc'                                  |
-| `[abc]`  | [Class]       | [Primary]     | [Atomic]   | Match any one character in 'abc'                        |
+| `.`      | [Dot]         | [Primary]     | [Empty]    | Match any single character                              |
+| `'abc'`  | [Literal]     | [Primary]     | [Empty]    | Match the string 'abc'                                  |
+| `"abc"`  | [Literal]     | [Primary]     | [Empty]    | Match the string 'abc'                                  |
+| `[abc]`  | [Class]       | [Primary]     | [Empty]    | Match any one character in 'abc'                        |
 | `A`      | [Nonterminal] | [Primary]     | [Deferred] | Match the expression in definition `A`                  |
 | `(e)`    | [Group]       | [Primary]     | [Deferred] | Match the subexpression `e`                             |
 | `p`      | (default)     | [Quantified]  | [Deferred] | Match primary term `p` exactly once                     |
@@ -38,7 +38,6 @@ following sections.
 | `!q`     | [Not]         | [Valued]      | [Empty]    | Fail if `q` matches; consume no input; emit no value    |
 | `~q`     | [Raw]         | [Valued]      | [Atomic]   | Match `q`; consume input; emit substring matched by `q` |
 | `name:q` | [Bind]        | [Valued]      | [Empty]    | Match `q`; consume input; bind value to 'name'          |
-| `:q`     | [Bind]        | [Valued]      | [Empty]    | Match `q`; consume input; emit no value                 |
 | `v`      | (default)     | [Sequential]  | [Deferred] | Match valued term `v`                                   |
 | `v s`    | [Sequence]    | [Sequential]  | [Iterable] | Match sequential term `s` only if `v` succeeded         |
 | `s`      | (default)     | [Applicative] | [Deferred] | Match sequential term `s`                               |
@@ -58,29 +57,30 @@ describing itself. This PEG is based on Bryan Ford's original
 
 ```julia
 # Hierarchical syntax
-Start      <- :Spacing (Expression / Grammar) :EndOfFile
+Start      <- Spacing (Grammar / Expression) EndOfFile
 Grammar    <- Definition+
-Definition <- Identifier :Operator Expression
-Operator   <- Spacing LEFTARROW
+Definition <- Identifier Operator Expression
+Operator   <- LEFTARROW
 Expression <- Sequence (SLASH Sequence)*
-Sequence   <- Valued*
-Valued     <- Prefix? Quantified
-Prefix     <- AND / NOT / TILDE / Binding / COLON
+Sequence   <- Evaluated*
+Evaluated  <- prefix:Prefix? Quantified
+Prefix     <- AND / NOT / TILDE / Binding
 Binding    <- Identifier COLON
-Quantified <- Primary Quantifier?
+Quantified <- Primary quantifier:Quantifier?
 Quantifier <- QUESTION / STAR / PLUS
 Primary    <- Name / Group / Literal / Class / DOT
-Name       <- Identifier :Spacing !Operator
-Group      <- :OPEN Expression :CLOSE
+Name       <- Identifier !Operator
+Group      <- OPEN Expression CLOSE
 
 # Lexical syntax
-Identifier <- IdentStart IdentCont*
+Identifier <- ~(IdentStart IdentCont*) Spacing
 IdentStart <- [a-zA-Z_]
 IdentCont  <- IdentStart / [0-9]
 
-Literal    <- :['] ~( !['] Char )* :['] :Spacing
-            / :["] ~( !["] Char )* :["] :Spacing
-Class      <- :'[' ~( !']' Range )* :']' :Spacing
+Literal    <- ~(['] ( !['] Char )* [']) Spacing
+            / ~(["] ( !["] Char )* ["]) Spacing
+
+Class      <- ~('[' ( !']' Range )* ']') Spacing
 Range      <- Char '-' Char / Char
 Char       <- '\\' [tnvfr"'-\[\\\]]
             / '\\' Oct Oct? Oct?
@@ -91,18 +91,18 @@ Char       <- '\\' [tnvfr"'-\[\\\]]
 Oct        <- [0-7]
 Hex        <- [0-9a-fA-F]
 
-LEFTARROW  <- '<-' :Spacing
-SLASH      <- '/' :Spacing
-AND        <- '&' :Spacing
-NOT        <- '!' :Spacing
-TILDE      <- '~' :Spacing
-COLON      <- ':' :Spacing
-QUESTION   <- '?' :Spacing
-STAR       <- '*' :Spacing
-PLUS       <- '+' :Spacing
-OPEN       <- '(' :Spacing
-CLOSE      <- ')' :Spacing
-DOT        <- '.' :Spacing
+LEFTARROW  <- '<-' Spacing
+SLASH      <- '/' Spacing
+AND        <- '&' Spacing
+NOT        <- '!' Spacing
+TILDE      <- '~' Spacing
+COLON      <- ':' Spacing
+QUESTION   <- '?' Spacing
+STAR       <- '*' Spacing
+PLUS       <- '+' Spacing
+OPEN       <- '(' Spacing
+CLOSE      <- ')' Spacing
+DOT        <- '.' Spacing
 
 Spacing    <- (Space / Comment)*
 Comment    <- '#' (!EndOfLine .)* EndOfLine
@@ -123,7 +123,7 @@ EndOfFile  <- !.
 Primary expressions include terminals ([Dot], [Literal], or [Class]),
 [nonterminals](#nonterminal), and [grouped](#group) expressions.  They
 are the only type that may be quantified. All terminals are
-[atomic](#atomic) while nonterminals and grouped expressions have a
+[empty](#empty) while nonterminals and grouped expressions have a
 [deferred](#deferred) value type.
 
 ##### Quantified
@@ -143,8 +143,10 @@ such as whether it consumes input and if it emits, binds, or discards
 the expression's value. The default (unannotated) valued expression
 consumes the input of its match and emits its value, unless its
 quantified or primary expression consumes no input or emits no
-value. The [And], [Not], [Bind], and [Discard] operators change this
-behavior. All non-default valued expressions are [empty](#empty).
+value. The [And], [Not], and [Bind] operators are all [empty](#empty)
+in that they emit no values, but [Bind] binds its value to a name.
+The [Raw] operator is [atomic](#atomic) as it emits the matched
+substring.
 
 ##### Sequential
 [Sequential]: #sequential
@@ -181,24 +183,24 @@ type.
 
 ### Operator Precedence
 
-| [Syntax]         | [Operator] | Precedence | Expression Type |
-| ---------------- | ---------- | ---------- | --------------- |
-| `.`              | [Dot]      | 6          | [Primary]       |
-| `" "` or `' '`   | [Literal]  | 6          | [Primary]       |
-| `[ ]`            | [Class]    | 6          | [Primary]       |
-| `Abc`            | [Name]     | 6          | [Primary]       |
-| `(e)`            | [Group]    | 6          | [Primary]       |
-| `e?`             | [Optional] | 5          | [Quantified]    |
-| `e*`             | [Star]     | 5          | [Quantified]    |
-| `e+`             | [Plus]     | 5          | [Quantified]    |
-| `&e`             | [And]      | 4          | [Valued]        |
-| `!e`             | [Not]      | 4          | [Valued]        |
-| `~e`             | [Raw]      | 4          | [Valued]        |
-| `:e` or `name:e` | [Bind]     | 4          | [Valued]        |
-| `e1 e2`          | [Sequence] | 3          | [Sequential]    |
-| (none)           | [Rule]     | 2          | [Applicative]   |
-| `e1 / e2`        | [Choice]   | 1          | [Prioritized]   |
-| `Abc <- e`       | [Grammar]  | 0          | [Definitive]    |
+| [Syntax]       | [Operator] | Precedence | Expression Type |
+| -------------- | ---------- | ---------- | --------------- |
+| `.`            | [Dot]      | 6          | [Primary]       |
+| `" "` or `' '` | [Literal]  | 6          | [Primary]       |
+| `[ ]`          | [Class]    | 6          | [Primary]       |
+| `Abc`          | [Name]     | 6          | [Primary]       |
+| `(e)`          | [Group]    | 6          | [Primary]       |
+| `e?`           | [Optional] | 5          | [Quantified]    |
+| `e*`           | [Star]     | 5          | [Quantified]    |
+| `e+`           | [Plus]     | 5          | [Quantified]    |
+| `&e`           | [And]      | 4          | [Valued]        |
+| `!e`           | [Not]      | 4          | [Valued]        |
+| `~e`           | [Raw]      | 4          | [Valued]        |
+| `name:e`       | [Bind]     | 4          | [Valued]        |
+| `e1 e2`        | [Sequence] | 3          | [Sequential]    |
+| (none)         | [Rule]     | 2          | [Applicative]   |
+| `e1 / e2`      | [Choice]   | 1          | [Prioritized]   |
+| `Abc <- e`     | [Grammar]  | 0          | [Definitive]    |
 
 
 ## Expression Values and Behavior
@@ -225,8 +227,8 @@ Note that the *iterable* type is a generalization which defines an
 expression's behavior in **pe**. For example, a [Sequence] with a
 known number of terminals emits values in the same way as a [Star] or
 [Plus] which a priori have an unknown number of values. An *atomic*
-expression (e.g., `[ab]`) may therefore behave differently from an
-*iterable* expression with a single value (e.g., `'a' / 'b'`).
+expression (e.g., `~[ab]`) may therefore behave differently from an
+*iterable* expression with a single value (e.g., `~'a' / ~'b'`).
 
 #### Deferred
 [Deferred]: #deferred
@@ -250,11 +252,14 @@ function, bound, or discarded).
 
 | Expression   | Input | Value             |
 | ------------ | ----- | ----------------- |
-| `'a'`        | `a`   | `'a'`             |
-| `'a'*`       | `aaa` | `['a', 'a', 'a']` |
-| `'a' 'b'`    | `ab`  | `['a', 'b']`      |
-| `x:'a' 'b'`  | `ab`  | `['b']`           |
-| `x:'a' :'b'` | `ab`  | `[]`              |
+| `'a'`        | `a`   | `None`            |
+| `~'a'`       | `a`   | `'a'`             |
+| `~'a'*`      | `aaa` | `'aaa'`           |
+| `(~'a')*`    | `aaa` | `['a', 'a', 'a']` |
+| `'a' ~'b'`   | `ab`  | `['b']`           |
+| `~('a' 'b')` | `ab`  | `'ab'`            |
+| `x:'a' 'b'`  | `ab`  | `[]`              |
+| `x:'a' ~'b'` | `ab`  | `['b']`           |
 | `x:'a'`      | `a`   | `None`            |
 
 
@@ -266,13 +271,14 @@ associated with (or "bound to") a name. The mapping of names to bound
 values is "passed up" by embedded expressions until they are used in a
 rule, after which all bound values in the current context are cleared.
 
-| Expression    | Input | Values            | Bound Values        |
-| ------------- | ----- | ----------------- | ------------------- |
-| `'a'`         | `a`   | `'a'`             | `{}`                |
-| `x:'a' 'b'`   | `ab`  | `['b']`           | `{'x': 'a'}`        |
-| `x:'a' :'b'`  | `ab`  | `[]`              | `{'x': 'a'}`        |
-| `x:('a' 'b')` | `ab`  | `None`            | `{'x': ['a', 'b']}` |
-| `x:(&'a')`    | `a`   | `None`            | `{'x': None}`       |
+| Expression      | Input | Values            | Bound Values        |
+| --------------- | ----- | ----------------- | ------------------- |
+| `'a'`           | `a`   | `None`            | `{}`                |
+| `x:'a' 'b'`     | `ab`  | `[]`              | `{'x': None}`       |
+| `x:(~'a') 'b'`  | `ab`  | `[]`              | `{'x': 'a'}`        |
+| `x:(~'a') ~'b'` | `ab`  | `['b']`           | `{'x': 'a'}`        |
+| `x:(~'a' ~'b')` | `ab`  | `None`            | `{'x': ['a', 'b']}` |
+| `&(x:('a'))`    | `a`   | `None`            | `{}`                |
 
 
 ## Parsing Preliminaries
@@ -387,11 +393,11 @@ This document defines the operators available in **pe**.
 - Notation: `.`
 - Function: [Dot](api/pe.operators.md#Dot)()
 - Type: [Primary]
-- Value: [Atomic]
+- Value: [Empty]
 
 The Dot operator always succeeds if there is any remaining input and
 fails otherwise. It consumes a single [character](#characters) and
-emits the same character as its value.
+emits nothing.
 
 
 ### Literal
@@ -400,12 +406,12 @@ emits the same character as its value.
 - Notation: `'abc'` or `"abc"`
 - Function: [Literal](api/pe.operators.md#Literal)(*string*)
 - Type: [Primary]
-- Value: [Atomic]
+- Value: [Empty]
 
 A Literal operator (also called a *string literal* or *string*)
 succeeds if the input at the current position matches the given string
 exactly and fails otherwise. It consumes input equal in amount to the
-length of the given string and the string is emitted as its value.
+length of the given string and emits nothing.
 
 The `'`, `"`, and `\` characters are special inside a string and must
 be [escaped](#escape-sequences) if they are used literally, however
@@ -423,14 +429,13 @@ expression more explicit and, thus, more clear.
 - Notation: `[abc]`
 - Function: [Class](api/pe.operators.md#Class)(*ranges*)
 - Type: [Primary]
-- Value: [Atomic]
+- Value: [Empty]
 
 The Class operator (also called a *character class*) succeeds if the
 next [character](#characters) of input is in a set of characters
 defined by the given character ranges. It fails if the next character
 is not in the set or if there is no remaining input. On success, it
-consumes one character of input and emits the same character as its
-value.
+consumes one character of input and emits nothing.
 
 Each range is either one (possibly [escaped](#escape-sequences))
 character or two (possibly escaped) characters separated by `-`. In
@@ -609,8 +614,7 @@ input is consumed and no values are emitted.
 The Raw operator succeeds when the given expression succeeds at the
 current position in the input. It ignores any values and bindings from
 the given expression and emits the substring matched by the given
-expression. The substring is directly taken from the input and
-includes even bound or discarded matches in the given expression.
+expression.
 
 
 ### Bind
@@ -634,32 +638,22 @@ The bound value depends on the value type of the bound expression:
 
 ```julia
 # Expression        # Input    # Bound value of 'a'
-a:.                 # abcd     'a'
-a:"abc"             # abcd     'abc'
-a:[abc]             # abcd     'a'
+a:.                 # abcd     None
+a:(~.)              # abcd     'a'
+a:(~"abc")          # abcd     'abc'
+a:(~[abc])          # abcd     'a'
 a:A                 # abcd     'abc'
 a:B                 # abcd     ['a', 'b', 'c']
-a:.*                # abcd     ['a', 'b', 'c', 'd']
-a:("a" / A)         # abcd     ['a']
+a:(~.)*             # abcd     ['a', 'b', 'c', 'd']
+a:("a" / A)         # abcd     None
+a:(~"a" / A)        # abcd     ['a']
 a:C                 # abcd     'abc'
 
 # Rules
-A <- "abc"
-B <- "a" "b" "c"
+A <- ~"abc"
+B <- ~"a" ~"b" ~"c"
 C <- A
 ```
-
-### Discard
-[Discard]: #discard
-
-- Notation: `:e`
-- Function: [Discard](api/pe.operators.md#Discard)(*expression*)
-- Type: [Valued]
-- Value: [Empty]
-
-The Discard operator succeeds when the given expression succeeds at
-the current position in the input, but no values are emitted. Unlike
-the [And](#and) operator, matching input is consumed.
 
 
 ### Sequence
