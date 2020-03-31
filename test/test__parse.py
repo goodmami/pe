@@ -16,7 +16,6 @@ from pe.operators import (
     Not,
     Raw,
     Bind,
-    Discard,
 )
 from pe._parse import loads
 
@@ -96,13 +95,7 @@ def test_loads_bind():
     assert loads('x:"a"') == Bind('a', name='x')
     assert loads('x:"a"  # comment') == Bind('a', name='x')
     assert loads('x: "a"') == Bind('a', name='x')
-
-
-def test_loads_discard():
-    assert loads(':"a"') == Discard('a')
-    assert loads(':"a"  # comment') == Discard('a')
-    assert loads('x :"a"') == Sequence(Nonterminal('x'), Discard('a'))
-    assert loads('x : "a"') == Sequence(Nonterminal('x'), Discard('a'))
+    assert loads('x : "a"') == Bind('a', name='x')
 
 
 def Grm(dfns):

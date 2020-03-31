@@ -4,8 +4,12 @@ Packrat Parsing
 
 """
 
+# NOTE: attempting to use exceptions instead of FAIL codes resulted in
+# almost a 2x slowdown, so it's probably not a good idea
+
 from typing import (
     Union, Dict, Callable)
+from collections import defaultdict
 import re
 
 from pe._constants import (
@@ -79,8 +83,8 @@ class Terminal(Expression):
         if not m:
             return FAIL, [(self, pos)], None
         # args = m.groups() if self._re.groups else [m.group(0)]
-        args = [m.group(0)]
-        return m.end(), args, None
+        # args = [m.group(0)]
+        return m.end(), (), None
 
 
 # Combining Expressions,
@@ -108,7 +112,7 @@ class Sequence(Expression):
                 else:
                     args.extend(_args)
             pos = end
-        return pos, args, kwargs
+        return pos, tuple(args), kwargs
 
 
 class Choice(Expression):
@@ -212,23 +216,7 @@ class Raw(Expression):
         end, args, kwargs = expr._match(s, pos, memo)
         if end < 0:
             return FAIL, args, None
-        return end, [s[pos:end]], None
-
-
-class Discard(Expression):
-
-    __slots__ = 'expression',
-
-    def __init__(self, expression: Expression, value: Value):
-        self.expression = expression
-        self.value = value
-
-    def _match(self, s: str, pos: int, memo: Memo) -> RawMatch:
-        expr = self.expression
-        end, args, kwargs = expr._match(s, pos, memo)
-        if end < 0:
-            return FAIL, args, None
-        return end, (), None
+        return end, (s[pos:end],), None
 
 
 class Bind(Expression):
@@ -405,8 +393,6 @@ def _def_to_expr(_def: Definition, exprs):
         return Lookahead(_def_to_expr(args[0], exprs), False, val)
     elif op == Operator.RAW:
         return Raw(_def_to_expr(args[0], exprs), val)
-    elif op == Operator.DIS:
-        return Discard(_def_to_expr(args[0], exprs), val)
     elif op == Operator.BND:
         return Bind(_def_to_expr(args[0], exprs), args[1], val)
     elif op == Operator.SEQ:
@@ -424,8 +410,6 @@ def _pair_bindings(expressions):
     for expr in expressions:
         if isinstance(expr, Bind):
             yield (expr.name, expr.expression)
-        elif isinstance(expr, Discard):
-            yield (None, expr.expression)
         else:
             yield (False, expr)
 

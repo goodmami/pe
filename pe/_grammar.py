@@ -2,7 +2,7 @@
 from typing import Dict, Callable
 
 from pe._constants import Operator, Value
-from pe._errors import Error
+from pe._errors import Error, GrammarError
 from pe._definition import Definition
 from pe.operators import Rule, Nonterminal
 
@@ -81,9 +81,14 @@ def _resolve_deferred(defs):
         found = False
         for name in to_resolve:
             expr = defs[name]
-            if expr.op == Operator.SYM and expr.args[0] in resolved:
-                expr.value = resolved[expr.args[0]]
-                resolved[name] = expr.value
+            op = expr.op
+            inner = expr.args[0]
+            if op == Operator.SYM and inner in resolved:
+                resolved[name] = resolved[expr.args[0]]
+            elif op == Operator.RUL and inner.value != Value.DEFERRED:
+                resolved[name] = inner.value
+            if name in resolved:
+                expr.value = resolved[name]
                 to_resolve.remove(name)
                 found = True
                 break
@@ -105,7 +110,7 @@ def _finalize(expr, defs, structured):
     elif op in (Operator.SEQ, Operator.CHC):
         for term in args[0]:
             _finalize(term, defs, structured)
-    elif op in (Operator.DIS, Operator.RAW):
+    elif op == Operator.RAW:
         _finalize(args[0], defs, False)
     else:
         _finalize(args[0], defs, structured)

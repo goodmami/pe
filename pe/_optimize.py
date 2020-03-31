@@ -23,7 +23,6 @@ from pe.operators import (
     Not,
     Raw,
     Bind,
-    Discard,
     Rule,
 )
 
@@ -39,7 +38,6 @@ PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
 RAW = Operator.RAW
-DIS = Operator.DIS
 BND = Operator.BND
 SEQ = Operator.SEQ
 CHC = Operator.CHC
@@ -60,7 +58,7 @@ def optimize(g: Grammar, inline=True, regex=True):
         new = {}
         grpid = count(start=1)
         for name, defn in defs.items():
-            new[name] = _regex(defs, defn, True, grpid)
+            new[name] = _regex(defs, defn, grpid)
         defs = new
 
     return Grammar(definitions=defs,
@@ -95,8 +93,6 @@ def _inline(defs, defn, visited):
         return Not(_inline(defs, args[0], visited))
     elif op == RAW:
         return Raw(_inline(defs, args[0], visited))
-    elif op == DIS:
-        return Discard(_inline(defs, args[0], visited))
     elif op == BND:
         d, name = args
         return Bind(_inline(defs, d, visited), name=name)
@@ -106,7 +102,16 @@ def _inline(defs, defn, visited):
         return defn
 
 
-def _regex(defs, defn, structured, grpid):
+def _regex(defs, defn, grpid):
+    """
+    Convert patterns to regular expressions if they do not emit or
+    bind values.
+
+    Note: this assumes that any Regex operator does not emit or bind
+    values.
+    """
+    # TODO: when merging regexes with flags, use local flags,
+    #       (?imsx:-imsx:...)
     op = defn.op
     args = defn.args
 
@@ -118,76 +123,82 @@ def _regex(defs, defn, structured, grpid):
         return Regex(f'[{args[0]}]')
 
     elif op == SEQ:
-        exprs = _seq_first_pass(defs, args[0], structured, grpid)
-        exprs = _seq_join_unstructured(exprs, structured)
-        return Sequence(*exprs)
+        subdefs = _seq_first_pass(defs, args[0], grpid)
+        subdefs = _seq_join_unstructured(subdefs)
+        return Sequence(*subdefs)
 
     elif op == CHC:
-        exprs = [_regex(defs, d, structured, grpid) for d in args[0]]
-        _exprs = []
-        for k, grp in groupby(exprs, key=lambda d: d.op):
+        items = [_regex(defs, d, grpid) for d in args[0]]
+        subdefs = []
+        for k, grp in groupby(items, key=lambda d: d.op):
             if k == RGX:
                 gid = f'_{next(grpid)}'
-                _exprs.append(
+                subdefs.append(
                     Regex(f'(?=(?P<{gid}>'
-                          + '|'.join(d.args[0] for d in grp)
+                          + '|'.join(sd.args[0] for sd in grp)
                           + f'))(?P={gid})'))
             else:
-                _exprs.extend(grp)
-        return Choice(*_exprs)
+                subdefs.extend(grp)
+        return Choice(*subdefs)
 
     elif op == OPT:
-        d = _regex(defs, args[0], structured, grpid)
+        d = _regex(defs, args[0], grpid)
         if d.op == RGX:
             return Regex(f'(?:{d.args[0]})?')
         else:
             return Optional(d)
 
     elif op == STR:
-        d = _regex(defs, args[0], structured, grpid)
+        d = _regex(defs, args[0], grpid)
         if d.op == RGX:
             gid = f'_{next(grpid)}'
-            return Regex(f'(?=(?P<{gid}>(?:' + d.args[0] + f')*))(?P={gid})')
+            return Regex(f'(?=(?P<{gid}>(?:'
+                         + d.args[0]
+                         + f')*))(?P={gid})')
         else:
             return Star(d)
 
     elif op == PLS:
-        d = _regex(defs, args[0], structured, grpid)
+        d = _regex(defs, args[0], grpid)
         if d.op == RGX:
             gid = f'_{next(grpid)}'
-            return Regex(f'(?=(?P<{gid}>(?:' + d.args[0] + f')+))(?P={gid})')
+            return Regex(f'(?=(?P<{gid}>(?:'
+                         + d.args[0]
+                         + f')+))(?P={gid})')
         else:
             return Plus(d)
 
     elif op == AND:
-        d = _regex(defs, args[0], structured, grpid)
+        d = _regex(defs, args[0], grpid)
         if d.op == RGX:
             return Regex(f'(?={d.args[0]})')
         else:
             return And(d)
 
     elif op == NOT:
-        d = _regex(defs, args[0], structured, grpid)
+        d = _regex(defs, args[0], grpid)
         if d.op == RGX:
             return Regex(f'(?!{d.args[0]})')
         else:
             return Not(d)
 
     elif op == RAW:
-        return Raw(_regex(defs, args[0], False, grpid))
+        subdef = _regex(defs, args[0], grpid)
+        return Raw(subdef)
 
     elif op == BND:
         d, name = args
-        return Bind(_regex(defs, d, structured, grpid), name=name)
-
-    elif op == DIS:
-        d = _regex(defs, args[0], False, grpid)
-        return Discard(d)
+        subdef = _regex(defs, d, grpid)
+        return Bind(subdef, name=name)
 
     elif op == RUL:
-        return Rule(_regex(defs, args[0], structured, grpid),
-                    args[1],
-                    name=args[2])
+        subdef, action, name = args
+        _subdef = _regex(defs, subdef, grpid)
+        if action is None:
+            return _subdef
+        else:
+            return Rule(_subdef, action, name=name)
+
     else:
         return defn
 
@@ -213,17 +224,12 @@ def _quantifier_re(min, max):
     return q
 
 
-def _single_char(defn):
-    return (defn.op == CLS
-            or defn.op == LIT and len(defn.args[0]) == 1)
-
-
-def _seq_first_pass(defs, exprs, structured, grpid):
+def _seq_first_pass(defs, subdefs, grpid):
     i = 0
     # Special case: ![abc] . -> [^abc]
-    while i < len(exprs):
-        d = exprs[i]
-        if (i != len(exprs) - 1 and d.op == NOT and exprs[i+1].op == DOT):
+    while i < len(subdefs):
+        d = subdefs[i]
+        if (i != len(subdefs) - 1 and d.op == NOT and subdefs[i+1].op == DOT):
             notd = d.args[0]
             if notd.op == CLS:
                 yield Regex(f'[^{notd.args[0]}]')
@@ -232,21 +238,16 @@ def _seq_first_pass(defs, exprs, structured, grpid):
                 yield Regex(f'[^{re.escape(notd.args[0])}]')
                 i += 1
             else:
-                yield _regex(defs, d, structured, grpid)
+                yield _regex(defs, d, grpid)
         else:
-            yield _regex(defs, d, structured, grpid)
+            yield _regex(defs, d, grpid)
         i += 1
 
 
-def _seq_join_unstructured(exprs, structured):
-    for k, grp in groupby(exprs, key=lambda d: d.op):
+def _seq_join_unstructured(subdefs):
+    for k, grp in groupby(subdefs, key=lambda d: d.op):
         # only join regexes in sequence if unstructured
-        if k == RGX and not structured:
+        if k == RGX:
             yield Regex(''.join(d.args[0] for d in grp))
-        # sequences of discarded things can get joined (e.g., ':"a" :"b"')
-        elif k == DIS:
-            discarded = [d.args[0] for d in grp]
-            for d in _seq_join_unstructured(discarded, False):
-                yield Discard(d)
         else:
             yield from grp

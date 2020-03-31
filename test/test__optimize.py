@@ -4,7 +4,7 @@ from pe.operators import (
     Regex,
     Sequence,
     Nonterminal,
-    Discard
+    Raw,
 )
 from pe._grammar import Grammar
 from pe._parse import loads
@@ -31,37 +31,43 @@ def test_inline():
             loads(r'A <- "a" "b" A  B <- "b" "a" B'))
 
     assert pe.compile('A <- "a" B  B <- "b"',
-                      flags=pe.NONE).match('ab').value() == ('a', 'b')
+                      flags=pe.NONE).match('ab').value() == ()
     assert pe.compile('A <- "a" B  B <- "b"',
-                      flags=pe.INLINE).match('ab').value() == ('a', 'b')
+                      flags=pe.INLINE).match('ab').value() == ()
+    assert pe.compile('A <- "a" B  B <- ~"b"',
+                      flags=pe.NONE).match('ab').value() == ('b',)
+    assert pe.compile('A <- "a" B  B <- ~"b"',
+                      flags=pe.INLINE).match('ab').value() == ('b',)
 
 
 def test_regex():
     assert (rload(r'A <- "a"') ==
             grm({'A': Regex(r'a')}))
     assert (rload(r'A <- "a" [bc]') ==
-            grm({'A': Sequence(Regex(r'a'), Regex(r'[bc]'))}))
-    assert (rload(r'A <- :("a" [bc])') ==
-            grm({'A': Discard(Regex(r'a[bc]'))}))
+            grm({'A': Regex(r'a[bc]')}))
+    assert (rload(r'A <- ~("a" [bc])') ==
+            grm({'A': Raw(Regex(r'a[bc]'))}))
     assert (rload(r'A <- "a" B  B <- [bc]') ==
             grm({'A': Sequence(Regex('a'), Nonterminal('B')),
                  'B': Regex('[bc]')}))
     assert (rload(r'A <- "a"* [bc]+') ==
-            grm({'A': Sequence(Regex(r'(?=(?P<_1>(?:a)*))(?P=_1)'),
-                               Regex(r'(?=(?P<_2>(?:[bc])+))(?P=_2)'))}))
-    assert (rload(r'A <- "a" :([bc] / "d")*') ==
+            grm({'A': Regex(
+                r'(?=(?P<_1>(?:a)*))(?P=_1)(?=(?P<_2>(?:[bc])+))(?P=_2)')}))
+    assert (rload(r'A <- "a" ~([bc] / "d")*') ==
             grm({'A': Sequence(
                 Regex(r'a'),
-                Discard(Regex(r'(?=(?P<_2>(?:(?=(?P<_1>[bc]|d))(?P=_1))*))(?P=_2)')))}))
+                Raw(Regex(r'(?=(?P<_2>(?:(?=(?P<_1>[bc]|d))(?P=_1))*))(?P=_2)')))}))
 
+
+def test_regex_values():
     assert pe.compile('A <- "a" "b"',
-                      flags=pe.NONE).match('ab').value() == ('a', 'b')
+                      flags=pe.NONE).match('ab').value() == ()
     assert pe.compile('A <- "a" "b"',
-                      flags=pe.REGEX).match('ab').value() == ('a', 'b')
-    assert pe.compile('A <- "a" :"b" "c"',
-                      flags=pe.NONE).match('abc').value() == ('a', 'c')
-    assert pe.compile('A <- "a" :"b" "c"',
-                      flags=pe.REGEX).match('abc').value() == ('a', 'c')
+                      flags=pe.REGEX).match('ab').value() == ()
+    assert pe.compile('A <- "a" ~"b" "c"',
+                      flags=pe.NONE).match('abc').value() == ('b',)
+    assert pe.compile('A <- "a" ~"b" "c"',
+                      flags=pe.REGEX).match('abc').value() == ('b',)
 
 
 def test_regex_not_dot():

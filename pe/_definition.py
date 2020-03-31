@@ -18,7 +18,6 @@ PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
 RAW = Operator.RAW
-DIS = Operator.DIS
 BND = Operator.BND
 SEQ = Operator.SEQ
 CHC = Operator.CHC
@@ -85,8 +84,6 @@ def _format(defn: Definition,
         return fmt.format('!' + _format(args[0], indent, op))
     elif op == RAW:
         return fmt.format('~' + _format(args[0], indent, op))
-    elif op == DIS:
-        return fmt.format(':' + _format(args[0], indent, op))
     elif op == BND:
         d, name = args
         return f'{name}:' + fmt.format(_format(args[0], indent, op))

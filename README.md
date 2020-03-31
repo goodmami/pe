@@ -75,7 +75,6 @@ e1 / e2      # ordered choice of e1 and e2
 ~e           # result of e is matched substring
 
 # (extension) binding
-:e           # discard result after match
 name:e       # bind result of e to 'name'
 
 # grammars
@@ -105,9 +104,9 @@ expression matched.
 ### Value bindings
 
 A value binding takes a sub-match (e.g., of a sequence, choice, or
-repetition) and extracts it from the match's value while optionally
-associating it with a name that is made available in the
-`Match.groupdict()` dictionary.
+repetition) and extracts it from the match's value while associating
+it with a name that is made available in the `Match.groupdict()`
+dictionary.
 
 ```python
 >>> e = pe.compile(r'[0-9] x:[.] [0-9]')

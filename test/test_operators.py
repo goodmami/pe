@@ -17,26 +17,25 @@ from pe.operators import (
     Not,
     Raw,
     Bind,
-    Discard,
 )
 
 
 def test_Dot():
-    assert Dot() == Def(Op.DOT, (), Value.ATOMIC)
+    assert Dot() == Def(Op.DOT, (), Value.EMPTY)
 
 
 def test_Literal():
-    assert Literal('foo') == Def(Op.LIT, ('foo',), Value.ATOMIC)
+    assert Literal('foo') == Def(Op.LIT, ('foo',), Value.EMPTY)
 
 
 def test_Class():
-    assert Class('foo') == Def(Op.CLS, ('foo',), Value.ATOMIC)
-    assert Class('f') == Def(Op.CLS, ('f',), Value.ATOMIC)
+    assert Class('foo') == Def(Op.CLS, ('foo',), Value.EMPTY)
+    assert Class('f') == Def(Op.CLS, ('f',), Value.EMPTY)
 
 
 def test_Regex():
-    assert Regex('foo') == Def(Op.RGX, ('foo', 0), Value.ATOMIC)
-    assert Regex('foo', flags=1) == Def(Op.RGX, ('foo', 1), Value.ATOMIC)
+    assert Regex('foo') == Def(Op.RGX, ('foo', 0), Value.EMPTY)
+    assert Regex('foo', flags=1) == Def(Op.RGX, ('foo', 1), Value.EMPTY)
 
 
 def test_Sequence():
@@ -93,8 +92,3 @@ def test_Raw():
 def test_Bind():
     assert Bind(Dot(), name='x') == Def(Op.BND, (Dot(), 'x'), Value.EMPTY)
     assert Bind('foo', name='bar') == Bind(Literal('foo'), name='bar')
-
-
-def test_Discard():
-    assert Discard(Dot()) == Def(Op.DIS, (Dot(),), Value.EMPTY)
-    assert Discard('foo') == Discard(Literal('foo'))

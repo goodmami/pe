@@ -19,7 +19,6 @@ PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
 RAW = Operator.RAW
-DIS = Operator.DIS
 BND = Operator.BND
 SEQ = Operator.SEQ
 CHC = Operator.CHC
@@ -57,19 +56,19 @@ def _deferred(op: Operator, args: Tuple[Any]) -> Definition:
 
 
 def Dot():
-    return _atomic(DOT, ())
+    return _empty(DOT, ())
 
 
 def Literal(string: str):
-    return _atomic(LIT, (string,))
+    return _empty(LIT, (string,))
 
 
 def Class(chars: str):
-    return _atomic(CLS, (chars,))
+    return _empty(CLS, (chars,))
 
 
 def Regex(pattern: Union[str, Pattern], flags: int = 0):
-    return _atomic(RGX, (pattern, flags))
+    return _empty(RGX, (pattern, flags))
 
 
 def Sequence(*expressions: _Def):
@@ -137,17 +136,14 @@ def Raw(expression: _Def):
     return _atomic(RAW, (_validate(expression),))
 
 
-def Discard(expression: _Def):
-    return _empty(DIS, (_validate(expression),))
-
-
 def Bind(expression: _Def, name: str):
     assert isinstance(name, str)
     return _empty(BND, (_validate(expression), name))
 
 
 def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
-    return _atomic(RUL, (_validate(expression), action, name))
+    vtype = _deferred if action is None else _atomic
+    return vtype(RUL, (_validate(expression), action, name))
 
 
 class SymbolTable(dict):

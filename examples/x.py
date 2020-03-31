@@ -9,26 +9,25 @@ X = pe.compile(
     Expr    <- Term PLUS Expr
              / (Sign Sign)+ Term MINUS Expr
              / Term
-    Sign    <- [-+] :Spacing
+    Sign    <- [-+] Spacing
     Term    <- Factor TIMES Term
              / Factor DIVIDE Term
              / Factor
     Factor  <- LPAREN Expr RPAREN
              / Atom
     Atom    <- NAME / NUMBER
-    NAME    <- [a-bA-B_] [a-bA-B0-9_]* :Spacing
-    NUMBER  <- ('0' / [1-9] [0-9]*) :Spacing
-    PLUS    <- '+' :Spacing
-    MINUS   <- '-' :Spacing
-    TIMES   <- '*' :Spacing
-    DIVIDE  <- '/' :Spacing
-    LPAREN  <- '(' :Spacing
-    RPAREN  <- ')' :Spacing
+    NAME    <- [a-bA-B_] [a-bA-B0-9_]* Spacing
+    NUMBER  <- ('0' / [1-9] [0-9]*) Spacing
+    PLUS    <- '+' Spacing
+    MINUS   <- '-' Spacing
+    TIMES   <- '*' Spacing
+    DIVIDE  <- '/' Spacing
+    LPAREN  <- '(' Spacing
+    RPAREN  <- ')' Spacing
     EOL     <- '\r\n' / [\n\r]
     EOF     <- [ \t\n\v\f\r]* !.
     Spacing <- ' '*
-    ''',
-    flags=pe.OPTIMIZE)
+    ''')
 
 
 def _match(s):

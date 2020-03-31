@@ -5,11 +5,11 @@ from pe.actions import first, constant, pack
 
 Json = pe.compile(
     r'''
-    Start    <- :Spacing Value
+    Start    <- Spacing Value EOF
     Value    <- Object / Array / String / Number / Constant
-    Object   <- :LBRACE (Member (:COMMA Member)*)? :RBRACE
-    Member   <- String :COLON Value
-    Array    <- :LBRACK (Value (:COMMA Value)*)? :RBRACK
+    Object   <- LBRACE (Member (COMMA Member)*)? RBRACE
+    Member   <- String COLON Value
+    Array    <- LBRACK (Value (COMMA Value)*)? RBRACK
     String   <- ~( ["] (!["\\] .)* ('\\' . / (!["\\] .)+)* ["] )
     Number   <- Integer / Float
     Constant <- TRUE / FALSE / NULL
@@ -28,6 +28,7 @@ Json = pe.compile(
     COMMA    <- Spacing "," Spacing
     COLON    <- Spacing ":" Spacing
     Spacing  <- [\t\n\f\r ]*
+    EOF      <- !.
     ''',
     actions={
         'Start': first,

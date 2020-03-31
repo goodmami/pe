@@ -17,30 +17,30 @@ syntax. It extends the original syntax with the following features:
 The syntax is defined as follows::
 
   # Hierarchical syntax
-  Start      <- :Spacing (Grammar / Expression) :EndOfFile
+  Start      <- Spacing (Grammar / Expression) EndOfFile
   Grammar    <- Definition+
-  Definition <- Identifier :Operator Expression
-  Operator   <- Spacing LEFTARROW
-  Expression <- Sequence (:SLASH Sequence)*
+  Definition <- Identifier Operator Expression
+  Operator   <- LEFTARROW
+  Expression <- Sequence (SLASH Sequence)*
   Sequence   <- Evaluated*
   Evaluated  <- prefix:Prefix? Quantified
-  Prefix     <- AND / NOT / TILDE / Binding / COLON
-  Binding    <- Identifier ':' :Spacing
+  Prefix     <- AND / NOT / TILDE / Binding
+  Binding    <- Identifier COLON
   Quantified <- Primary quantifier:Quantifier?
   Quantifier <- QUESTION / STAR / PLUS
   Primary    <- Name / Group / Literal / Class / DOT
-  Name       <- Identifier :Spacing !Operator
-  Group      <- :OPEN Expression :CLOSE
+  Name       <- Identifier !Operator
+  Group      <- OPEN Expression CLOSE
 
   # Lexical syntax
-  Identifier <- IdentStart IdentCont*
+  Identifier <- ~(IdentStart IdentCont*) Spacing
   IdentStart <- [a-zA-Z_]
   IdentCont  <- IdentStart / [0-9]
 
-  Literal    <- :['] ( !['] Char )* :['] :Spacing
-              / :["] ( !["] Char )* :["] :Spacing
+  Literal    <- ~(['] ( !['] Char )* [']) Spacing
+              / ~(["] ( !["] Char )* ["]) Spacing
 
-  Class      <- :'[' ( !']' Range )* :']' :Spacing
+  Class      <- ~('[' ( !']' Range )* ']') Spacing
   Range      <- Char '-' Char / Char
   Char       <- '\\' [tnvfr"'-\[\\\]]
               / '\\' Oct Oct? Oct?
@@ -88,7 +88,6 @@ from pe.operators import (
     And,
     Not,
     Raw,
-    Discard,
     Bind,
     Sequence,
     Choice,
@@ -102,37 +101,28 @@ def _make_literal(s):
     return Literal(pe.unescape(s[1:-1]))
 
 
+def _make_class(s):
+    return Class(s[1:-1])  # pe.unescape(s[1:-1]))
+
+
 def _make_quantified(primary, quantifier=None):
     if not quantifier:
         return primary
-    assert len(quantifier) == 1
-    quantifier = quantifier[0]
-    if quantifier == '?':
-        return Optional(primary)
-    elif quantifier == '*':
-        return Star(primary)
-    elif quantifier == '+':
-        return Plus(primary)
+    elif len(quantifier) == 1:
+        return quantifier[0](primary)
     else:
         raise Error(f'invalid quantifier: {quantifier!r}')
+
+
+def _make_binder(x):
+    return lambda p, x=x: Bind(p, name=x)
 
 
 def _make_valued(quantified, prefix=None):
     if not prefix:
         return quantified
-    assert len(prefix) == 1
-    prefix = prefix[0]
-    if prefix == '&':
-        return And(quantified)
-    elif prefix == '!':
-        return Not(quantified)
-    elif prefix == '~':
-        return Raw(quantified)
-    elif prefix == ':':
-        return Discard(quantified)
-    elif prefix.endswith(':'):
-        name = prefix[:-1]
-        return Bind(quantified, name=name)
+    elif len(prefix) == 1:
+        return prefix[0](quantified)
     else:
         raise Error(f'invalid prefix: {prefix!r}')
 
@@ -166,13 +156,12 @@ V = SymbolTable()
 # Hierarchical syntax
 V.Start      = Sequence(V.Spacing, Choice(V.Grammar, V.Expression), V.EOF)
 V.Grammar    = Plus(V.Definition)
-V.Definition = Sequence(V.Identifier, V.Operator, V.Expression)
-V.Expression = Sequence(V.Sequence,
-                        Star(Sequence(Discard(V.SLASH), V.Sequence)))
-V.Sequence   = Plus(V.Evaluated)
-V.Evaluated  = Sequence(Bind(Optional(V.Prefix), name='prefix'), V.Quantified)
+V.Definition = Sequence(V.Identifier, V.LEFTARROW, V.Expression)
+V.Expression = Sequence(V.Sequence, Star(Sequence(V.SLASH, V.Sequence)))
+V.Sequence   = Plus(V.Valued)
+V.Valued     = Sequence(Bind(Optional(V.Prefix), name='prefix'), V.Quantified)
 V.Prefix     = Choice(V.AND, V.NOT, V.TILDE, V.Binding)
-V.Binding    = Sequence(Optional(V.Identifier), ':', V.Spacing)
+V.Binding    = Sequence(V.Identifier, ':', V.Spacing)
 V.Quantified = Sequence(V.Primary,
                         Bind(Optional(V.Quantifier), name='quantifier'))
 V.Quantifier = Choice(V.QUESTION, V.STAR, V.PLUS)
@@ -180,23 +169,20 @@ V.Primary    = Choice(V.Name,
                       V.Group,
                       V.Literal,
                       V.Class,
-                      V.Dot)
-V.Name       = Sequence(V.Identifier, V.Spacing, Not(V.Operator))
-V.Group      = Sequence(Discard(V.OPEN), V.Expression, Discard(V.CLOSE))
+                      V.DOT)
+V.Name       = Sequence(V.Identifier, V.Spacing, Not(V.LEFTARROW))
+V.Group      = Sequence(V.OPEN, V.Expression, V.CLOSE)
 V.Literal    = Sequence(
     Choice(
         Raw(Sequence("'", Star(Sequence(Not("'"), V.Char)), "'")),
         Raw(Sequence('"', Star(Sequence(Not('"'), V.Char)), '"'))),
     V.Spacing)
-V.Class      = Sequence(Discard('['),
-                        Star(Sequence(Not(']'), V.Range)),
-                        Discard(']'),
-                        V.Spacing)
-V.Dot        = Discard(V.DOT)
+V.Class      = Sequence(
+    Raw(Sequence('[', Star(Sequence(Not(']'), V.Range)), ']')), V.Spacing)
 
 # Non-recursive patterns
 
-V.Operator   = Sequence(V.Spacing, Discard(V.LEFTARROW))
+# V.Operator   = Choice(V.LEFTARROW)
 V.Special    = Class('-tnvfr"\'[]\\\\')
 V.Oct        = Class('0-7')
 V.Hex        = Class('0-9a-fA-F')
@@ -214,7 +200,8 @@ V.Char       = Choice(Sequence('\\',
 V.Range      = Choice(Sequence(V.Char, '-', V.Char), V.Char)
 V.IdentStart = Class('a-zA-Z_')
 V.IdentCont  = Class('a-zA-Z_0-9')
-V.Identifier = Sequence(V.IdentStart, Star(V.IdentCont))
+V.Identifier = Sequence(Raw(Sequence(V.IdentStart, Star(V.IdentCont))),
+                        V.Spacing)
 
 # Tokens
 
@@ -232,13 +219,13 @@ V.DOT        = Sequence('.', V.Spacing)
 
 # Whitespace and comments
 
-V.Spacing    = Discard(Star(Choice(V.Space, V.Comment)))
+V.Spacing    = Star(Choice(V.Space, V.Comment))
 V.Space      = Choice(Class(' \t'), V.EOL)
 V.Comment    = Sequence('#',
                         Star(Sequence(Not(V.EOL), Dot())),
                         Optional(V.EOL))
-V.EOF        = Discard(Not(Dot()))
-V.EOL        = Discard(Choice('\r\n', '\n', '\r'))
+V.EOF        = Not(Dot())
+V.EOL        = Choice('\r\n', '\n', '\r')
 
 PEG = Grammar(
     definitions=V,
@@ -248,15 +235,19 @@ PEG = Grammar(
         'Definition': pack(tuple),
         'Expression': pack(_make_prioritized),
         'Sequence': pack(_make_sequential),
-        'Evaluated': _make_valued,
-        'Prefix': join(str),
+        'Valued': _make_valued,
+        'AND': constant(And),
+        'NOT': constant(Not),
+        'TILDE': constant(Raw),
+        'Binding': _make_binder,
         'Quantified': _make_quantified,
-        'Identifier': join(str),
-        # 'Group': _validate,
-        'Name': join(Nonterminal),
+        'QUESTION': constant(Optional),
+        'STAR': constant(Star),
+        'PLUS': constant(Plus),
+        'Name': Nonterminal,
         'Literal': _make_literal,
-        'Class': join(Class),
-        'Dot': constant(Dot()),
+        'Class': _make_class,
+        'DOT': constant(Dot()),
     }
 )
 
