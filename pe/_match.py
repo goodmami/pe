@@ -1,5 +1,5 @@
 
-from typing import List, Dict
+from typing import Union, List, Dict, Any
 import textwrap
 
 from pe._constants import Value
@@ -31,6 +31,21 @@ class Match:
         substr = textwrap.shorten(string, width=20, placeholder='...')
         return (f'<{type(self).__name__} object;'
                 f' span=({pos}, {end}), match={substr!r}>')
+
+    def group(self, key_or_index: Union[str, int] = 0) -> Any:
+        if not isinstance(key_or_index, (str, int)):
+            raise TypeError(type(key_or_index))
+        if key_or_index == 0:
+            return self.string[self.pos:self.end]
+        elif isinstance(key_or_index, int):
+            index = key_or_index - 1
+            if index < 0 or index >= len(self._args):
+                raise IndexError('no such group')
+            return self._args[index]
+        else:
+            if key_or_index not in self._kwargs:
+                raise IndexError('no such group')
+            return self._kwargs[key_or_index]
 
     def groups(self):
         return tuple(self._args or ())

@@ -9,7 +9,7 @@ example:
 >>> import pe
 >>> m = pe.match(r'["] (!["\\] . / "\\" .)* ["]',
 ...              '"escaped \\"string\\"" ...')
->>> m.value()
+>>> m.group()
 '"escaped \\"string\\""'
 ```
 
@@ -87,18 +87,30 @@ Name <- ...  # define a rule named 'Name'
 When a parsing expression matches an input, it returns a `Match`
 object, which is similar to those of Python's
 [re](https://docs.python.org/3/library/re.html) module for regular
-expressions. The default value of a match is the substrings the
-expression matched.
+expressions. The default value of matching terminals is nothing, but
+the raw (`~`) operator returns the substring the matching expression,
+similar to regular expression's capturing groups:
 
 ```python
 >>> e = pe.compile(r'[0-9] [.] [0-9]')
 >>> m = e.match('1.4')
+>>> m.group()
+'1.4'
 >>> m.groups()
-('1', '.', '4')
+()
 >>> m.groupdict()
 {}
 >>> m.value()
-('1', '.', '4')
+()
+>>> e = pe.compile(r'~([0-9] [.] [0-9])')
+>>> m.group()
+'1.4'
+>>> m.groups()
+('1.4',)
+>>> m.groupdict()
+{}
+>>> m.value()
+'1.4'
 ```
 
 ### Value bindings
@@ -109,7 +121,7 @@ it with a name that is made available in the `Match.groupdict()`
 dictionary.
 
 ```python
->>> e = pe.compile(r'[0-9] x:[.] [0-9]')
+>>> e = pe.compile(r'~[0-9] x:(~[.]) ~[0-9]')
 >>> m = e.match('1.4')
 >>> m.groups()
 ('1', '4')
@@ -139,7 +151,7 @@ an iterable while `Match.value()` can return a single object.
 
 ```python
 >>> from pe.actions import join
->>> e = pe.compile(r'[0-9] [.] [0-9]', action=join(float))
+>>> e = pe.compile(r'~([0-9] [.] [0-9])', action=float)
 >>> m = e.match('1.4')
 >>> m.groups()
 (1.4,)

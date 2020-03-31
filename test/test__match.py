@@ -16,6 +16,7 @@ def test_Match_atom():
     assert m.pos == 0
     assert m.end == 1
     assert m.pe is One
+    assert m.group(0) == '1'
     assert m.groups() == ()
     assert m.groupdict() == {}
     assert m.value() == None
@@ -27,6 +28,8 @@ def test_Match_raw_atom():
     assert m.pos == 0
     assert m.end == 1
     assert m.pe is RawOne
+    assert m.group(0) == '1'
+    assert m.group(1) == '1'
     assert m.groups() == ('1',)
     assert m.groupdict() == {}
     assert m.value() is '1'
@@ -38,6 +41,7 @@ def test_Match_iterable():
     assert m.pos == 0
     assert m.end == 2
     assert m.pe is OneTwo
+    assert m.group(0) == '12'
     assert m.groups() == ()
     assert m.groupdict() == {}
     assert m.value() == []
@@ -49,6 +53,8 @@ def test_Match_raw_iterable():
     assert m.pos == 0
     assert m.end == 2
     assert m.pe is OneRawTwo
+    assert m.group(0) == '12'
+    assert m.group(1) == '2'
     assert m.groups() == ('2',)
     assert m.groupdict() == {}
     assert m.value() == ['2',]
@@ -60,6 +66,8 @@ def test_Match_iterable_bind():
     assert m.pos == 0
     assert m.end == 2
     assert m.pe is OneBindTwo
+    assert m.group(0) == '12'
+    assert m.group('x') == None
     assert m.groups() == ()
     assert m.groupdict() == {'x': None}
     assert m.value() == []
@@ -71,6 +79,8 @@ def test_Match_iterable_bind_raw():
     assert m.pos == 0
     assert m.end == 2
     assert m.pe is OneBindRawTwo
+    assert m.group(0) == '12'
+    assert m.group('x') == '2'
     assert m.groups() == ()
     assert m.groupdict() == {'x': '2'}
     assert m.value() == []
