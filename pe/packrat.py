@@ -21,7 +21,7 @@ from pe._constants import (
     Value,
     Flag,
 )
-from pe._errors import Error, ParseError
+from pe._errors import Error, ParseFailure, ParseError
 from pe._definition import Definition
 from pe._match import Match, evaluate
 from pe._types import RawMatch, Memo
@@ -222,7 +222,12 @@ class Rule:
             end, args, kwargs = self.expression(s, pos, memo)
             action = self.action
             if end >= 0 and action:
-                args = [action(*args, **(kwargs or {}))]
+                try:
+                    args = [action(*args, **(kwargs or {}))]
+                except ParseFailure as exc:
+                    raise _make_parse_error(
+                        s, pos, exc.message
+                    ).with_traceback(exc.__traceback__)
 
             if memo is not None:
                 memo[pos][_id] = (end, args, kwargs)
@@ -357,19 +362,19 @@ def _pair_bindings(expressions):
             yield (False, expr)
 
 
-def _make_parse_error(s, pos, failures):
+def _make_parse_error(s, pos, message):
     try:
-        start = s.rindex('\n', 0, pos)
+        start = s.rindex('\n', 0, pos) + 1
     except ValueError:
         start = 0
     try:
-        end = s.index('\n', start + 1)
+        end = s.index('\n', start)
     except ValueError:
         end = len(s)
-    lineno = s.count('\n', 0, start + 1)
+    lineno = s.count('\n', 0, start)
     line = s[start:end]
-    failures = ', or '.join(str(pe) for err in failures for pe, _ in err)
-    return ParseError(f'failed to parse {failures}',
+    # failures = ', or '.join(str(pe) for err in failures for pe, _ in err)
+    return ParseError(message, #f'failed to parse {failures}',
                       lineno=lineno,
                       offset=pos - start,
                       text=line)

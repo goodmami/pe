@@ -1,15 +1,15 @@
 
 import pe
-from pe.actions import first, constant, pack
+from pe.actions import first, constant, pack, fail
 
 
 Json = pe.compile(
     r'''
     Start    <- Spacing Value EOF
-    Value    <- Object / Array / String / Number / Constant
-    Object   <- LBRACE (Member (COMMA Member)*)? RBRACE
+    Value    <- Object / Array / String / Number / Constant / BADVALUE
+    Object   <- LBRACE (Member (COMMA Member)*)? BADCOMMA? RBRACE
     Member   <- String COLON Value
-    Array    <- LBRACK (Value (COMMA Value)*)? RBRACK
+    Array    <- LBRACK (Value (COMMA Value)*)? BADCOMMA? RBRACK
     String   <- ~( ["] (!["\\] .)* ('\\' . / (!["\\] .)+)* ["] )
     Number   <- Integer / Float
     Constant <- TRUE / FALSE / NULL
@@ -29,6 +29,8 @@ Json = pe.compile(
     COLON    <- Spacing ":" Spacing
     Spacing  <- [\t\n\f\r ]*
     EOF      <- !.
+    BADVALUE <- ![}\]] .
+    BADCOMMA <- ','
     ''',
     actions={
         'Start': first,
@@ -41,6 +43,8 @@ Json = pe.compile(
         'TRUE': constant(True),
         'FALSE': constant(False),
         'NULL': constant(None),
+        'BADVALUE': fail('unexpected JSON value'),
+        'BADCOMMA': fail('trailing commas are not allowed'),
     },
     flags=pe.OPTIMIZE
 )

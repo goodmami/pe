@@ -7,6 +7,12 @@ class GrammarError(Error):
     pass
 
 
+class ParseFailure(Error):
+
+    def __init__(self, message: str = None):
+        self.message = message
+
+
 class ParseError(Error):
 
     def __init__(self,
@@ -27,14 +33,14 @@ class ParseError(Error):
             parts.append(f'File "{self.filename}"')
         if self.lineno is not None:
             parts.append(f'line {self.lineno}')
+        if self.offset is not None:
+            parts.append(f'character {self.offset}')
         if parts:
             parts = ['', '  ' + ', '.join(parts)]
         if self.text is not None:
             parts.append('    ' + self.text)
             if self.offset is not None:
                 parts.append('    ' + (' ' * self.offset) + '^')
-        elif parts:
-            parts[-1] += f', character {self.offset}'
         if self.message is not None:
             name = self.__class__.__name__
             parts.append(f'{name}: {self.message}')

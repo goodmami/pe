@@ -1,4 +1,6 @@
 
+from pe._errors import ParseFailure
+
 def constant(value):
 
     def constant_value(*args, **kwargs):
@@ -29,3 +31,11 @@ def first(*args, **kwargs):
 
 def last(*args, **kwargs):
     return args[-1]
+
+
+def fail(message):
+
+    def call_func(*args, **kwargs):
+        raise ParseFailure(message=message.format(*args, **kwargs))
+
+    return call_func
