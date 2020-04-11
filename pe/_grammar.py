@@ -15,7 +15,7 @@ class Grammar:
                  actions: Dict[str, Callable] = None,
                  start: str = 'Start'):
         self.start = start
-        self.definitions = dict(definitions or [])
+        self.definitions: Dict[str, Definition] = dict(definitions or [])
         self.actions = actions or {}
         self.final = False
 

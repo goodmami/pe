@@ -2,6 +2,7 @@
 from typing import Tuple, Optional, Any
 
 from pe._constants import Operator, Value
+from pe._errors import Error
 from pe._escape import escape
 
 
@@ -94,3 +95,5 @@ def _format(defn: Definition,
     elif op == RUL:
         return fmt.format(_format(args[0], indent, op))
         # raise Error('no syntax exists for rules')
+    else:
+        raise Error('inalid operation: {op!r}')

@@ -1,6 +1,6 @@
 
 
-from typing import Union, Tuple, Pattern, Callable, Any
+from typing import Union, List, Dict, Tuple, Pattern, Callable
 
 from pe._constants import ANONYMOUS, Operator, Value
 from pe._errors import GrammarError
@@ -27,7 +27,7 @@ RUL = Operator.RUL
 _Def = Union[str, Definition]
 
 
-def _validate(arg: _Def):
+def _validate(arg: _Def) -> Definition:
     if isinstance(arg, str):
         return Literal(arg)
     elif not isinstance(arg, Definition):
@@ -38,19 +38,19 @@ def _validate(arg: _Def):
         return arg
 
 
-def _atomic(op: Operator, args: Tuple[Any]) -> Definition:
+def _atomic(op: Operator, args: Tuple) -> Definition:
     return Definition(op, args, Value.ATOMIC)
 
 
-def _iterable(op: Operator, args: Tuple[Any]) -> Definition:
+def _iterable(op: Operator, args: Tuple) -> Definition:
     return Definition(op, args, Value.ITERABLE)
 
 
-def _empty(op: Operator, args: Tuple[Any]) -> Definition:
+def _empty(op: Operator, args: Tuple) -> Definition:
     return Definition(op, args, Value.EMPTY)
 
 
-def _deferred(op: Operator, args: Tuple[Any]) -> Definition:
+def _deferred(op: Operator, args: Tuple) -> Definition:
     return Definition(op, args, Value.DEFERRED)
 
 
@@ -75,7 +75,7 @@ def Sequence(*expressions: _Def):
     if len(exprs) == 1:
         return exprs[0]
     else:
-        _exprs = []
+        _exprs: List[Definition] = []
         for expr in exprs:
             if expr.op == SEQ:
                 _exprs.extend(expr.args[0])
@@ -89,7 +89,7 @@ def Choice(*expressions: _Def):
     if len(exprs) == 1:
         return exprs[0]
     else:
-        _exprs = []
+        _exprs: List[Definition] = []
         for expr in exprs:
             if expr.op == CHC:
                 _exprs.extend(expr.args[0])
@@ -145,10 +145,11 @@ def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
     return vtype(RUL, (_validate(expression), action, name))
 
 
-class SymbolTable(dict):
+class SymbolTable(Dict[str, Definition]):
     """Dictionary subclass for simplifying grammar construction."""
 
-    __setattr__ = dict.__setitem__
+    # Not sure how to fix this for the type checker yet
+    __setattr__ = dict.__setitem__  # type: ignore
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Definition:
         return Nonterminal(name)

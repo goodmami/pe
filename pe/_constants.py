@@ -54,6 +54,5 @@ class Flag(enum.Flag):
     STRICT = _auto()  # raise error on match failure
     MEMOIZE = _auto()  # use a packrat memo
     INLINE = _auto()  # inline non-recursive rules
-    MERGE = _auto()  # merge adjacent terms if possible
     REGEX = _auto()  # combine adjacent terms into a single regex
-    OPTIMIZE = INLINE | REGEX  # | MERGE disabled while behavior differs
+    OPTIMIZE = INLINE | REGEX

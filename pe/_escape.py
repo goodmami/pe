@@ -26,10 +26,10 @@ _codepoint_escapes: List[str] = [
     '\\\\U[0-9a-fA-F]{8}',  # hex
 ]
 _unescapes = dict((e, u) for u, e in _escapes.items())
+# create this list separately so Mypy can understand it
+_escaped_unescapes: List[str] = [str(re.escape(u)) for u in _unescapes]
 _unescape_re = re.compile(
-    '({})'.format(
-        '|'.join(list(map(re.escape, _unescapes))
-                 + _codepoint_escapes)))
+    '({})'.format('|'.join(_escaped_unescapes + _codepoint_escapes)))
 
 
 def escape(string: str, ignore=''):
