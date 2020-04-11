@@ -9,8 +9,8 @@ FAIL = -1  # TODO: Use typing.Final from Python 3.8
 
 ANONYMOUS = '<anonymous>'  # name for unnamed rules
 
-MAX_MEMO_SIZE = 1000  # simultaneous cacheable string positions
-DEL_MEMO_SIZE = 500   # positions to clear when limit is reached
+MAX_MEMO_SIZE = 500  # simultaneous cacheable string positions
+DEL_MEMO_SIZE = 200  # positions to clear when limit is reached
 
 
 # Processing Operators

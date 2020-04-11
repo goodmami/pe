@@ -30,7 +30,7 @@ Json = pe.compile(
     Spacing  <- [\t\n\f\r ]*
     EOF      <- !.
     BADVALUE <- ![}\]] .
-    BADCOMMA <- ','
+    BADCOMMA <- ',' &(RBRACE / RBRACK)
     ''',
     actions={
         'Start': first,
@@ -45,8 +45,7 @@ Json = pe.compile(
         'NULL': constant(None),
         'BADVALUE': fail('unexpected JSON value'),
         'BADCOMMA': fail('trailing commas are not allowed'),
-    },
-    flags=pe.OPTIMIZE
+    }
 )
 
 
@@ -114,36 +113,3 @@ def test_recursion():
     _match(('[' * i) + (']' * i))
     print(f'maximum recursion depth: {i}')
     assert i > 100, f'failed at recursion depth {i}'
-
-
-if __name__ == '__main__':
-    s = '''{
-        "bool": [
-            true,
-            false
-        ],
-        "number": {
-            "float": -0.14e3,
-            "int": 1
-        },
-        "other": {
-            "string": "string",
-            "unicode": "あ",
-            "null": null
-        }
-    }'''
-    assert _match(s) is not None
-    assert _match(s) == {
-        'bool': [True, False],
-        'number': {'float': -0.14e3, 'int': 1},
-        'other': {'string': 'string', 'unicode': 'あ', 'null': None}
-    }
-    import timeit
-    print(
-        'match',
-        timeit.timeit(
-            'match(s)',
-            setup='from __main__ import Json, s; match = Json.match',
-            number=10000
-        )
-    )

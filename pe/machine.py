@@ -8,7 +8,6 @@ Inspired by Medeiros and Ierusalimschy, 2008, "A Parsing Machine for PEGs"
 
 from typing import Union, Tuple, List
 import enum
-from collections import defaultdict
 import re
 
 from pe._constants import FAIL, Operator, Flag
@@ -54,9 +53,6 @@ class MachineParser(Parser):
     def start(self):
         return self.grammar.start
 
-    # def __getitem__(self, name: str) -> Expression:
-    #     return self._index[name]
-
     def __contains__(self, name: str) -> bool:
         return name in self._index
 
@@ -91,7 +87,7 @@ class MachineParser(Parser):
             (-1, -1, -1),  # success
         ]
         caps: List[_Capture] = []
-        fails = []
+        # fails = []
         idx = self._index[self.start]
         i = pos
         while stack:
@@ -308,4 +304,4 @@ def _parsing_instructions(defn):
         #         *_parsing_instructions(args[0])]
 
     else:
-        raise Error(f'invalid definition: {_def!r}')
+        raise Error(f'invalid definition: {defn!r}')

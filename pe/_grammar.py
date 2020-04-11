@@ -103,8 +103,10 @@ def _finalize(expr, defs, structured):
     if not structured:
         expr.value = Value.EMPTY
     if op == Operator.SYM:
-        if args[0] not in defs:
+        name = args[0]
+        if name not in defs:
             raise Error(f'undefined nonterminal: {args[0]}')
+        expr.value = defs[name].value
     elif op in (Operator.DOT, Operator.LIT, Operator.CLS, Operator.RGX):
         pass
     elif op in (Operator.SEQ, Operator.CHC):

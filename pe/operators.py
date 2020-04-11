@@ -1,11 +1,10 @@
 
 
-from typing import Union, Tuple, Dict, Pattern, Callable, Any
+from typing import Union, Tuple, Pattern, Callable, Any
 
 from pe._constants import ANONYMOUS, Operator, Value
-from pe._errors import Error, GrammarError
+from pe._errors import GrammarError
 from pe._definition import Definition
-from pe._escape import escape
 
 
 DOT = Operator.DOT

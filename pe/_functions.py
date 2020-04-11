@@ -12,7 +12,7 @@ from pe._parse import loads
 def compile(source,
             actions: Dict[str, Callable] = None,
             parser: str = 'packrat',
-            flags: Flag = Flag.NONE) -> Parser:
+            flags: Flag = Flag.OPTIMIZE) -> Parser:
     """Compile the parsing expression or grammar in *source*."""
     parsername = parser.lower()
     if parsername == 'packrat':

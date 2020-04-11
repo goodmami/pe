@@ -3,6 +3,7 @@ from typing import Union, List, Dict, Any
 import textwrap
 
 from pe._constants import Value
+from pe._errors import Error
 from pe._definition import Definition
 
 

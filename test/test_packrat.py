@@ -1,6 +1,7 @@
 
 import pytest
 
+import pe
 from pe._constants import FAIL
 from pe.operators import (
     Dot,
@@ -115,7 +116,7 @@ data = [
                          ids=[row[0] for row in data])
 def test_exprs(dfn, input, pos, end, match):
     p = PackratParser(dfn)
-    m = p.match(input, pos=pos)
+    m = p.match(input, pos=pos, flags=pe.NONE)
     if match is None:
         assert m is None
     else:

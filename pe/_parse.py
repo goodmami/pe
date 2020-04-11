@@ -94,7 +94,7 @@ from pe.operators import (
     SymbolTable,
 )
 from pe.packrat import PackratParser
-from pe.actions import constant, first, pack, join
+from pe.actions import constant, first, pack
 
 
 def _make_literal(s):

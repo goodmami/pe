@@ -1,8 +1,6 @@
 
 from typing import Tuple, Optional, Any
-import re
 
-from pe._errors import Error
 from pe._constants import Operator, Value
 from pe._escape import escape
 
@@ -61,7 +59,7 @@ def _format(defn: Definition,
     elif op == LIT:
         return f'''"{escape(args[0], ignore="'-[]")}"'''
     elif op == CLS:
-        inner = ...  # TODO: properly escape classes
+        # TODO: properly escape classes
         return f'[{args[0]}]'
     elif op == RGX:
         return f'`{args[0]}`'  # temporary syntax

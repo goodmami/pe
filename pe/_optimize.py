@@ -6,19 +6,15 @@ Grammar Definition to Regular Expression Conversion
 import re
 from itertools import groupby, count
 
-import pe
 from pe._constants import Operator
 from pe._grammar import Grammar
 from pe.operators import (
-    Literal,
-    Class,
     Sequence,
     Regex,
     Choice,
     Optional,
     Star,
     Plus,
-    Nonterminal,
     And,
     Not,
     Raw,
@@ -72,7 +68,9 @@ def _inline(defs, defn, visited):
 
     if op == SYM:
         name = args[0]
-        if name in visited:  # recursive rule
+        if name in visited:  # recursive definition
+            return defn
+        elif defs[name].op == RUL and defs[name].args[1]:  # rule with action
             return defn
         else:
             return _inline(defs, defs[name], visited | {name})
@@ -97,7 +95,8 @@ def _inline(defs, defn, visited):
         d, name = args
         return Bind(_inline(defs, d, visited), name=name)
     elif op == RUL:
-        return Rule(_inline(defs, args[0], visited), args[1], name=args[2])
+        d, action, name = args
+        return Rule(_inline(defs, d, visited), action, name=name)
     else:
         return defn
 

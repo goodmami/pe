@@ -14,7 +14,6 @@ import re
 
 from pe._constants import (
     FAIL,
-    ANONYMOUS,
     MAX_MEMO_SIZE,
     DEL_MEMO_SIZE,
     Operator,
@@ -32,19 +31,32 @@ from pe._optimize import optimize
 
 # Terms (Dot, Literal, Class)
 
-def Terminal(pattern: str, flags: int, value: Value):
+def Terminal(definition: Definition):
 
-    _re = re.compile(pattern, flags=flags)
+    op = definition.op
+    if op == Operator.DOT:
+        _re = re.compile('.')
+    elif op == Operator.LIT:
+        _re = re.compile(re.escape(definition.args[0]))
+    elif op == Operator.CLS:
+        s = (definition.args[0]
+             .replace('[', '\\[')
+             .replace(']', '\\]'))
+        _re = re.compile(f'[{s}]')  # TODO: validate ranges
+    elif op == Operator.RGX:
+        _re = re.compile(definition.args[0], flags=definition.args[1])
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         m = _re.match(s, pos)
-        if not m:
-            return FAIL, [(pattern, pos)], None
-        # args = m.groups() if self._re.groups else [m.group(0)]
-        # args = [m.group(0)]
-        return m.end(), (), None
+        if m:
+            retval = m.end(), (), None
+        else:
+            retval = FAIL, (pos, definition), None
+            if memo is not None:
+                memo[pos][id(definition)] = retval
+        return retval
 
-    _match.value = value
+    _match.value = definition.value
     _match.op = Operator.RGX
     return _match
 
@@ -80,13 +92,23 @@ def Sequence(expressions: Callable, value: Value):
 def Choice(expressions: Callable, value: Value):
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
-        failargs = []
-        for e in expressions:
-            end, args, kwargs = e(s, pos, memo)
-            if end >= 0:
-                return end, args, kwargs
-            failargs.extend(args)
-        return FAIL, failargs, None
+        _id = id(_match)
+
+        if memo and pos in memo and _id in memo[pos]:
+            end, args, kwargs = memo[pos][_id]  # packrat memoization check
+        else:
+            # clear memo beyond size limit
+            if memo and len(memo) > MAX_MEMO_SIZE:
+                for _pos in sorted(memo)[:DEL_MEMO_SIZE]:
+                    del memo[_pos]
+            for e in expressions:
+                end, args, kwargs = e(s, pos, memo)
+                if end >= 0:
+                    break
+            if memo is not None:
+                memo[pos][_id] = (end, args, kwargs)
+
+        return end, args, kwargs  # end may be FAIL
 
     _match.value = value
     _match.op = Operator.CHC
@@ -105,7 +127,7 @@ def Repeat(expression: Callable, min: int, value: Value):
 
         end, _args, _kwargs = expression(s, pos, memo)
         if end < 0 and min > 0:
-            return FAIL, (), None
+            return FAIL, _args, None
         while end >= 0 and guard > 0:
             ext(_args)
             if _kwargs:
@@ -141,8 +163,12 @@ def Lookahead(expression: Callable, polarity: bool, value: Value):
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         end, args, kwargs = expression(s, pos, memo)
-        if polarity ^ (end >= 0):
-            return FAIL, [(expression, pos)], None
+        passed = end >= 0
+        if polarity ^ passed:
+            if passed:  # negative lookahead failed
+                return FAIL, (pos, expression), None
+            else:       # positive lookahead failed
+                return FAIL, args, None
         return pos, (), None
 
     _match.value = value
@@ -209,28 +235,15 @@ class Rule:
     #     return f'<{type(self).__name__} ({self.name}) object at {id(self)}>'
 
     def __call__(self, s: str, pos: int, memo: Memo) -> RawMatch:
-        _id = id(self)
-
-        if memo and pos in memo and _id in memo[pos]:
-            end, args, kwargs = memo[pos][_id]  # packrat memoization check
-        else:
-            # clear memo beyond size limit
-            while memo and len(memo) > MAX_MEMO_SIZE:
-                for _pos in sorted(memo)[:DEL_MEMO_SIZE]:
-                    del memo[_pos]
-
-            end, args, kwargs = self.expression(s, pos, memo)
-            action = self.action
-            if end >= 0 and action:
-                try:
-                    args = [action(*args, **(kwargs or {}))]
-                except ParseFailure as exc:
-                    raise _make_parse_error(
-                        s, pos, exc.message
-                    ).with_traceback(exc.__traceback__)
-
-            if memo is not None:
-                memo[pos][_id] = (end, args, kwargs)
+        end, args, kwargs = self.expression(s, pos, memo)
+        action = self.action
+        if end >= 0 and action:
+            try:
+                args = [action(*args, **(kwargs or {}))]
+            except ParseFailure as exc:
+                raise _make_parse_error(
+                    s, pos, exc.message
+                ).with_traceback(exc.__traceback__)
 
         return end, args, {}
 
@@ -253,7 +266,7 @@ class PackratParser(Parser):
     def match(self,
               s: str,
               pos: int = 0,
-              flags: Flag = Flag.NONE) -> Union[Match, None]:
+              flags: Flag = Flag.MEMOIZE | Flag.STRICT) -> Union[Match, None]:
         memo: Union[Memo, None] = None
         if flags & Flag.MEMOIZE:
             memo = defaultdict(dict)
@@ -261,13 +274,9 @@ class PackratParser(Parser):
         end, args, kwargs = self._exprs[self.start](s, pos, memo)
 
         if end < 0:
-            if memo:
-                pos = max(memo)
-                args = [_args for _, _args, _ in memo[pos].values()]
-            else:
-                args = [args]
             if flags & Flag.STRICT:
-                exc = _make_parse_error(s, pos, args)
+                failpos, message = _get_furthest_fail(args, memo)
+                exc = _make_parse_error(s, failpos, message)
                 raise exc
             else:
                 return None
@@ -316,17 +325,8 @@ def _def_to_expr(_def: Definition, exprs):
     op = _def.op
     args = _def.args
     val = _def.value
-    if op == Operator.DOT:
-        return Terminal('.', 0, val)
-    elif op == Operator.LIT:
-        return Terminal(re.escape(args[0]), 0, val)
-    elif op == Operator.CLS:
-        s = (args[0]
-             .replace('[', '\\[')
-             .replace(']', '\\]'))
-        return Terminal(f'[{s}]', 0, val)  # TODO: validate ranges
-    elif op == Operator.RGX:
-        return Terminal(args[0], args[1], val)
+    if op in (Operator.DOT, Operator.LIT, Operator.CLS, Operator.RGX):
+        return Terminal(_def)
     elif op == Operator.OPT:
         return Optional(_def_to_expr(args[0], exprs), val)
     elif op == Operator.STR:
@@ -362,6 +362,25 @@ def _pair_bindings(expressions):
             yield (False, expr)
 
 
+def _get_furthest_fail(args, memo):
+    failpos, defn = args
+    message = str(defn)
+    # assuming we're here because of a failure, the max memo position
+    # should be the furthest failure
+    if memo:
+        memopos = max(memo)
+        fails = []
+        if memopos > failpos:
+            fails = [args[1]
+                     for pos, args, _
+                     in memo[memopos].values()
+                     if pos < 0]
+        if fails:
+            failpos = memopos
+            message = ', '.join(map(str, fails))
+    return failpos, message
+
+
 def _make_parse_error(s, pos, message):
     try:
         start = s.rindex('\n', 0, pos) + 1
@@ -373,8 +392,7 @@ def _make_parse_error(s, pos, message):
         end = len(s)
     lineno = s.count('\n', 0, start)
     line = s[start:end]
-    # failures = ', or '.join(str(pe) for err in failures for pe, _ in err)
-    return ParseError(message, #f'failed to parse {failures}',
+    return ParseError(message,
                       lineno=lineno,
                       offset=pos - start,
                       text=line)
