@@ -203,7 +203,7 @@ def _regex(defs, defn, grpid):
 
 
 _special_quantifiers = {
-    #min max
+    # min max
     (1, 1): '',
     (0, 1): '?',
     (0, -1): '*',

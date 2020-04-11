@@ -4,17 +4,17 @@ from typing import List, Dict, Match as reMatch
 import re
 
 _escapes: Dict[str, str] = {
-    '\t' : '\\t',
-    '\n' : '\\n',
-    '\v' : '\\v',
-    '\f' : '\\f',
-    '\r' : '\\r',
-    '"'  : '\\"',
-    "'"  : "\\'",
-    '-'  : '\\-',
-    '['  : '\\[',
-    '\\' : '\\\\',
-    ']'  : '\\]',
+    '\t': '\\t',
+    '\n': '\\n',
+    '\v': '\\v',
+    '\f': '\\f',
+    '\r': '\\r',
+    '"':  '\\"',
+    "'":  "\\'",
+    '-':  '\\-',
+    '[':  '\\[',
+    '\\': '\\\\',
+    ']':  '\\]',
 }
 _escape_re = re.compile(
     '({})'.format(
@@ -54,6 +54,7 @@ def _unescape(m: reMatch):
         else:
             c = chr(int(x[2:], 16))
     return c
+
 
 def unescape(string: str):
     """Unescape special characters for literals and character classes."""

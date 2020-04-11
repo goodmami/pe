@@ -1,6 +1,7 @@
 
 from pe._errors import ParseFailure
 
+
 def constant(value):
 
     def constant_value(*args, **kwargs):

@@ -21,10 +21,10 @@ from pe._parser import Parser
 
 class MachineOp(enum.Flag):
     PASS = enum.auto()
-    BRANCH = enum.auto()  # aka Choice
+    BRANCH = enum.auto()   # aka Choice
     COMMIT = enum.auto()
-    UPDATE = enum.auto()  # aka PartialCommit
-    RESTORE = enum.auto() # aka BackCommit
+    UPDATE = enum.auto()   # aka PartialCommit
+    RESTORE = enum.auto()  # aka BackCommit
     FAILTWICE = enum.auto()
     CALL = enum.auto()
     RETURN = enum.auto()
@@ -64,15 +64,15 @@ class MachineParser(Parser):
         return Match(s, pos, end, self.grammar[self.start], args, kwargs)
 
     def _match(self, s: str, pos: int, memo: Memo):
-        PASS      = MachineOp.PASS
-        BRANCH    = MachineOp.BRANCH
-        COMMIT    = MachineOp.COMMIT
-        UPDATE    = MachineOp.UPDATE
-        RESTORE   = MachineOp.RESTORE
+        PASS = MachineOp.PASS
+        BRANCH = MachineOp.BRANCH
+        COMMIT = MachineOp.COMMIT
+        UPDATE = MachineOp.UPDATE
+        RESTORE = MachineOp.RESTORE
         FAILTWICE = MachineOp.FAILTWICE
-        CALL      = MachineOp.CALL
-        RETURN    = MachineOp.RETURN
-        JUMP      = MachineOp.JUMP
+        CALL = MachineOp.CALL
+        RETURN = MachineOp.RETURN
+        # JUMP = MachineOp.JUMP
         RGX = Operator.RGX
         LIT = Operator.LIT
         CLS = Operator.CLS
