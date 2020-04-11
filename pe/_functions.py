@@ -47,7 +47,7 @@ def match(pattern: str,
           string: str,
           actions: Dict[str, Callable] = None,
           parser: str = 'packrat',
-          flags: Flag = Flag.NONE):
+          flags: Flag = Flag.MEMOIZE):
     """Compile *pattern* and match *string* against it.
 
     Example:
@@ -59,4 +59,4 @@ def match(pattern: str,
                    actions=actions,
                    parser=parser,
                    flags=Flag.OPTIMIZE)
-    return expr.match(string)
+    return expr.match(string, flags=flags)
