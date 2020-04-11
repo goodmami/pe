@@ -14,7 +14,7 @@ with open(os.path.join(base_dir, 'README.md'), encoding='utf-8') as f:
 setup(
     name='pe',
     version='0.1.0',
-    description='parsing expressions',
+    description='Parsing Expressions',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/goodmami/pe',
@@ -38,4 +38,5 @@ setup(
     packages=[
         'pe',
     ],
+    python_requires='>=3.6'
 )
