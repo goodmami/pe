@@ -98,22 +98,14 @@ similar to regular expression's capturing groups:
 '1.4'
 >>> m.groups()
 ()
->>> m.groupdict()
-{}
->>> m.value()
-()
 >>> e = pe.compile(r'~([0-9] [.] [0-9])')
 >>> m.group()
 '1.4'
 >>> m.groups()
 ('1.4',)
->>> m.groupdict()
-{}
->>> m.value()
-'1.4'
 ```
 
-### Value bindings
+### Value Bindings
 
 A value binding takes a sub-match (e.g., of a sequence, choice, or
 repetition) and extracts it from the match's value while associating
@@ -127,8 +119,6 @@ dictionary.
 ('1', '4')
 >>> m.groupdict()
 {'x': '.'}
->>> m.value()
-('1', '4')
 ```
 
 ### Actions
@@ -142,7 +132,7 @@ action(*match.groups(), **match.groupdict())
 While you can define your own functions that follow this signature,
 **pe** provides some helper functions for common operations, such as
 `pack(func)`, which packs the `*args` into a list and calls
-`func(arglist)`, or `join(func, sep='')` which joins all `*args` into
+`func(args)`, or `join(func, sep='')` which joins all `*args` into
 a string with `sep.join(args)` and calls `func(argstring)`.
 
 The return value of the action becomes the value of the
