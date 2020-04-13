@@ -148,8 +148,8 @@ def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
 class SymbolTable(Dict[str, Definition]):
     """Dictionary subclass for simplifying grammar construction."""
 
-    # Not sure how to fix this for the type checker yet
-    __setattr__ = dict.__setitem__  # type: ignore
+    def __setattr__(self, name: str, value: Definition) -> None:
+        dict.__setitem__(self, name, value)
 
     def __getattr__(self, name: str) -> Definition:
         return Nonterminal(name)

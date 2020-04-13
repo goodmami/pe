@@ -1,5 +1,5 @@
 
-from typing import Union, List, Dict, Tuple
+from typing import Union, Dict, Tuple
 
-RawMatch = Tuple[int, List, Union[Dict, None]]
+RawMatch = Tuple[int, Tuple, Union[Dict, None]]
 Memo = Dict[int, Dict[int, RawMatch]]

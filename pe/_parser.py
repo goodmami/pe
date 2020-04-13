@@ -16,5 +16,8 @@ class Parser:
         self.grammar = grammar
         self.flags = flags
 
-    def match(self, s: str, pos: int = 0, flags: Flag = Flag.NONE) -> Match:
+    def match(self,
+              s: str,
+              pos: int = 0,
+              flags: Flag = Flag.NONE) -> Union[Match, None]:
         return NotImplemented
