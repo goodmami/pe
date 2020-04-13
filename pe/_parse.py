@@ -154,78 +154,73 @@ def _make_grammar(*defs):
 V = SymbolTable()
 
 # Hierarchical syntax
-V.Start      = Sequence(V.Spacing, Choice(V.Grammar, V.Expression), V.EOF)
-V.Grammar    = Plus(V.Definition)
+V.Start = Sequence(V.Spacing, Choice(V.Grammar, V.Expression), V.EOF)
+V.Grammar = Plus(V.Definition)
 V.Definition = Sequence(V.Identifier, V.LEFTARROW, V.Expression)
 V.Expression = Sequence(V.Sequence, Star(Sequence(V.SLASH, V.Sequence)))
-V.Sequence   = Plus(V.Valued)
-V.Valued     = Sequence(Bind(Optional(V.Prefix), name='prefix'), V.Quantified)
-V.Prefix     = Choice(V.AND, V.NOT, V.TILDE, V.Binding)
-V.Binding    = Sequence(V.Identifier, ':', V.Spacing)
-V.Quantified = Sequence(V.Primary,
-                        Bind(Optional(V.Quantifier), name='quantifier'))
+V.Sequence = Plus(V.Valued)
+V.Valued = Sequence(Bind(Optional(V.Prefix), name='prefix'), V.Quantified)
+V.Prefix = Choice(V.AND, V.NOT, V.TILDE, V.Binding)
+V.Binding = Sequence(V.Identifier, ':', V.Spacing)
+V.Quantified = Sequence(
+    V.Primary, Bind(Optional(V.Quantifier), name='quantifier')
+)
 V.Quantifier = Choice(V.QUESTION, V.STAR, V.PLUS)
-V.Primary    = Choice(V.Name,
-                      V.Group,
-                      V.Literal,
-                      V.Class,
-                      V.DOT)
-V.Name       = Sequence(V.Identifier, V.Spacing, Not(V.LEFTARROW))
-V.Group      = Sequence(V.OPEN, V.Expression, V.CLOSE)
-V.Literal    = Sequence(
+V.Primary = Choice(V.Name, V.Group, V.Literal, V.Class, V.DOT)
+V.Name = Sequence(V.Identifier, V.Spacing, Not(V.LEFTARROW))
+V.Group = Sequence(V.OPEN, V.Expression, V.CLOSE)
+V.Literal = Sequence(
     Choice(
         Raw(Sequence("'", Star(Sequence(Not("'"), V.Char)), "'")),
         Raw(Sequence('"', Star(Sequence(Not('"'), V.Char)), '"'))),
-    V.Spacing)
-V.Class      = Sequence(
-    Raw(Sequence('[', Star(Sequence(Not(']'), V.Range)), ']')), V.Spacing)
+    V.Spacing
+)
+V.Class = Sequence(
+    Raw(Sequence('[', Star(Sequence(Not(']'), V.Range)), ']')), V.Spacing
+)
 
 # Non-recursive patterns
 
-# V.Operator   = Choice(V.LEFTARROW)
-V.Special    = Class('-tnvfr"\'[]\\\\')
-V.Oct        = Class('0-7')
-V.Hex        = Class('0-9a-fA-F')
-V.Octal      = Sequence(V.Oct, Optional(V.Oct), Optional(V.Oct))
-V.UTF8       = Sequence('x', *([V.Hex] * 2))
-V.UTF16      = Sequence('u', *([V.Hex] * 4))
-V.UTF32      = Sequence('U', *([V.Hex] * 8))
-V.Char       = Choice(Sequence('\\',
-                               Choice(V.Special,
-                                      V.Octal,
-                                      V.UTF8,
-                                      V.UTF16,
-                                      V.UTF32)),
-                      Sequence(Not('\\'), Dot()))
-V.Range      = Choice(Sequence(V.Char, '-', V.Char), V.Char)
+# V.Operator = Choice(V.LEFTARROW)
+V.Special = Class('-tnvfr"\'[]\\\\')
+V.Oct = Class('0-7')
+V.Hex = Class('0-9a-fA-F')
+V.Octal = Sequence(V.Oct, Optional(V.Oct), Optional(V.Oct))
+V.UTF8 = Sequence('x', *([V.Hex] * 2))
+V.UTF16 = Sequence('u', *([V.Hex] * 4))
+V.UTF32 = Sequence('U', *([V.Hex] * 8))
+V.Char = Choice(
+    Sequence('\\', Choice(V.Special, V.Octal, V.UTF8, V.UTF16, V.UTF32)),
+    Sequence(Not('\\'), Dot())
+)
+V.Range = Choice(Sequence(V.Char, '-', V.Char), V.Char)
 V.IdentStart = Class('a-zA-Z_')
-V.IdentCont  = Class('a-zA-Z_0-9')
-V.Identifier = Sequence(Raw(Sequence(V.IdentStart, Star(V.IdentCont))),
-                        V.Spacing)
+V.IdentCont = Class('a-zA-Z_0-9')
+V.Identifier = Sequence(
+    Raw(Sequence(V.IdentStart, Star(V.IdentCont))), V.Spacing
+)
 
 # Tokens
 
-V.LEFTARROW  = Sequence('<-', V.Spacing)
-V.SLASH      = Sequence('/', V.Spacing)
-V.AND        = Sequence('&', V.Spacing)
-V.NOT        = Sequence('!', V.Spacing)
-V.TILDE      = Sequence('~', V.Spacing)
-V.QUESTION   = Sequence('?', V.Spacing)
-V.STAR       = Sequence('*', V.Spacing)
-V.PLUS       = Sequence('+', V.Spacing)
-V.OPEN       = Sequence('(', V.Spacing)
-V.CLOSE      = Sequence(')', V.Spacing)
-V.DOT        = Sequence('.', V.Spacing)
+V.LEFTARROW = Sequence('<-', V.Spacing)
+V.SLASH = Sequence('/', V.Spacing)
+V.AND = Sequence('&', V.Spacing)
+V.NOT = Sequence('!', V.Spacing)
+V.TILDE = Sequence('~', V.Spacing)
+V.QUESTION = Sequence('?', V.Spacing)
+V.STAR = Sequence('*', V.Spacing)
+V.PLUS = Sequence('+', V.Spacing)
+V.OPEN = Sequence('(', V.Spacing)
+V.CLOSE = Sequence(')', V.Spacing)
+V.DOT = Sequence('.', V.Spacing)
 
 # Whitespace and comments
 
-V.Spacing    = Star(Choice(V.Space, V.Comment))
-V.Space      = Choice(Class(' \t'), V.EOL)
-V.Comment    = Sequence('#',
-                        Star(Sequence(Not(V.EOL), Dot())),
-                        Optional(V.EOL))
-V.EOF        = Not(Dot())
-V.EOL        = Choice('\r\n', '\n', '\r')
+V.Spacing = Star(Choice(V.Space, V.Comment))
+V.Space = Choice(Class(' \t'), V.EOL)
+V.Comment = Sequence('#', Star(Sequence(Not(V.EOL), Dot())), Optional(V.EOL))
+V.EOF = Not(Dot())
+V.EOL = Choice('\r\n', '\n', '\r')
 
 PEG = Grammar(
     definitions=V,

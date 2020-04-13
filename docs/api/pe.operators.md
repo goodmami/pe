@@ -34,8 +34,8 @@
   V = SymbolTable()
   V.Float = Raw(
       Sequence(V.INTEGER,
-	           Optional(V.FRACTION),
-			   Optional(V.EXPONENT)))
+               Optional(V.FRACTION),
+               Optional(V.EXPONENT)))
   V.INTEGER = ...
   V.FRACTION = ...
   V.EXPONENT = ...

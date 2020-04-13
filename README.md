@@ -1,5 +1,9 @@
 # <img src="docs/logo.png" width="60" alt="pe logo" /> Parsing Expressions
 
+[![PyPI Version](https://img.shields.io/pypi/v/pe)](https://pypi.org/project/pe)
+![Development Status](https://img.shields.io/pypi/status/pe)
+![Python Support](https://img.shields.io/pypi/pyversions/pe)
+
 **pe** is a library for parsing expressions, including [parsing
 expression grammars] (PEGs). It aims to join the expressive power of
 parsing expressions with the familiarity of regular expressions.  For
@@ -11,6 +15,7 @@ example:
 ...              '"escaped \\"string\\"" ...')
 >>> m.group()
 '"escaped \\"string\\""'
+
 ```
 
 [parsing expression grammars]: https://en.wikipedia.org/wiki/Parsing_expression_grammar
@@ -99,10 +104,12 @@ similar to regular expression's capturing groups:
 >>> m.groups()
 ()
 >>> e = pe.compile(r'~([0-9] [.] [0-9])')
+>>> m = e.match('1.4')
 >>> m.group()
 '1.4'
 >>> m.groups()
 ('1.4',)
+
 ```
 
 ### Value Bindings
@@ -119,6 +126,7 @@ dictionary.
 ('1', '4')
 >>> m.groupdict()
 {'x': '.'}
+
 ```
 
 ### Actions
@@ -141,7 +149,8 @@ an iterable while `Match.value()` can return a single object.
 
 ```python
 >>> from pe.actions import join
->>> e = pe.compile(r'~([0-9] [.] [0-9])', action=float)
+>>> e = pe.compile(r'~([0-9] [.] [0-9])',
+...                actions={'Start': float})
 >>> m = e.match('1.4')
 >>> m.groups()
 (1.4,)
@@ -149,6 +158,7 @@ an iterable while `Match.value()` can return a single object.
 {}
 >>> m.value()
 1.4
+
 ```
 
 ## Similar Projects

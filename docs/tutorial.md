@@ -6,6 +6,7 @@ This tutorial assumes you've imported **pe** as follows:
 
 ```python
 >>> import pe
+
 ```
 
 ## Matching Strings
@@ -26,6 +27,7 @@ import [re] as follows:
 
 ```python
 >>> import re
+
 ```
 
 ### Backtracking
@@ -52,6 +54,7 @@ alternatives should be tried first:
 ```python
 >>> pe.match(r'("ab" / "a") "c"', 'abc')
 <Match object; span=(0, 3), match='abc'>
+
 ```
 
 Practically, this means that lookahead assertions are more important.
@@ -63,6 +66,7 @@ Parsing expressions match recursively using nonterminals and grammars.
 ```python
 >>> pe.match(r'Bracketed <- "[" Bracketed "]" / ""', '[[[]]][]')
 <Match object; span=(0, 6), match='[[[]]]'>
+
 ```
 
 

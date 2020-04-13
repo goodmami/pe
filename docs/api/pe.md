@@ -31,19 +31,21 @@
   * **Example**
 
     ```python
-	>>> float_parser = pe.compile(
-	...     r'''
-	...     Float    <- ~( INTEGER FRACTION? EXPONENT )
-	...     INTEGER  <- '-'? ('0' / [1-9] [0-9]*)
-	...     FRACTION <- '.' [0-9]+
-	...     EXPONENT <- [eE] [-+]? [0-9]+
-	...     ''',
-	...     actions={'Float': float}
-	... )
-	>>> m = float_parser.match('0.183e+3')
-	>>> m.value()
-	183.0
-	```
+    >>> import pe
+    >>> float_parser = pe.compile(
+    ...     r'''
+    ...     Float    <- ~( INTEGER FRACTION? EXPONENT )
+    ...     INTEGER  <- '-'? ('0' / [1-9] [0-9]*)
+    ...     FRACTION <- '.' [0-9]+
+    ...     EXPONENT <- [eE] [-+]? [0-9]+
+    ...     ''',
+    ...     actions={'Float': float}
+    ... )
+    >>> m = float_parser.match('0.183e+3')
+    >>> m.value()
+    183.0
+
+    ```
 
 
 * pe.**<a id="match" href="#match">match</a>**
@@ -65,9 +67,10 @@
   * **Example**
 
     ```python
-	>>> pe.match(r'"-"? ("0" / [1-9] [0-9]*)', '-183')
-	<Match object; span=(0, 4), match='-183'>
-	```
+    >>> pe.match(r'"-"? ("0" / [1-9] [0-9]*)', '-183')
+    <Match object; span=(0, 4), match='-183'>
+
+    ```
 
 
 * pe.**<a id="escape" href="#escape">escape</a>**
@@ -81,6 +84,7 @@
     ```python
     >>> pe.escape('"\n"')
     '\\"\\n\\"'
+
     ```
 
 
@@ -96,6 +100,7 @@
     ```python
     >>> pe.unescape('\\"\\u3042\\"')
     '"あ"'
+
     ```
 
 
