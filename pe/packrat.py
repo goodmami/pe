@@ -7,8 +7,7 @@ Packrat Parsing
 # NOTE: attempting to use exceptions instead of FAIL codes resulted in
 # almost a 2x slowdown, so it's probably not a good idea
 
-from typing import (
-    Union, Dict, Callable)
+from typing import (Union, Dict, Callable)
 from collections import defaultdict
 import re
 
@@ -29,9 +28,12 @@ from pe._parser import Parser
 from pe._optimize import optimize
 
 
+_Matcher = Callable[[str, int, Flag], RawMatch]
+
+
 # Terms (Dot, Literal, Class)
 
-def Terminal(definition: Definition):
+def Terminal(definition: Definition) -> _Matcher:
 
     op = definition.op
     if op == Operator.DOT:
@@ -56,40 +58,35 @@ def Terminal(definition: Definition):
                 memo[pos][id(definition)] = retval
         return retval
 
-    _match.value = definition.value
-    _match.op = Operator.RGX
     return _match
 
 
 # Combining Expressions,
 
-def Sequence(expressions: Callable, value: Value):
+def Sequence(definitions: Definition, exprs) -> _Matcher:
 
-    _expressions = list(_pair_bindings(expressions))
+    expressions = [_def_to_expr(defn, exprs) for defn in definitions]
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         args = []
         kwargs = {}
-        for bind, expr in _expressions:
+        for expr in expressions:
             end, _args, _kwargs = expr(s, pos, memo)
             if end < 0:
                 return FAIL, _args, None
-            if bind is not None:
+            else:
+                args.extend(_args)
                 if _kwargs:
                     kwargs.update(_kwargs)
-                if bind:
-                    kwargs[bind] = evaluate(_args, expr.value)
-                else:
-                    args.extend(_args)
-            pos = end
+                pos = end
         return pos, tuple(args), kwargs
 
-    _match.value = value
-    _match.op = Operator.SEQ
     return _match
 
 
-def Choice(expressions: Callable, value: Value):
+def Choice(definitions: Definition, exprs) -> _Matcher:
+
+    expressions = [_def_to_expr(defn, exprs) for defn in definitions]
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         _id = id(_match)
@@ -110,12 +107,12 @@ def Choice(expressions: Callable, value: Value):
 
         return end, args, kwargs  # end may be FAIL
 
-    _match.value = value
-    _match.op = Operator.CHC
     return _match
 
 
-def Repeat(expression: Callable, min: int, value: Value):
+def Repeat(definition: Definition, min: int, exprs) -> _Matcher:
+
+    expression = _def_to_expr(definition, exprs)
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         guard = len(s) - pos  # simple guard against runaway left-recursion
@@ -138,12 +135,12 @@ def Repeat(expression: Callable, min: int, value: Value):
 
         return pos, args, kwargs
 
-    _match.value = value
-    _match.op = Operator.PLS if min else Operator.STR
     return _match
 
 
-def Optional(expression: Callable, value: Value):
+def Optional(definition: Definition, exprs: Dict[str, _Matcher]) -> _Matcher:
+
+    expression = _def_to_expr(definition, exprs)
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         end, args, kwargs = expression(s, pos, memo)
@@ -151,15 +148,15 @@ def Optional(expression: Callable, value: Value):
             return pos, (), None
         return end, args, kwargs
 
-    _match.value = value
-    _match.op = Operator.OPT
     return _match
 
 
 # Non-consuming Expressions
 
-def Lookahead(expression: Callable, polarity: bool, value: Value):
+def Lookahead(definition: Definition, polarity: bool, exprs) -> _Matcher:
     """An expression that may match but consumes no input."""
+
+    expression = _def_to_expr(definition, exprs)
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         end, args, kwargs = expression(s, pos, memo)
@@ -171,14 +168,14 @@ def Lookahead(expression: Callable, polarity: bool, value: Value):
                 return FAIL, args, None
         return pos, (), None
 
-    _match.value = value
-    _match.op = Operator.AND if polarity else Operator.NOT
     return _match
 
 
 # Value-changing Expressions
 
-def Raw(expression: Callable, value: Value):
+def Raw(definition: Definition, exprs) -> _Matcher:
+
+    expression = _def_to_expr(definition, exprs)
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         end, args, kwargs = expression(s, pos, memo)
@@ -186,12 +183,13 @@ def Raw(expression: Callable, value: Value):
             return FAIL, args, None
         return end, (s[pos:end],), None
 
-    _match.value = value
-    _match.op = Operator.RAW
     return _match
 
 
-def Bind(expression: Callable, name: str, value: Value):
+def Bind(name, definition: Definition, exprs) -> _Matcher:
+
+    expr_value = definition.value
+    expression = _def_to_expr(definition, exprs)
 
     def _match(s: str, pos: int, memo: Memo) -> RawMatch:
         end, args, kwargs = expression(s, pos, memo)
@@ -199,13 +197,9 @@ def Bind(expression: Callable, name: str, value: Value):
             return FAIL, args, None
         if not kwargs:
             kwargs = {}
-        kwargs[name] = evaluate(args, expression.value)
+        kwargs[name] = evaluate(args, expr_value)
         return end, (), kwargs
 
-    _match.value = value
-    _match.op = Operator.BND
-    _match.expression = expression
-    _match.name = name
     return _match
 
 
@@ -218,34 +212,36 @@ class Rule:
     The *name* field is more relevant for the grammar than the rule
     itself, but it helps with debugging.
     """
-
-    __slots__ = 'expression', 'action', 'name', 'op', 'value',
-
-    def __init__(self, expression: Union[Callable, None],
-                 action: Union[Callable, None],
+    def __init__(self,
                  name: str,
-                 value: Value):
-        self.expression = expression
-        self.action = action
+                 definition: Union[Definition, None],
+                 action: Union[Callable, None],
+                 exprs):
         self.name = name
-        self.value = value
-        self.op = Operator.RUL
+        self.expression: _Matcher = None
+        if definition:
+            self.expression = _def_to_expr(definition, exprs)
+        self.action = action
 
-    # def __repr__(self):
-    #     return f'<{type(self).__name__} ({self.name}) object at {id(self)}>'
+    def set_expression(self, expression: _Matcher):
+        self.expression = expression
 
     def __call__(self, s: str, pos: int, memo: Memo) -> RawMatch:
-        end, args, kwargs = self.expression(s, pos, memo)
-        action = self.action
-        if end >= 0 and action:
-            try:
-                args = [action(*args, **(kwargs or {}))]
-            except ParseFailure as exc:
-                raise _make_parse_error(
-                    s, pos, exc.message
-                ).with_traceback(exc.__traceback__)
+        expression = self.expression
 
-        return end, args, {}
+        if expression:
+            end, args, kwargs = expression(s, pos, memo)
+            action = self.action
+            if end >= 0 and action:
+                try:
+                    args = [action(*args, **(kwargs or {}))]
+                except ParseFailure as exc:
+                    raise _make_parse_error(
+                        s, pos, exc.message
+                    ).with_traceback(exc.__traceback__)
+            return end, args, {}
+        else:
+            raise NotImplementedError
 
 
 class PackratParser(Parser):
@@ -305,18 +301,20 @@ def _grammar_to_packrat(grammar, flags):
         # nonterminal in some other rule, so don't replace the object
         # or the call chain will break.
         if name in exprs:
-            existing = exprs[name]
-            if expr.op == Operator.RUL:
-                existing.expression = expr.expression
-                existing.action = expr.action
+            if isinstance(expr, Rule):
+                action = expr.action
+                expr = expr.expression
             else:
-                existing.expression = expr
+                action = None
+            exprs[name].expression = expr
+            exprs[name].action = action
         else:
             exprs[name] = expr
 
     # ensure all symbols are defined
     for name, expr in exprs.items():
-        if expr is None or isinstance(expr, Rule) and expr.expression is None:
+        if expr is None or (isinstance(expr, Rule)
+                            and expr.expression is None):
             raise Error(f'undefined rule: {name}')
     return exprs
 
@@ -324,42 +322,34 @@ def _grammar_to_packrat(grammar, flags):
 def _def_to_expr(_def: Definition, exprs):
     op = _def.op
     args = _def.args
-    val = _def.value
     if op in (Operator.DOT, Operator.LIT, Operator.CLS, Operator.RGX):
         return Terminal(_def)
     elif op == Operator.OPT:
-        return Optional(_def_to_expr(args[0], exprs), val)
+        return Optional(args[0], exprs)
+        # return Optional(_def_to_expr(args[0], exprs), val)
     elif op == Operator.STR:
-        return Repeat(_def_to_expr(args[0], exprs), 0, val)
+        return Repeat(args[0], 0, exprs)
     elif op == Operator.PLS:
-        return Repeat(_def_to_expr(args[0], exprs), 1, val)
+        return Repeat(args[0], 1, exprs)
     elif op == Operator.SYM:
-        return exprs.setdefault(args[0], Rule(None, None, args[0], val))
+        return exprs.setdefault(args[0], Rule(args[0], None, None, exprs))
     elif op == Operator.AND:
-        return Lookahead(_def_to_expr(args[0], exprs), True, val)
+        return Lookahead(args[0], True, exprs)
     elif op == Operator.NOT:
-        return Lookahead(_def_to_expr(args[0], exprs), False, val)
+        return Lookahead(args[0], False, exprs)
     elif op == Operator.RAW:
-        return Raw(_def_to_expr(args[0], exprs), val)
+        return Raw(args[0], exprs)
     elif op == Operator.BND:
-        return Bind(_def_to_expr(args[0], exprs), args[1], val)
+        return Bind(args[1], args[0], exprs)
     elif op == Operator.SEQ:
-        return Sequence([_def_to_expr(e, exprs) for e in args[0]], val)
+        return Sequence(args[0], exprs)
     elif op == Operator.CHC:
-        return Choice([_def_to_expr(e, exprs) for e in args[0]], val)
+        return Choice(args[0], exprs)
     elif op == Operator.RUL:
         _def, action, name = args
-        return Rule(_def_to_expr(_def, exprs), action, name, val)
+        return Rule(name, _def, action, exprs)
     else:
         raise Error(f'invalid definition: {_def!r}')
-
-
-def _pair_bindings(expressions):
-    for expr in expressions:
-        if expr.op == Operator.BND:
-            yield (expr.name, expr.expression)
-        else:
-            yield (False, expr)
 
 
 def _get_furthest_fail(args, memo):
