@@ -113,18 +113,19 @@ def _regex(defs, defn, grpid):
     #       (?imsx:-imsx:...)
     op = defn.op
     args = defn.args
+    value = defn.value
 
     if op == DOT:
-        return Regex('.')
+        newdefn = Regex('.')
     elif op == LIT:
-        return Regex(re.escape(args[0]))
+        newdefn = Regex(re.escape(args[0]))
     elif op == CLS:
-        return Regex(f'[{args[0]}]')
+        newdefn = Regex(f'[{args[0]}]')
 
     elif op == SEQ:
         subdefs = _seq_first_pass(defs, args[0], grpid)
         subdefs = _seq_join_unstructured(subdefs)
-        return Sequence(*subdefs)
+        newdefn = Sequence(*subdefs)
 
     elif op == CHC:
         items = [_regex(defs, d, grpid) for d in args[0]]
@@ -138,68 +139,72 @@ def _regex(defs, defn, grpid):
                           + f'))(?P={gid})'))
             else:
                 subdefs.extend(grp)
-        return Choice(*subdefs)
+        newdefn = Choice(*subdefs)
 
     elif op == OPT:
         d = _regex(defs, args[0], grpid)
         if d.op == RGX:
-            return Regex(f'(?:{d.args[0]})?')
+            newdefn = Regex(f'(?:{d.args[0]})?')
         else:
-            return Optional(d)
+            newdefn = Optional(d)
 
     elif op == STR:
         d = _regex(defs, args[0], grpid)
         if d.op == RGX:
             gid = f'_{next(grpid)}'
-            return Regex(f'(?=(?P<{gid}>(?:'
-                         + d.args[0]
-                         + f')*))(?P={gid})')
+            newdefn = Regex(f'(?=(?P<{gid}>(?:'
+                            + d.args[0]
+                            + f')*))(?P={gid})')
         else:
-            return Star(d)
+            newdefn = Star(d)
 
     elif op == PLS:
         d = _regex(defs, args[0], grpid)
         if d.op == RGX:
             gid = f'_{next(grpid)}'
-            return Regex(f'(?=(?P<{gid}>(?:'
-                         + d.args[0]
-                         + f')+))(?P={gid})')
+            newdefn = Regex(f'(?=(?P<{gid}>(?:'
+                            + d.args[0]
+                            + f')+))(?P={gid})')
         else:
-            return Plus(d)
+            newdefn = Plus(d)
 
     elif op == AND:
         d = _regex(defs, args[0], grpid)
         if d.op == RGX:
-            return Regex(f'(?={d.args[0]})')
+            newdefn = Regex(f'(?={d.args[0]})')
         else:
-            return And(d)
+            newdefn = And(d)
 
     elif op == NOT:
         d = _regex(defs, args[0], grpid)
         if d.op == RGX:
-            return Regex(f'(?!{d.args[0]})')
+            newdefn = Regex(f'(?!{d.args[0]})')
         else:
-            return Not(d)
+            newdefn = Not(d)
 
     elif op == RAW:
         subdef = _regex(defs, args[0], grpid)
-        return Raw(subdef)
+        newdefn = Raw(subdef)
 
     elif op == BND:
         d, name = args
         subdef = _regex(defs, d, grpid)
-        return Bind(subdef, name=name)
+        newdefn = Bind(subdef, name=name)
 
     elif op == RUL:
         subdef, action, name = args
-        _subdef = _regex(defs, subdef, grpid)
-        if action is None:
-            return _subdef
-        else:
-            return Rule(_subdef, action, name=name)
+        newdefn = _regex(defs, subdef, grpid)
+        if action is not None:
+            newdefn = Rule(newdefn, action, name=name)
 
     else:
         return defn
+
+    # make sure the value type doesn't change
+    if newdefn.op == Operator.RGX:
+        newdefn.value = value
+
+    return newdefn
 
 
 _special_quantifiers = {
