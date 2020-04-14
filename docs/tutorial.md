@@ -40,10 +40,11 @@ instance, the regular expression `(a|ab)c` and the parsing expression
 `("a" / "ab") "c"` are not equivalent, as shown below:
 
 ```python
->>> re.match(r'(a|ab)c', 'abc')
-<_sre.SRE_Match object; span=(0, 3), match='abc'>
->>> pe.match(r'("a" / "ab") "c"', 'abc')  # no match
->>>
+>>> re.match(r'(a|ab)c', 'abc').group()
+'abc'
+>>> pe.match(r'("a" / "ab") "c"', 'abc') is None
+True
+
 ```
 
 This is because the prioritized choice does not consider alternatives
