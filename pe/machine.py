@@ -6,7 +6,7 @@ Inspired by Medeiros and Ierusalimschy, 2008, "A Parsing Machine for PEGs"
 
 """
 
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Optional
 import enum
 import re
 
@@ -60,10 +60,11 @@ class MachineParser(Parser):
               s: str,
               pos: int = 0,
               flags: Flag = Flag.NONE) -> Union[Match, None]:
-        end, args, kwargs = self._match(s, pos, None)
+        memo: Union[Memo, None] = None
+        end, args, kwargs = self._match(s, pos, memo)
         return Match(s, pos, end, self.grammar[self.start], args, kwargs)
 
-    def _match(self, s: str, pos: int, memo: Memo):
+    def _match(self, s: str, pos: int, memo: Optional[Memo]):  # noqa: C901
         PASS = MachineOp.PASS
         BRANCH = MachineOp.BRANCH
         COMMIT = MachineOp.COMMIT
@@ -77,7 +78,6 @@ class MachineParser(Parser):
         LIT = Operator.LIT
         CLS = Operator.CLS
         DOT = Operator.DOT
-        DIS = Operator.DIS
         BND = Operator.BND
         RUL = Operator.RUL
 
@@ -176,7 +176,7 @@ class MachineParser(Parser):
                 idx, _, _ = stack.pop()
                 continue
 
-            elif op in (DIS, BND, RUL):
+            elif op in (BND, RUL):
                 pass
 
             elif op == PASS:
@@ -223,7 +223,7 @@ def _make_program(grammar):
     return pi, index
 
 
-def _parsing_instructions(defn):
+def _parsing_instructions(defn):  # noqa: C901
     op = defn.op
     args = defn.args
 
@@ -276,9 +276,6 @@ def _parsing_instructions(defn):
         pi = _parsing_instructions(args[0])
         return pi  # TODO: raw
 
-    elif op == Operator.DIS:
-        return _parsing_instructions(args[0])
-        # return [(op,)] + pi
     elif op == Operator.BND:
         return _parsing_instructions(args[0])
         # return [(op, args[0])] + pi

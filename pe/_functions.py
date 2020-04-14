@@ -32,8 +32,11 @@ def compile(source,
     if isinstance(g, Definition):
         g = Grammar({'Start': g})
 
-    g.actions = actions or {}
-    g.finalize()
+    if not g.final:
+        g.actions = actions or {}
+        g.finalize()
+    elif actions:
+        raise Error('cannot assign action to finalized grammar')
 
     p = parser_class(g, flags=flags)
 
