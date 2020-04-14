@@ -1,7 +1,6 @@
 
 from pe._constants import Operator as Op, Value
 from pe._definition import Definition as Def
-from pe._grammar import Grammar
 from pe.operators import (
     Dot,
     Literal,
@@ -45,6 +44,7 @@ def test_Sequence():
     # simple optimizations
     assert Sequence(Dot()) == Dot()
     assert Sequence(Sequence('a', 'b'), 'c') == Sequence('a', 'b', 'c')
+
 
 def test_Choice():
     assert (Choice(Literal('a'), Dot())

@@ -19,11 +19,11 @@ def test_Match_atom():
     assert m.group(0) == '1'
     assert m.groups() == ()
     assert m.groupdict() == {}
-    assert m.value() == None
+    assert m.value() is None
 
 
 def test_Match_raw_atom():
-    m = Match('123', 0, 1, RawOne, ['1',], {})
+    m = Match('123', 0, 1, RawOne, ['1'], {})
     assert m.string == '123'
     assert m.pos == 0
     assert m.end == 1
@@ -32,7 +32,7 @@ def test_Match_raw_atom():
     assert m.group(1) == '1'
     assert m.groups() == ('1',)
     assert m.groupdict() == {}
-    assert m.value() is '1'
+    assert m.value() == '1'
 
 
 def test_Match_iterable():
@@ -57,7 +57,7 @@ def test_Match_raw_iterable():
     assert m.group(1) == '2'
     assert m.groups() == ('2',)
     assert m.groupdict() == {}
-    assert m.value() == ['2',]
+    assert m.value() == ['2']
 
 
 def test_Match_iterable_bind():
@@ -67,7 +67,7 @@ def test_Match_iterable_bind():
     assert m.end == 2
     assert m.pe is OneBindTwo
     assert m.group(0) == '12'
-    assert m.group('x') == None
+    assert m.group('x') is None
     assert m.groups() == ()
     assert m.groupdict() == {'x': None}
     assert m.value() == []

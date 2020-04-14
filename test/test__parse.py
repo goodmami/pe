@@ -1,11 +1,9 @@
 
-from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
     Dot,
     Literal,
     Class,
-    Regex,
     Sequence,
     Choice,
     Optional,
@@ -18,6 +16,7 @@ from pe.operators import (
     Bind,
 )
 from pe._parse import loads
+
 
 def test_loads_dot():
     assert loads('.') == Dot()
