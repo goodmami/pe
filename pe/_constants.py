@@ -31,6 +31,7 @@ class Operator(enum.Enum):
     SEQ = (_auto(), 3, 'Sequential')   # (SEQ, (exprs,))
     RUL = (_auto(), 2, 'Applicative')  # (RUL, (expr, action, name))
     CHC = (_auto(), 1, 'Prioritized')  # (CHC, (exprs,))
+    DEF = (_auto(), 0, 'Definitive')   # (DEF, (expr, name))
 
     @property
     def precedence(self):
