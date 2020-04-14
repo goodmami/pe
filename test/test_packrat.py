@@ -32,8 +32,8 @@ abseq = Seq('a', 'b')
 _noatom = ((), {}, None)
 _noiter = ((), {}, ())
 
-data = [
-    #id      definition       input,   pos,scan, (groups, groupdict, value)
+data = [  # noqa: E127
+    # id     definition       input,   pos,scan, (groups, groupdict, value)
     ('Dot0', Dot(),           'aaa',    0, 1,    _noatom),
     ('Dot1', Dot(),           '   ',    0, 1,    _noatom),
     ('Dot2', Dot(),           '',       0, FAIL, None),
@@ -108,6 +108,8 @@ data = [
 
     ('Grm0', Grm({'Start': abc}), 'a',  0, 1,    _noatom),
     ('Grm1', Grm({'Start': abc}), 'd',  0, FAIL, None),
+    ('Grm1', Grm({'Start': Non('A'), 'A': abc}),
+                                  'a',  0, 1,    _noatom),
 ]
 
 

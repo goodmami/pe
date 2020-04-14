@@ -105,35 +105,16 @@ class PackratParser(Parser):
 
     def _def_to_expr(self, definition: Definition):
         op = definition.op
-        args = definition.args
-        if op in (Operator.DOT, Operator.LIT, Operator.CLS, Operator.RGX):
-            return self._terminal(definition)
-        elif op == Operator.OPT:
-            return self._optional(args[0])
-        elif op == Operator.STR:
-            return self._repeat(args[0], 0)
-        elif op == Operator.PLS:
-            return self._repeat(args[0], 1)
-        elif op == Operator.SYM:
-            return self._exprs.setdefault(args[0], Rule(args[0], None, None))
-        elif op == Operator.AND:
-            return self._lookahead(args[0], True)
-        elif op == Operator.NOT:
-            return self._lookahead(args[0], False)
-        elif op == Operator.RAW:
-            return self._raw(args[0])
-        elif op == Operator.BND:
-            return self._bind(args[1], args[0])
-        elif op == Operator.SEQ:
-            return self._sequence(args[0])
-        elif op == Operator.CHC:
-            return self._choice(args[0])
-        elif op == Operator.RUL:
-            defn, action, name = args
-            expression = self._def_to_expr(defn)
-            return Rule(name, expression, action)
+        if op == Operator.SYM:
+            name = definition.args[0]
+            return self._exprs.setdefault(name, Rule(name, None, None))
         else:
-            raise Error(f'invalid definition: {definition!r}')
+            try:
+                meth = self._op_map[op]
+            except KeyError:
+                raise Error(f'invalid definition: {definition!r}')
+            else:
+                return meth(self, definition)
 
     def _terminal(self, definition: Definition) -> _Matcher:
 
@@ -158,14 +139,15 @@ class PackratParser(Parser):
             else:
                 retval = FAIL, (pos, definition), None
                 if memo is not None:
-                    memo[pos][id(definition)] = retval
+                    memo[pos][id(_match)] = retval
             return retval
 
         return _match
 
-    def _sequence(self, definitions: Iterable[Definition]) -> _Matcher:
+    def _sequence(self, definition: Definition) -> _Matcher:
 
-        expressions = [self._def_to_expr(defn) for defn in definitions]
+        items: Iterable[Definition] = definition.args[0]
+        expressions = [self._def_to_expr(defn) for defn in items]
 
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             args: List = []
@@ -183,9 +165,10 @@ class PackratParser(Parser):
 
         return _match
 
-    def _choice(self, definitions: Iterable[Definition]) -> _Matcher:
+    def _choice(self, definition: Definition) -> _Matcher:
 
-        expressions = [self._def_to_expr(defn) for defn in definitions]
+        items: Iterable[Definition] = definition.args[0]
+        expressions = [self._def_to_expr(defn) for defn in items]
 
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             _id = id(_match)
@@ -235,9 +218,15 @@ class PackratParser(Parser):
 
         return _match
 
+    def _star(self, definition: Definition) -> _Matcher:
+        return self._repeat(definition.args[0], 0)
+
+    def _plus(self, definition: Definition) -> _Matcher:
+        return self._repeat(definition.args[0], 1)
+
     def _optional(self, definition: Definition) -> _Matcher:
 
-        expression = self._def_to_expr(definition)
+        expression = self._def_to_expr(definition.args[0])
 
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             end, args, kwargs = expression(s, pos, memo)
@@ -264,9 +253,15 @@ class PackratParser(Parser):
 
         return _match
 
+    def _and(self, definition: Definition) -> _Matcher:
+        return self._lookahead(definition.args[0], True)
+
+    def _not(self, definition: Definition) -> _Matcher:
+        return self._lookahead(definition.args[0], False)
+
     def _raw(self, definition: Definition) -> _Matcher:
 
-        expression = self._def_to_expr(definition)
+        expression = self._def_to_expr(definition.args[0])
 
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             end, args, kwargs = expression(s, pos, memo)
@@ -276,10 +271,12 @@ class PackratParser(Parser):
 
         return _match
 
-    def _bind(self, name, definition: Definition) -> _Matcher:
+    def _bind(self, definition: Definition) -> _Matcher:
 
-        expr_value = definition.value
-        expression = self._def_to_expr(definition)
+        bound: Definition = definition.args[0]
+        expression = self._def_to_expr(bound)
+        name: str = definition.args[1]
+        expr_value = bound.value
 
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             end, args, kwargs = expression(s, pos, memo)
@@ -291,6 +288,30 @@ class PackratParser(Parser):
             return end, (), kwargs
 
         return _match
+
+    def _rule(self, definition: Definition) -> _Matcher:
+        expression = self._def_to_expr(definition.args[0])
+        action: Union[Callable, None] = definition.args[1]
+        name: str = definition.args[2]
+        return Rule(name, expression, action)
+
+    _op_map = {
+        Operator.DOT: _terminal,
+        Operator.LIT: _terminal,
+        Operator.CLS: _terminal,
+        Operator.RGX: _terminal,
+        # Operator.SYM: _,
+        Operator.OPT: _optional,
+        Operator.STR: _star,
+        Operator.PLS: _plus,
+        Operator.AND: _and,
+        Operator.NOT: _not,
+        Operator.RAW: _raw,
+        Operator.BND: _bind,
+        Operator.SEQ: _sequence,
+        Operator.CHC: _choice,
+        Operator.RUL: _rule,
+    }
 
 
 # Recursion and Rules
