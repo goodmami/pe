@@ -1,6 +1,8 @@
 
+from pe._meta import __version__  # noqa: F401
 from pe._constants import Flag
 from pe._errors import Error, GrammarError, ParseError
+from pe._grammar import Grammar
 from pe._match import Match
 from pe._escape import escape, unescape
 from pe._parser import Parser
@@ -25,6 +27,7 @@ __all__ = [
     'Error',
     'GrammarError',
     'ParseError',
+    'Grammar',
     'Match',
     'escape',
     'unescape',

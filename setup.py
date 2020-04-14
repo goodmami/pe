@@ -10,17 +10,20 @@ long_description = ''
 with open(os.path.join(base_dir, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+about = {}
+with open(os.path.join(base_dir, "pe", "_meta.py")) as f:
+    exec(f.read(), about)
 
 setup(
-    name='pe',
-    version='0.1.0',
-    description='Parsing Expressions',
+    name=about['__title__'],
+    version=about['__version__'],
+    description=about['__summary__'],
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/goodmami/pe',
-    author='Michael Wayne Goodman',
-    author_email='goodman.m.w@gmail.com',
-    license='MIT',
+    url=about['__uri__'],
+    author=about['__author__'],
+    author_email=about['__email__'],
+    license=about['__license__'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
