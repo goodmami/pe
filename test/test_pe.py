@@ -1,5 +1,42 @@
 
+import pytest
+
 import pe
+from pe.packrat import PackratParser
+from pe.machine import MachineParser
+
+
+def test_compile_default():
+    p = pe.compile(r'"a"')
+    assert isinstance(p, PackratParser)
+    assert p.match('a')
+
+
+def test_compile_parser():
+    p = pe.compile(r'"a"', parser='packrat')
+    assert isinstance(p, PackratParser)
+    assert p.match('a')
+
+    p = pe.compile(r'"a"', parser='machine')
+    assert isinstance(p, MachineParser)
+    assert p.match('a')
+
+
+def test_compile_actions():
+    p = pe.compile(r'~"1"', actions={'Start': int})
+    assert p.match('1').value() == 1
+
+
+def test_match():
+    assert pe.match(r'"a"', 'a')
+    assert not pe.match(r'"a"', 'b')
+
+
+def test_match_strict():
+    assert pe.match(r'"a"', 'a', flags=pe.STRICT)
+    with pytest.raises(pe.ParseError):
+        pe.match(r'"a"', 'b', flags=pe.STRICT)
+
 
 def test_escape():
     assert pe.escape('\t') == '\\t'
