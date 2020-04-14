@@ -106,6 +106,35 @@
 
 ## Classes
 
+* *class* pe.**<a id="Grammar" href="#Grammar">Grammar</a>**
+  (*definitions=None, actions=None, start='Start'*)
+
+  A grammar maintains a mapping between names and parsing expression
+  definitions. This class can be used to programatically construct a
+  parser, rather than through [re.compile()](#compile).
+
+  * **Example**
+
+    ```python
+    >>> from pe.packrat import PackratParser
+    >>> from pe import Grammar
+    >>> from pe.operators import (
+    ...    Class, Optional, Star, Raw, Sequence, Choice)
+    >>> g = Grammar(
+    ...     {'Integer': Raw(
+    ...         Sequence(
+    ...             Optional('-'),
+    ...             Choice('0', Sequence(Class('1-9'),
+    ...                                  Star(Class('0-9'))))))},
+    ...     actions={'Integer': int},
+    ...     start='Integer',
+    ... )
+    >>> int_parser = PackratParser(g)
+    >>> int_parser.match('183').value()
+    183
+
+    ```
+
 * *class* pe.**<a id="Parser" href="#Parser">Parser</a>**
   (*grammar, flags=pe.NONE*)
 

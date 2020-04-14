@@ -3,6 +3,7 @@
 [![PyPI Version](https://img.shields.io/pypi/v/pe)](https://pypi.org/project/pe)
 ![Development Status](https://img.shields.io/pypi/status/pe)
 ![Python Support](https://img.shields.io/pypi/pyversions/pe)
+![Python Package](https://github.com/goodmami/pe/workflows/Python%20package/badge.svg)
 
 **pe** is a library for parsing expressions, including [parsing
 expression grammars] (PEGs). It aims to join the expressive power of
@@ -20,6 +21,7 @@ example:
 
 [parsing expression grammars]: https://en.wikipedia.org/wiki/Parsing_expression_grammar
 
+
 ## Current Status
 
 Please note that **pe** is very new and is currently *alpha*-level
@@ -29,23 +31,21 @@ finalized.
 
 ## Features and Goals
 
-* Grammar notation is backward-compatible with standard PEG
-  - Syntactic extensions should be rare
-  - Instead, a [specification](docs/specification.md) describes semantic extensions
-* Parsers are fast and memory efficient
-  - Currently it beats [Lark](https://github.com/lark-parser/lark) at
-    the JSON task (caveat: just one test is not representative)
-  - The plan is to support C or Cython extensions; [initial
-    tests](https://github.com/goodmami/textpy) are promising
-* API is intuitive and familiar
-  - Modeled on the standard API's `re` module
+* Grammar notation is backward-compatible with standard PEG with few extensions
+* A [specification](docs/specification.md) describes the semantic
+  effect of parsing (e.g., for mapping expressions to function calls)
+* Parsers are [fast and memory efficient][benchmarks]
+* The API is intuitive and familiar; it's modeled on the standard
+  API's [re] module
 * Grammar definitions and parser implementations are separate
   - Optimizations target the abstract grammar definitions
   - Multiple parsers are available (currently [packrat](pe/packrat.py)
-    for memoizing recursive descent and [machine](pe/machine.py) for
-    an iterative "parsing machine" as from [Medeiros and
-    Ierusalimschy, 2008] and implemented in [LPeg]).
+    for recursive descent and [machine](pe/machine.py) for an
+    iterative "parsing machine" as from [Medeiros and Ierusalimschy,
+    2008] and implemented in [LPeg]).
 
+[benchmarks]: https://github.com/goodmami/python-parsing-benchmarks
+[re]: https://docs.python.org/3/library/re.html
 [Medeiros and Ierusalimschy, 2008]: http://www.inf.puc-rio.br/~roberto/docs/ry08-4.pdf
 
 
