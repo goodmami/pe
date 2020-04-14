@@ -7,6 +7,7 @@ import re
 from itertools import groupby, count
 
 from pe._constants import Operator
+from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
     Sequence,
@@ -39,6 +40,20 @@ SEQ = Operator.SEQ
 CHC = Operator.CHC
 RUL = Operator.RUL
 
+# only need to map mutually recursive operators
+_op_map = {
+    OPT: Optional,
+    STR: Star,
+    PLS: Plus,
+    AND: And,
+    NOT: Not,
+    RAW: Raw,
+    BND: Bind,
+    SEQ: Sequence,
+    CHC: Choice,
+    RUL: Rule,
+}
+
 
 def optimize(g: Grammar, inline=True, regex=True):
     """Combine adjacent terms into a single regular expression."""
@@ -54,7 +69,7 @@ def optimize(g: Grammar, inline=True, regex=True):
         new = {}
         grpid = count(start=1)
         for name, defn in defs.items():
-            new[name] = _regex(defs, defn, grpid)
+            new[name] = _regex(defn, defs, grpid)
         defs = new
 
     return Grammar(definitions=defs,
@@ -66,166 +81,42 @@ def _inline(defs, defn, visited):
     op = defn.op
     args = defn.args
 
+    # only nonterminals (SYM) can be inlined
     if op == SYM:
         name = args[0]
-        if name in visited:  # recursive definition
-            return defn
-        elif defs[name].op == RUL and defs[name].args[1]:  # rule with action
+        if (name in visited                # recursive definition
+            or (defs[name].op == RUL       # rule with action
+                and defs[name].args[1])):
             return defn
         else:
             return _inline(defs, defs[name], visited | {name})
-
-    elif op == SEQ:
-        return Sequence(*(_inline(defs, d, visited) for d in args[0]))
-    elif op == CHC:
-        return Choice(*(_inline(defs, d, visited) for d in args[0]))
-    elif op == OPT:
-        return Optional(_inline(defs, args[0], visited))
-    elif op == STR:
-        return Star(_inline(defs, args[0], visited))
-    elif op == PLS:
-        return Plus(_inline(defs, args[0], visited))
-    elif op == AND:
-        return And(_inline(defs, args[0], visited))
-    elif op == NOT:
-        return Not(_inline(defs, args[0], visited))
-    elif op == RAW:
-        return Raw(_inline(defs, args[0], visited))
-    elif op == BND:
-        d, name = args
-        return Bind(_inline(defs, d, visited), name=name)
-    elif op == RUL:
-        d, action, name = args
-        return Rule(_inline(defs, d, visited), action, name=name)
+    # for all others, just pass through
     else:
-        return defn
-
-
-def _regex(defs, defn, grpid):
-    """
-    Convert patterns to regular expressions if they do not emit or
-    bind values.
-
-    Note: this assumes that any Regex operator does not emit or bind
-    values.
-    """
-    # TODO: when merging regexes with flags, use local flags,
-    #       (?imsx:-imsx:...)
-    op = defn.op
-    args = defn.args
-    value = defn.value
-
-    if op == DOT:
-        newdefn = Regex('.')
-    elif op == LIT:
-        newdefn = Regex(re.escape(args[0]))
-    elif op == CLS:
-        newdefn = Regex(f'[{args[0]}]')
-
-    elif op == SEQ:
-        subdefs = _seq_first_pass(defs, args[0], grpid)
-        subdefs = _seq_join_unstructured(subdefs)
-        newdefn = Sequence(*subdefs)
-
-    elif op == CHC:
-        items = [_regex(defs, d, grpid) for d in args[0]]
-        subdefs = []
-        for k, grp in groupby(items, key=lambda d: d.op):
-            if k == RGX:
-                gid = f'_{next(grpid)}'
-                subdefs.append(
-                    Regex(f'(?=(?P<{gid}>'
-                          + '|'.join(sd.args[0] for sd in grp)
-                          + f'))(?P={gid})'))
-            else:
-                subdefs.extend(grp)
-        newdefn = Choice(*subdefs)
-
-    elif op == OPT:
-        d = _regex(defs, args[0], grpid)
-        if d.op == RGX:
-            newdefn = Regex(f'(?:{d.args[0]})?')
+        make_op = _op_map.get(op)
+        if op in (SEQ, CHC):
+            return make_op(*(_inline(defs, d, visited) for d in args[0]))
+        elif make_op:
+            return make_op(_inline(defs, args[0], visited), *args[1:])
         else:
-            newdefn = Optional(d)
-
-    elif op == STR:
-        d = _regex(defs, args[0], grpid)
-        if d.op == RGX:
-            gid = f'_{next(grpid)}'
-            newdefn = Regex(f'(?=(?P<{gid}>(?:'
-                            + d.args[0]
-                            + f')*))(?P={gid})')
-        else:
-            newdefn = Star(d)
-
-    elif op == PLS:
-        d = _regex(defs, args[0], grpid)
-        if d.op == RGX:
-            gid = f'_{next(grpid)}'
-            newdefn = Regex(f'(?=(?P<{gid}>(?:'
-                            + d.args[0]
-                            + f')+))(?P={gid})')
-        else:
-            newdefn = Plus(d)
-
-    elif op == AND:
-        d = _regex(defs, args[0], grpid)
-        if d.op == RGX:
-            newdefn = Regex(f'(?={d.args[0]})')
-        else:
-            newdefn = And(d)
-
-    elif op == NOT:
-        d = _regex(defs, args[0], grpid)
-        if d.op == RGX:
-            newdefn = Regex(f'(?!{d.args[0]})')
-        else:
-            newdefn = Not(d)
-
-    elif op == RAW:
-        subdef = _regex(defs, args[0], grpid)
-        newdefn = Raw(subdef)
-
-    elif op == BND:
-        d, name = args
-        subdef = _regex(defs, d, grpid)
-        newdefn = Bind(subdef, name=name)
-
-    elif op == RUL:
-        subdef, action, name = args
-        newdefn = _regex(defs, subdef, grpid)
-        if action is not None:
-            newdefn = Rule(newdefn, action, name=name)
-
-    else:
-        return defn
-
-    # make sure the value type doesn't change
-    if newdefn.op == Operator.RGX:
-        newdefn.value = value
-
-    return newdefn
+            return defn
 
 
-_special_quantifiers = {
-    # min max
-    (1, 1): '',
-    (0, 1): '?',
-    (0, -1): '*',
-    (1, -1): '+',
-}
+def _regex_dot(defn, defs, grpid):
+    return Regex('.')
 
 
-def _quantifier_re(min, max):
-    q = _special_quantifiers.get((min, max))
-    if not q:
-        if min == max:
-            q = f'{{{max}}}'
-        else:
-            min = '' if min == 0 else min
-            max = '' if max < 0 else max
-            q = f'{{{min},{max}}}'
-    return q
+def _regex_literal(defn, defs, grpid):
+    return Regex(re.escape(defn.args[0]))
+
+
+def _regex_class(defn, defs, grpid):
+    return Regex(f'[{defn.args[0]}]')
+
+
+def _regex_sequence(defn, defs, grpid):
+    subdefs = _seq_first_pass(defs, defn.args[0], grpid)
+    subdefs = _seq_join_unstructured(subdefs)
+    return Sequence(*subdefs)
 
 
 def _seq_first_pass(defs, subdefs, grpid):
@@ -242,9 +133,9 @@ def _seq_first_pass(defs, subdefs, grpid):
                 yield Regex(f'[^{re.escape(notd.args[0])}]')
                 i += 1
             else:
-                yield _regex(defs, d, grpid)
+                yield _regex(d, defs, grpid)
         else:
-            yield _regex(defs, d, grpid)
+            yield _regex(d, defs, grpid)
         i += 1
 
 
@@ -255,3 +146,119 @@ def _seq_join_unstructured(subdefs):
             yield Regex(''.join(d.args[0] for d in grp))
         else:
             yield from grp
+
+
+def _regex_choice(defn, defs, grpid):
+    items = [_regex(d, defs, grpid) for d in defn.args[0]]
+    subdefs = []
+    for k, grp in groupby(items, key=lambda d: d.op):
+        if k == RGX:
+            gid = f'_{next(grpid)}'
+            subdefs.append(
+                Regex(f'(?=(?P<{gid}>'
+                      + '|'.join(sd.args[0] for sd in grp)
+                      + f'))(?P={gid})'))
+        else:
+            subdefs.extend(grp)
+    return Choice(*subdefs)
+
+
+def _regex_optional(defn, defs, grpid):
+    d = _regex(defn.args[0], defs, grpid)
+    if d.op == RGX:
+        return Regex(f'(?:{d.args[0]})?')
+    else:
+        return Optional(d)
+
+
+def _regex_star(defn, defs, grpid):
+    d = _regex(defn.args[0], defs, grpid)
+    if d.op == RGX:
+        gid = f'_{next(grpid)}'
+        return Regex(f'(?=(?P<{gid}>(?:'
+                     + d.args[0]
+                     + f')*))(?P={gid})')
+    else:
+        return Star(d)
+
+
+def _regex_plus(defn, defs, grpid):
+    d = _regex(defn.args[0], defs, grpid)
+    if d.op == RGX:
+        gid = f'_{next(grpid)}'
+        return Regex(f'(?=(?P<{gid}>(?:'
+                     + d.args[0]
+                     + f')+))(?P={gid})')
+    else:
+        return Plus(d)
+
+
+def _regex_and(defn, defs, grpid):
+    d = _regex(defn.args[0], defs, grpid)
+    if d.op == RGX:
+        return Regex(f'(?={d.args[0]})')
+    else:
+        return And(d)
+
+
+def _regex_not(defn, defs, grpid):
+    d = _regex(defn.args[0], defs, grpid)
+    if d.op == RGX:
+        return Regex(f'(?!{d.args[0]})')
+    else:
+        return Not(d)
+
+
+def _regex_raw(defn, defs, grpid):
+    subdef = _regex(defn.args[0], defs, grpid)
+    return Raw(subdef)
+
+
+def _regex_bind(defn, defs, grpid):
+    d, name = defn.args
+    subdef = _regex(d, defs, grpid)
+    return Bind(subdef, name=name)
+
+
+def _regex_rule(defn, defs, grpid):
+    subdef, action, name = defn.args
+    newdefn = _regex(subdef, defs, grpid)
+    if action is not None:
+        newdefn = Rule(newdefn, action, name=name)
+    return newdefn
+
+
+_regex_op_map = {
+    DOT: _regex_dot,
+    LIT: _regex_literal,
+    CLS: _regex_class,
+    OPT: _regex_optional,
+    STR: _regex_star,
+    PLS: _regex_plus,
+    AND: _regex_and,
+    NOT: _regex_not,
+    RAW: _regex_raw,
+    BND: _regex_bind,
+    SEQ: _regex_sequence,
+    CHC: _regex_choice,
+    RUL: _regex_rule,
+}
+
+
+def _regex(defn: Definition, defs, grpid):
+    """
+    Convert patterns to regular expressions if they do not emit or
+    bind values.
+
+    Note: this assumes that any Regex operator does not emit or bind
+    values.
+    """
+    # TODO: when merging regexes with flags, use local flags,
+    #       (?imsx:-imsx:...)
+    func = _regex_op_map.get(defn.op)
+    if func:
+        rgx = func(defn, defs, grpid)
+        rgx.value = defn.value  # don't change the value type
+        return rgx
+    else:
+        return defn
