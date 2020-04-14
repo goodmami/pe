@@ -1,7 +1,6 @@
 
 
 import pe
-from pe.actions import join, pack
 
 X = pe.compile(
     r'''
@@ -31,7 +30,7 @@ X = pe.compile(
 
 
 def _match(s):
-    return X.match(s, flags=pe.STRICT|pe.MEMOIZE)
+    return X.match(s, flags=pe.STRICT | pe.MEMOIZE)
 
 
 def test_x():
@@ -48,5 +47,5 @@ if __name__ == '__main__':
     print(0, end='')
     for i, line in enumerate(open(sys.argv[1]), 1):
         print(f'\r{i}', end='')
-        X.match(line, flags=pe.STRICT|pe.MEMOIZE)
+        X.match(line, flags=pe.STRICT | pe.MEMOIZE)
     print('done')

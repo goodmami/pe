@@ -49,6 +49,7 @@ peg_acceptor = pe.compile(
     EndOfFile  <- !.
     ''')
 
+
 def test_accept():
     assert peg_acceptor.match('A <- "a"')
     assert peg_acceptor.match('A <- B   B <- "b"')
