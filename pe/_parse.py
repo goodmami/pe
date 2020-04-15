@@ -251,7 +251,7 @@ _parser = PackratParser(PEG)
 
 def loads(source: str) -> Union[Grammar, Definition]:
     """Parse the PEG at *source* and return a grammar definition."""
-    m = _parser.match(source, flags=pe.STRICT)
+    m = _parser.match(source, flags=pe.STRICT | pe.MEMOIZE)
     if not m:
         raise Error('invalid grammar')
     return m.value()

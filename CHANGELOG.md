@@ -2,7 +2,9 @@
 
 ## [Unreleased][unreleased]
 
-(no unreleased changes yet)
+### Changed
+
+* Add `MEMOIZE` flag to grammar parser for better debugging
 
 
 ## [v0.1.0][]
