@@ -1,6 +1,6 @@
 
 import pe
-from pe.actions import pack, constant
+from pe.actions import pack, constant, join
 
 
 grammar = r'''
@@ -20,6 +20,10 @@ grammar = r'''
 #     avoid recursion errors on very large structures
 #   * key and dotted_key are merged for simplicity
 #   * An explicit EOF is added to make sure the whole document parses
+#   * An optional newline is added to ml_basic_body for easy trimming,
+#     and to ml_literal_body for the same reason
+#   * Multi-line strings (basic and literal) need a special rule for
+#     quotes at the end of the string (e.g., x = """""foo""""")
 
 toml <- expression ( newline expression )* EOF
 EOF  <- !.
@@ -88,13 +92,15 @@ escape_seq_char <- "\x22"         # "    quotation mark  U+0022
 
 ## Multiline Basic String
 
-ml_basic_string       <- ml_basic_string_delim ~ml_basic_body ml_basic_string_delim
+ml_basic_string       <- ml_basic_string_delim ml_basic_body ml_basic_string_delim
 ml_basic_string_delim <- quotation_mark quotation_mark quotation_mark
-ml_basic_body         <- mlb_content* ( mlb_quotes mlb_content+ )* mlb_quotes?
+ml_basic_body         <- newline? mlb_content* ( mlb_quotes mlb_content+ )* mlb_end_quotes?
 
-mlb_content    <- mlb_char / newline / mlb_escaped_nl
+mlb_content    <- ~mlb_char / ~newline / mlb_escaped_nl
 mlb_char       <- mlb_unescaped / escaped
-mlb_quotes     <- quotation_mark quotation_mark?
+mlb_quotes     <- ~( quotation_mark quotation_mark? )
+mlb_end_quotes <- ~( quotation_mark quotation_mark ) &ml_basic_string_delim
+                / ~quotation_mark &ml_basic_string_delim
 mlb_unescaped  <- wschar / [\x21\x23-\x5B\x5D-\x7E] / non_ascii
 mlb_escaped_nl <- escape ws newline ( wschar / newline )*
 
@@ -108,13 +114,15 @@ literal_char <- [\x09\x20-\x26\x28-\x7E] / non_ascii
 
 ## Multiline Literal String
 
-ml_literal_string       <- ml_literal_string_delim ~ml_literal_body ml_literal_string_delim
+ml_literal_string       <- ml_literal_string_delim ml_literal_body ml_literal_string_delim
 ml_literal_string_delim <- apostrophe apostrophe apostrophe
-ml_literal_body         <- mll_content* ( mll_quotes mll_content+ )* mll_quotes?
+ml_literal_body         <- newline? ~( mll_content* ( mll_quotes mll_content+ )* mll_end_quotes? )
 
-mll_content <- mll_char / newline
-mll_char    <- [\x09\x20-\x26\x28-\x7E] / non_ascii
-mll_quotes  <- apostrophe apostrophe?
+mll_content    <- mll_char / newline
+mll_char       <- [\x09\x20-\x26\x28-\x7E] / non_ascii
+mll_quotes     <- apostrophe apostrophe?
+mll_end_quotes <- apostrophe apostrophe &ml_literal_string_delim
+                / apostrophe &ml_literal_string_delim
 
 ## Integer
 
@@ -251,23 +259,70 @@ HEXDIG8 <- HEXDIG4 HEXDIG4
 '''
 
 
+class Table(tuple):
+    def __repr__(self):
+        return f'Table({tuple.__repr__(self)})'
+
+
+class ArrayTable(tuple):
+    def __repr__(self):
+        return f'ArrayTable({tuple.__repr__(self)})'
+
+
+def get_table(doc, path, defined):
+    cur_path = ()
+    cur_table = doc
+    for part in path:
+        cur_path += (part,)
+        if defined.get(cur_path):
+            raise ValueError(f'path {cur_path} already defined')
+        else:
+            defined[cur_path] = False
+        cur_table = cur_table.setdefault(part, {})
+    return cur_table, cur_path
+
+
+def toml_reduce(entries):
+    doc = {}  # top-level table
+    defined = {}  # if key exists it's seen; if value is True it's immutable
+    cur_table = doc
+    cur_path = ()
+    for entry in entries:
+
+        if isinstance(entry, Table):
+            if entry in defined:
+                raise ValueError(f'table {tuple(entry)} already defined')
+            cur_table, cur_path = get_table(doc, entry, defined)
+
+        elif isinstance(entry, ArrayTable):
+            *path, arrayname = entry
+            cur_table, cur_path = get_table(doc, path, defined)
+            array = cur_table.setdefault(arrayname, [])
+            array.append({})
+            cur_table = array[-1]
+            cur_path += (arrayname,)
+
+        else:
+            key, value = entry
+            table, _ = get_table(cur_table, key[:-1], defined)
+            if key[-1] in defined:
+                raise ValueError(f'key {cur_path + key} already defined')
+            table[key[-1]] = value
+            defined[cur_path + key] = True
+
+    return doc
+
+
 def toml_unescape(s):
     return s  # TODO
 
 
-def reduce_keyval(*args):
-    key, *rest = args
-    if len(rest) > 1:
-        return (key, reduce_keyval(*rest))
-    else:
-        return (key, rest[0])
-
-
 actions = {
-    # 'toml': pack(dict),
-    'keyval': reduce_keyval,
-    # 'basic_string': toml_unescape,
-    # 'ml_basic_string': toml_unescape,
+    'toml': pack(toml_reduce),
+    'keyval': pack(tuple),
+    'key': pack(tuple),
+    # 'basic_string': toml_unescape,  # TODO
+    'ml_basic_string': join(toml_unescape),
     'dec_int': int,
     'hex_int': lambda x: int(x, 16),
     'oct_int': lambda x: int(x, 8),
@@ -280,17 +335,16 @@ actions = {
     # 'local_date': None,  # TODO
     # 'local_time': None,  # TODO
     'array': pack(list),
-    # 'std_table': None,  # TODO
+    'std_table': Table,
     'inline_table': pack(dict),
-    # 'array_table': None,  # TODO
+    'array_table': ArrayTable,
 }
 
-TOML = pe.compile(grammar, actions=actions)
+TOML = pe.compile(grammar, actions=actions, flags=pe.NONE)
 
 if __name__ == '__main__':
     import sys
     with open(sys.argv[1]) as fh:
         m = TOML.match(fh.read())
-        print(repr(m))
         if m:
             print(m.value())
