@@ -1,4 +1,7 @@
 
+import re
+import datetime
+
 import pe
 from pe.actions import pack, constant, join
 
@@ -9,21 +12,22 @@ grammar = r'''
 #
 # Some notes regarding the conversion to PEG:
 #
-#   * PEG literals are case-sensitive, unlike ABNF literals, so there's
-#     no need to use hex escapes for simple strings
-#   * Similarly, some character and character ranges are more clearly
-#     expressed using PEG literal escapes or character classes
-#   * ABNF literal letters need to become character classes
-#   * Hyphens in nonterminal names become underscores
-#   * Some rules are restructured to accommodate PEG's prioritized choice
-#   * The array_values and inline_table_keyvals rules are rewritten to
-#     avoid recursion errors on very large structures
-#   * key and dotted_key are merged for simplicity
-#   * An explicit EOF is added to make sure the whole document parses
-#   * An optional newline is added to ml_basic_body for easy trimming,
-#     and to ml_literal_body for the same reason
-#   * Multi-line strings (basic and literal) need a special rule for
-#     quotes at the end of the string (e.g., x = """""foo""""")
+# * PEG literals are case-sensitive, unlike ABNF literals, so there's no
+#   need to use hex escapes for simple strings
+# * Similarly, some character and character ranges are more clearly
+#   expressed using PEG literal escapes or character classes
+# * ABNF literal letters need to become character classes
+# * Hyphens in nonterminal names become underscores
+# * Some rules are restructured to accommodate PEG's prioritized choice
+# * The array_values and inline_table_keyvals rules are rewritten to
+#   avoid recursion errors on very large structures
+# * key and dotted_key are merged for simplicity
+# * An explicit EOF is added to make sure the whole document parses
+# * An optional newline is added to ml_basic_body for easy trimming, and
+#   to ml_literal_body for the same reason
+# * Multi-line strings (basic and literal) need a special rule for
+#   quotes at the end of the string (e.g., x = """""foo""""")
+# * date_time takes advantage of PEG's prioritized choice for simplicity
 
 toml <- expression ( newline expression )* EOF
 EOF  <- !.
@@ -172,38 +176,23 @@ false <- "false"
 
 ## Date and Time (as defined in RFC 3339)
 
-date_time <- offset_date_time / local_date_time / local_date / local_time
+date_time          <- flexible_date_time / local_time
+flexible_date_time <- full_date ( time_delim partial_time (tzinfo:time_offset)? )?
+local_time         <- partial_time
 
-date_fullyear  <- DIGIT DIGIT DIGIT DIGIT
-date_month     <- DIGIT DIGIT  # 01-12
-date_mday      <- DIGIT DIGIT  # 01-28, 01-29, 01-30, 01-31 based on month/year
+date_fullyear  <- DIGIT4
+date_month     <- DIGIT2  # 01-12
+date_mday      <- DIGIT2  # 01-28, 01-29, 01-30, 01-31 based on month/year
 time_delim     <- [Tt ]        # T, t, or space
-time_hour      <- DIGIT DIGIT  # 00-23
-time_minute    <- DIGIT DIGIT  # 00-59
-time_second    <- DIGIT DIGIT  # 00-58, 00-59, 00-60 based on leap second rules
-time_secfrac   <- "." DIGIT+
+time_hour      <- DIGIT2  # 00-23
+time_minute    <- DIGIT2  # 00-59
+time_second    <- DIGIT2  # 00-58, 00-59, 00-60 based on leap second rules
+time_secfrac   <- ~( "." DIGIT+ )
 time_numoffset <- [-+] time_hour ":" time_minute
-time_offset    <- [Zz] / time_numoffset
+time_offset    <- ~( [Zz] / time_numoffset )
 
 partial_time <- time_hour ":" time_minute ":" time_second time_secfrac?
 full_date    <- date_fullyear "-" date_month "-" date_mday
-full_time    <- partial_time time_offset
-
-## Offset Date-Time
-
-offset_date_time <- ~(full_date time_delim full_time)
-
-## Local Date-Time
-
-local_date_time <- ~(full_date time_delim partial_time)
-
-## Local Date
-
-local_date <- ~full_date
-
-## Local Time
-
-local_time <- ~partial_time
 
 ## Array
 
@@ -254,6 +243,8 @@ HEXDIG <- [0-9A-Za-z]
 
 ## Additional helper definitions
 
+DIGIT2  <- ~( DIGIT DIGIT )
+DIGIT4  <- ~( DIGIT2 DIGIT2 )
 HEXDIG4 <- HEXDIG HEXDIG HEXDIG HEXDIG
 HEXDIG8 <- HEXDIG4 HEXDIG4
 '''
@@ -313,15 +304,48 @@ def toml_reduce(entries):
     return doc
 
 
+_toml_unesc_re = re.compile(r'\\(["\\bfnrt]|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})')
+_toml_unesc_map = {
+    '"': '"',
+    '\\': '\\',
+    'b': '\b',
+    'f': '\f',
+    'n': '\n',
+    'r': '\r',
+    't': '\t',
+}
+
+
+def _toml_unescape(m):
+    c = m.group(1)
+    if c[0] in 'Uu':
+        return chr(int(c[1:], 16))
+    else:
+        return _toml_unesc_map[c]
+
+
 def toml_unescape(s):
-    return s  # TODO
+    return _toml_unesc_re.sub(_toml_unescape, s)
+
+
+def toml_time_offset(s):
+    if s in 'Zz':
+        return datetime.timezone(datetime.timedelta(0))
+    else:
+        hour, minutes = s.split(':')
+        return datetime.timezone(
+            datetime.timedelta(hours=int(hour), minutes=int(minutes)))
+
+
+def toml_sec_frac(s):
+    return int(float(s) * 1000)
 
 
 actions = {
     'toml': pack(toml_reduce),
     'keyval': pack(tuple),
     'key': pack(tuple),
-    # 'basic_string': toml_unescape,  # TODO
+    'basic_string': toml_unescape,
     'ml_basic_string': join(toml_unescape),
     'dec_int': int,
     'hex_int': lambda x: int(x, 16),
@@ -330,10 +354,12 @@ actions = {
     'float': float,
     'true': constant(True),
     'false': constant(False),
-    # 'offset_date_time': None,  # TODO
-    # 'local_date_time': None,  # TODO
-    # 'local_date': None,  # TODO
-    # 'local_time': None,  # TODO
+    'flexible_date_time': datetime.datetime,
+    'local_time': datetime.time,
+    'time_offset': toml_time_offset,
+    'sec_frac': toml_sec_frac,
+    'DIGIT2': int,
+    'DIGIT4': int,
     'array': pack(list),
     'std_table': Table,
     'inline_table': pack(dict),
