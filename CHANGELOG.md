@@ -6,6 +6,10 @@
 
 * Add `MEMOIZE` flag to grammar parser for better debugging
 
+### Fixed
+
+* Bug in definition formatting from partial reformatting
+
 
 ## [v0.1.0][]
 

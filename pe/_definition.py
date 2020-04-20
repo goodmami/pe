@@ -81,6 +81,7 @@ _format_decorators: Dict[Operator, Tuple[str, str, str]] = {
     BND: ('{}:', '', ''),
     SEQ: ('', ' ', ''),
     CHC: ('', ' / ', ''),
+    RUL: ('', '', '  -> {}'),
 }
 
 

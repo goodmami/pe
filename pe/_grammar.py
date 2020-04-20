@@ -28,7 +28,7 @@ class Grammar:
         defs = []
         width = max(len(name) for name in self.definitions)
         for name in self.definitions:
-            defn = self[name].format(len(name) + 2)
+            defn = self[name].format()
             defs.append(f'{name:{width}} <- {defn}')
         return '\n'.join(defs)
 
