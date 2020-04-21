@@ -3,7 +3,7 @@ import re
 import datetime
 
 import pe
-from pe.actions import pack, constant, join
+from pe.actions import Pack, Constant, Join, Raw
 
 
 grammar = r'''
@@ -152,8 +152,8 @@ bin_int <- bin_prefix digit0_1 ( digit0_1 / underscore digit0_1 )*
 
 ## Float
 
-float <- ~( float_int_part ( exp / frac exp? )
-          / special_float )
+float <- float_int_part ( exp / frac exp? )
+       / special_float
 
 float_int_part      <- dec_int
 frac                <- decimal_point zero_prefixable_int
@@ -243,8 +243,8 @@ HEXDIG <- [0-9A-Za-z]
 
 ## Additional helper definitions
 
-DIGIT2  <- ~( DIGIT DIGIT )
-DIGIT4  <- ~( DIGIT2 DIGIT2 )
+DIGIT2  <- DIGIT DIGIT
+DIGIT4  <- DIGIT2 DIGIT2
 HEXDIG4 <- HEXDIG HEXDIG HEXDIG HEXDIG
 HEXDIG8 <- HEXDIG4 HEXDIG4
 '''
@@ -342,27 +342,27 @@ def toml_sec_frac(s):
 
 
 actions = {
-    'toml': pack(toml_reduce),
-    'keyval': pack(tuple),
-    'key': pack(tuple),
+    'toml': Pack(toml_reduce),
+    'keyval': Pack(tuple),
+    'key': Pack(tuple),
     'basic_string': toml_unescape,
-    'ml_basic_string': join(toml_unescape),
+    'ml_basic_string': Join(toml_unescape),
     'dec_int': int,
     'hex_int': lambda x: int(x, 16),
     'oct_int': lambda x: int(x, 8),
     'bin_int': lambda x: int(x, 2),
-    'float': float,
-    'true': constant(True),
-    'false': constant(False),
+    'float': Raw(float),
+    'true': Constant(True),
+    'false': Constant(False),
     'flexible_date_time': datetime.datetime,
     'local_time': datetime.time,
     'time_offset': toml_time_offset,
     'sec_frac': toml_sec_frac,
-    'DIGIT2': int,
-    'DIGIT4': int,
-    'array': pack(list),
+    'DIGIT2': Raw(int),
+    'DIGIT4': Raw(int),
+    'array': Pack(list),
     'std_table': Table,
-    'inline_table': pack(dict),
+    'inline_table': Pack(dict),
     'array_table': ArrayTable,
 }
 

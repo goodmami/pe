@@ -94,7 +94,7 @@ from pe.operators import (
     SymbolTable,
 )
 from pe.packrat import PackratParser
-from pe.actions import constant, first, pack
+from pe.actions import Constant, Getter, Pack
 
 
 def _make_literal(s):
@@ -225,24 +225,24 @@ V.EOL = Choice('\r\n', '\n', '\r')
 PEG = Grammar(
     definitions=V,
     actions={
-        'Start': first,
+        'Start': Getter(0),
         'Grammar': _make_grammar,
-        'Definition': pack(tuple),
-        'Expression': pack(_make_prioritized),
-        'Sequence': pack(_make_sequential),
+        'Definition': Pack(tuple),
+        'Expression': Pack(_make_prioritized),
+        'Sequence': Pack(_make_sequential),
         'Valued': _make_valued,
-        'AND': constant(And),
-        'NOT': constant(Not),
-        'TILDE': constant(Raw),
+        'AND': Constant(And),
+        'NOT': Constant(Not),
+        'TILDE': Constant(Raw),
         'Binding': _make_binder,
         'Quantified': _make_quantified,
-        'QUESTION': constant(Optional),
-        'STAR': constant(Star),
-        'PLUS': constant(Plus),
+        'QUESTION': Constant(Optional),
+        'STAR': Constant(Star),
+        'PLUS': Constant(Plus),
         'Name': Nonterminal,
         'Literal': _make_literal,
         'Class': _make_class,
-        'DOT': constant(Dot()),
+        'DOT': Constant(Dot()),
     }
 )
 

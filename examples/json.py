@@ -1,6 +1,6 @@
 
 import pe
-from pe.actions import first, constant, pack, fail
+from pe.actions import Getter, Constant, Pack, Fail, Raw
 
 
 Json = pe.compile(
@@ -10,11 +10,11 @@ Json = pe.compile(
     Object   <- LBRACE (Member (COMMA Member)*)? BADCOMMA? RBRACE
     Member   <- String COLON Value
     Array    <- LBRACK (Value (COMMA Value)*)? BADCOMMA? RBRACK
-    String   <- ~( ["] (!["\\] .)* ('\\' . / (!["\\] .)+)* ["] )
+    String   <- ["] (!["\\] .)* ('\\' . / (!["\\] .)+)* ["]
     Number   <- Integer / Float
     Constant <- TRUE / FALSE / NULL
-    Integer  <- ~( INTEGER ![.eE] )
-    Float    <- ~( INTEGER FRACTION? EXPONENT? )
+    Integer  <- INTEGER ![.eE]
+    Float    <- INTEGER FRACTION? EXPONENT?
     INTEGER  <- "-"? ("0" / [1-9] [0-9]*)
     FRACTION <- "." [0-9]+
     EXPONENT <- [eE] [-+]? [0-9]+
@@ -33,18 +33,18 @@ Json = pe.compile(
     BADCOMMA <- ',' &(RBRACE / RBRACK)
     ''',
     actions={
-        'Start': first,
-        'Object': pack(dict),
-        'Member': pack(tuple),
-        'Array': pack(list),
-        'String': lambda s: s[1:-1],
-        'Integer': int,
-        'Float': float,
-        'TRUE': constant(True),
-        'FALSE': constant(False),
-        'NULL': constant(None),
-        'BADVALUE': fail('unexpected JSON value'),
-        'BADCOMMA': fail('trailing commas are not allowed'),
+        'Start': Getter(0),
+        'Object': Pack(dict),
+        'Member': Pack(tuple),
+        'Array': Pack(list),
+        'String': Raw(lambda s: s[1:-1]),
+        'Integer': Raw(int),
+        'Float': Raw(float),
+        'TRUE': Constant(True),
+        'FALSE': Constant(False),
+        'NULL': Constant(None),
+        'BADVALUE': Fail('unexpected JSON value'),
+        'BADCOMMA': Fail('trailing commas are not allowed'),
     }
 )
 
