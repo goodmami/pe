@@ -15,11 +15,14 @@
 * `pe.actions.first`
 * `pe.actions.last`
 * Concept of "value types" from specification and implementation
+* `pe.Grammar.finalize()` and `pe.Grammar.final`
 
 ### Changed
 
 * Add `MEMOIZE` flag to grammar parser for better debugging
 * Functions in `pe.actions` (`constant`, `pack`, `join`, `fail`) are now subclasses of `Action`: `Constant`, `Pack`, `Join`, `Fail`.
+* `pe.compile()` no longer takes an open file or a single definition as input
+* Grammar vs Expression parsing is more consistent internally
 
 
 ### Fixed

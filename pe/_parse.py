@@ -71,7 +71,7 @@ The syntax is defined as follows::
   EndOfFile  <- !.
 """
 
-from typing import Union
+from typing import Tuple, Dict, cast
 
 import pe
 from pe._errors import Error
@@ -139,12 +139,6 @@ def _make_prioritized(exprs):
         return Choice(*exprs)
     else:
         raise Error(f'empty choice: {exprs}')
-
-
-def _make_grammar(*defs):
-    if defs:
-        start = defs[0][0]
-    return Grammar(dict(defs), start=start)
 
 
 V = SymbolTable()
@@ -221,7 +215,7 @@ V.EOL = Choice('\r\n', '\n', '\r')
 PEG = Grammar(
     definitions=V,
     actions={
-        'Grammar': _make_grammar,
+        'Grammar': Pack(tuple),
         'Definition': Pack(tuple),
         'Expression': Pack(_make_prioritized),
         'Sequence': Pack(_make_sequential),
@@ -244,9 +238,18 @@ PEG = Grammar(
 _parser = PackratParser(PEG)
 
 
-def loads(source: str) -> Union[Grammar, Definition]:
-    """Parse the PEG at *source* and return a grammar definition."""
+def loads(source: str) -> Tuple[str, Dict[str, Definition]]:
+    """Parse the PEG at *source* and return a list of definitions."""
     m = _parser.match(source, flags=pe.STRICT | pe.MEMOIZE)
     if not m:
         raise Error('invalid grammar')
-    return m.value()
+    defs = m.value()
+    if isinstance(defs, Definition):
+        start = 'Start'
+        defmap = {'Start': defs}
+    else:
+        assert isinstance(defs, tuple)
+        defs = cast(Tuple[Tuple[str, Definition], ...], defs)
+        start = defs[0][0]
+        defmap = dict(defs)
+    return start, defmap

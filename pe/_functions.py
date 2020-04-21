@@ -1,15 +1,14 @@
 
-from typing import Dict, Callable
+from typing import Union, Dict, Callable
 
 from pe._constants import Flag
 from pe._errors import Error
-from pe._definition import Definition
 from pe._parser import Parser
 from pe._grammar import Grammar
 from pe._parse import loads
 
 
-def compile(source,
+def compile(source: Union[str, Grammar],
             actions: Dict[str, Callable] = None,
             parser: str = 'packrat',
             flags: Flag = Flag.OPTIMIZE) -> Parser:
@@ -22,26 +21,19 @@ def compile(source,
     else:
         raise Error(f'unsupported parser: {parser}')
 
-    if isinstance(source, (Definition, Grammar)):
+    if isinstance(source, Grammar):
         g = source
-    elif hasattr(source, 'read'):
-        g = loads(source.read())
+        if actions:
+            raise Error('cannot assign actions to prepared grammar')
     else:
-        g = loads(source)
-
-    if isinstance(g, Definition):
-        g = Grammar({'Start': g})
-
-    if not g.final:
-        g.actions = actions or {}
-        g.finalize()
-    elif actions:
-        raise Error('cannot assign action to finalized grammar')
-
-    p = parser_class(g, flags=flags)
+        assert isinstance(source, str)
+        start, defmap = loads(source)
+        g = Grammar(defmap, actions=actions, start=start)
 
     if flags & Flag.DEBUG:
         print(g)
+
+    p = parser_class(g, flags=flags)
 
     return p
 

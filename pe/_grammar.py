@@ -14,10 +14,10 @@ class Grammar:
                  definitions: Dict[str, Definition] = None,
                  actions: Dict[str, Callable] = None,
                  start: str = 'Start'):
-        self.start = start
         self.definitions: Dict[str, Definition] = dict(definitions or [])
         self.actions = actions or {}
-        self.final = False
+        self.start = start
+        self._finalize()
 
     def __repr__(self):
         return (f'Grammar({self.definitions!r}, '
@@ -48,14 +48,11 @@ class Grammar:
                 and self.definitions == other.definitions
                 and self.actions == other.actions)
 
-    def finalize(self):
-        if self.final:
-            raise Error('grammar is already finalized')
+    def _finalize(self):
         defs = _insert_rules(self.definitions, self.actions)
         # now recursively finalize expressions
         for expr in defs.values():
             _finalize(expr, defs, True)
-        self.final = True
 
 
 def _insert_rules(defs, acts):

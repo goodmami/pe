@@ -37,8 +37,7 @@ class PackratParser(Parser):
                  flags: Flag = Flag.NONE):
         if isinstance(grammar, Definition):
             grammar = Grammar({'Start': grammar})
-        if not grammar.final:
-            grammar.finalize()
+
         super().__init__(grammar, flags=flags)
 
         grammar = optimize(grammar,

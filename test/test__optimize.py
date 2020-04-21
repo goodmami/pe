@@ -11,12 +11,17 @@ from pe._parse import loads
 from pe._optimize import optimize
 
 
+def gload(s, inline=False, regex=False):
+    start, defmap = loads(s)
+    return optimize(Grammar(defmap, start=start), inline=inline, regex=regex)
+
+
 def iload(s):
-    return optimize(loads(s), inline=True, regex=False)
+    return gload(s, inline=True)
 
 
 def rload(s):
-    return optimize(loads(s), inline=False, regex=True)
+    return gload(s, regex=True)
 
 
 def grm(d):
@@ -25,17 +30,17 @@ def grm(d):
 
 def test_inline():
     assert (iload(r'A <- "a"') ==
-            loads(r'A <- "a"'))
+            gload(r'A <- "a"'))
     assert (iload(r'A <- B  B <- "a"') ==
-            loads(r'A <- "a" B <- "a"'))
+            gload(r'A <- "a" B <- "a"'))
     assert (iload(r'A <- B  B <- C  C <- "a"') ==
-            loads(r'A <- "a"  B <- "a"  C <- "a"'))
+            gload(r'A <- "a"  B <- "a"  C <- "a"'))
     assert (iload(r'A <- "a" A') ==
-            loads(r'A <- "a" A'))
+            gload(r'A <- "a" A'))
     assert (iload(r'A <- "a" B  B <- A') ==
-            loads(r'A <- "a" A  B <- "a" B'))
+            gload(r'A <- "a" A  B <- "a" B'))
     assert (iload(r'A <- "a" B  B <- "b" A') ==
-            loads(r'A <- "a" "b" A  B <- "b" "a" B'))
+            gload(r'A <- "a" "b" A  B <- "b" "a" B'))
 
     assert pe.compile('A <- "a" B  B <- "b"',
                       flags=pe.NONE).match('ab').value() is None

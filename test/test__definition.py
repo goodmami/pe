@@ -30,4 +30,6 @@ patterns = [
 
 @pytest.mark.parametrize('pat', patterns)
 def test_format(pat):
-    assert str(loads(pat)) == pat
+    start, defmap = loads(pat)
+    defn = defmap[start]
+    assert str(defn) == pat
