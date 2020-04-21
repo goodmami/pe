@@ -20,7 +20,7 @@ from pe._constants import (
 )
 from pe._errors import Error, ParseFailure, ParseError
 from pe._definition import Definition
-from pe._match import Match, evaluate
+from pe._match import Match, determine
 from pe._types import RawMatch, Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
@@ -282,7 +282,7 @@ class PackratParser(Parser):
                 return FAIL, args, None
             if not kwargs:
                 kwargs = {}
-            kwargs[name] = evaluate(args)
+            kwargs[name] = determine(args)
             return end, (), kwargs
 
         return _match

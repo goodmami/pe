@@ -53,10 +53,10 @@ class Match:
         return dict(self._kwargs or ())
 
     def value(self):
-        return evaluate(self._args)
+        return determine(self._args)
 
 
-def evaluate(args):
+def determine(args):
     if args:
         return args[0]
     else:

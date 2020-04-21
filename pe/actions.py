@@ -2,7 +2,7 @@
 from typing import Tuple, Dict, Optional
 
 from pe._errors import ParseFailure
-from pe._match import evaluate
+from pe._match import determine
 
 
 class Action:
@@ -37,7 +37,7 @@ class Bind(Action):
 
     def __call__(self, s, pos, end, args, kwargs):
         kwargs = dict(kwargs or [])
-        kwargs[self.name] = evaluate(args)
+        kwargs[self.name] = determine(args)
         return (), kwargs
 
 

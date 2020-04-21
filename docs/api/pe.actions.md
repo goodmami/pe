@@ -80,11 +80,16 @@
 * *class* pe.actions.**<a id="Bind" href="#Bind">Bind</a>**
   (*name*)
 
-  Bind the evaluated emitted values to *name* as follows:
+  Bind the [determined] emitted value to *name* as follows:
 
   ```python
-  mykwargs[name] = evaluate(args, value)
+  mykwargs[name] = determine(args)
   ```
+
+  The `determine()` function is only used internally, but it is
+  described by the specification [here][determined].
+
+  [determined]: ../specification.md#value-determination
 
   Binding is useful for functions that obligatorily take keyword
   arguments and occasionally for mapping arguments to functions where
