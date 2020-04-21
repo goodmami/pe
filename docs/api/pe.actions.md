@@ -49,7 +49,7 @@
 [value-type]: ../specification.md#value-types
 
 
-* *class* pe.actions.**<a id="Call" href="#Call">Call</a>**()
+* *class* pe.actions.**<a id="Call" href="#Call">Call</a>**
   (*func*)
 
   Call *func* with the emitted and bound values as follows:
@@ -63,7 +63,7 @@
   [datetime] object from integer components.
 
 
-* *class* pe.actions.**<a id="Pack" href="#Pack">Pack</a>**()
+* *class* pe.actions.**<a id="Pack" href="#Pack">Pack</a>**
   (*func*)
 
   Call *func* with the emitted values packed as a tuple and the bound
@@ -77,7 +77,7 @@
   argument, possibly with keyword arguments, such as [list] or [dict].
 
 
-* *class* pe.actions.**<a id="Bind" href="#Bind">Bind</a>**()
+* *class* pe.actions.**<a id="Bind" href="#Bind">Bind</a>**
   (*name*)
 
   Bind the evaluated emitted values to *name* as follows:
@@ -91,7 +91,7 @@
   the argument order is different than the parsing order.
 
 
-* *class* pe.actions.**<a id="Raw" href="#Raw">Raw</a>**()
+* *class* pe.actions.**<a id="Raw" href="#Raw">Raw</a>**
   (*func*)
 
   Call *func* with the substring as its only argument as follows:
@@ -106,7 +106,7 @@
   values and includes bound values.
 
 
-* *class* pe.actions.**<a id="Join" href="#Join">Join</a>**()
+* *class* pe.actions.**<a id="Join" href="#Join">Join</a>**
   (*func, sep=''*)
 
   Call *func* with the string formed by joining all emitted values
@@ -131,7 +131,7 @@
   *value* if the expression succeeds.
 
 
-* *class* pe.actions.**<a id="Getter" href="#Getter">Getter</a>**()
+* *class* pe.actions.**<a id="Getter" href="#Getter">Getter</a>**
   (*i*)
 
   Return the *i*th emitted value.
@@ -139,7 +139,7 @@
   All other emitted and bound values are discarded.
 
 
-* *class* pe.actions.**<a id="Fail" href="#Fail">Fail</a>**()
+* *class* pe.actions.**<a id="Fail" href="#Fail">Fail</a>**
   (*message*)
 
   Raise a [ParseError](pe.md#ParseError) immediately.
