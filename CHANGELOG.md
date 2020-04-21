@@ -2,9 +2,24 @@
 
 ## [Unreleased][unreleased]
 
+### Added
+
+* `pe.actions.Action`
+* `pe.actions.Call`
+* `pe.actions.Raw`
+* `pe.actions.Bind`
+* `pe.actions.Getter` (replaces `pe.actions.first` and `pe.actions.last`)
+
+### Removed
+
+* `pe.actions.first`
+* `pe.actions.last`
+
 ### Changed
 
 * Add `MEMOIZE` flag to grammar parser for better debugging
+* Functions in `pe.actions` (`constant`, `pack`, `join`, `fail`) are now subclasses of `Action`: `Constant`, `Pack`, `Join`, `Fail`.
+
 
 ### Fixed
 
