@@ -3,7 +3,7 @@
 [![PyPI Version](https://img.shields.io/pypi/v/pe)](https://pypi.org/project/pe)
 ![Development Status](https://img.shields.io/pypi/status/pe)
 ![Python Support](https://img.shields.io/pypi/pyversions/pe)
-![Python Package](https://github.com/goodmami/pe/workflows/Python%20package/badge.svg)
+[![Python Package](https://github.com/goodmami/pe/workflows/Python%20package/badge.svg)](https://github.com/goodmami/pe/actions?query=workflow%3A%22Python+package%22)
 
 **pe** is a library for parsing expressions, including [parsing
 expression grammars] (PEGs). It aims to join the expressive power of
@@ -92,9 +92,9 @@ Name <- ...  # define a rule named 'Name'
 When a parsing expression matches an input, it returns a `Match`
 object, which is similar to those of Python's
 [re](https://docs.python.org/3/library/re.html) module for regular
-expressions. The default value of matching terminals is nothing, but
-the raw (`~`) operator returns the substring the matching expression,
-similar to regular expression's capturing groups:
+expressions. By default, nothing is captured, but the raw (`~`)
+operator emits the substring of the matching expression, similar to
+regular expression's capturing groups:
 
 ```python
 >>> e = pe.compile(r'[0-9] [.] [0-9]')
@@ -114,10 +114,11 @@ similar to regular expression's capturing groups:
 
 ### Value Bindings
 
-A value binding takes a sub-match (e.g., of a sequence, choice, or
-repetition) and extracts it from the match's value while associating
+A value binding extracts the emitted values of a match and associates
 it with a name that is made available in the `Match.groupdict()`
-dictionary.
+dictionary. This is similar to named-capture groups in regular
+expressions, except that it extracts the emitted values and not the
+substring of the bound expression.
 
 ```python
 >>> e = pe.compile(r'~[0-9] x:(~[.]) ~[0-9]')
@@ -131,33 +132,54 @@ dictionary.
 
 ### Actions
 
-Actions are functions that are called on a match as follows:
+Actions (also called "semantic actions") are callables that transform
+parse results. When an arbitrary function is given, it is called as
+follows:
 
 ``` python
-action(*match.groups(), **match.groupdict())
+func(*match.groups(), **match.groupdict())
 ```
 
-While you can define your own functions that follow this signature,
-**pe** provides some helper functions for common operations, such as
-`pack(func)`, which packs the `*args` into a list and calls
-`func(args)`, or `join(func, sep='')` which joins all `*args` into
-a string with `sep.join(args)` and calls `func(argstring)`.
+The result of this function call becomes the only emitted value going
+forward, and all bound values are cleared.
 
-The return value of the action becomes the value of the
-expression. Note that the return value of `Match.groups()` is always
-an iterable while `Match.value()` can return a single object.
+For more control, **pe** provides the [Action] class and a number of
+subclasses for various use-cases. These actions have access to more
+information about a parse result and more control over the
+match. For example, the [Pack] class takes a function and calls it
+with the emitted values packed into a list:
+
+``` python
+func(match.groups())
+```
+
+And the [Join] class joins all emitted strings with a separator:
+
+``` python
+func(sep.join(match.groups()), **match.groupdict())
+```
+
+[Action]: docs/api/pe.actions.md#Action
+[Pack]: docs/api/pe.actions.md#Pack
+[Join]: docs/api/pe.actions.md#Join
+
+
+### Example
+
+Here is one way to parse a list of comma-separated integers:
 
 ```python
->>> from pe.actions import join
->>> e = pe.compile(r'~([0-9] [.] [0-9])',
-...                actions={'Start': float})
->>> m = e.match('1.4')
->>> m.groups()
-(1.4,)
->>> m.groupdict()
-{}
+>>> from pe.actions import Pack
+>>> p = pe.compile(
+...   r'''
+...     Start  <- "[" Values? "]"
+...     Values <- Int ("," Int)*
+...     Int    <- ~( "-"? ("0" / [1-9] [0-9]*) )
+...   ''',
+...   actions={'Values': Pack(list), 'Int': int})
+>>> m = p.match('[5,10,-15]')
 >>> m.value()
-1.4
+[5, 10, -15]
 
 ```
 
