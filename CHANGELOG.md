@@ -14,6 +14,7 @@
 
 * `pe.actions.first`
 * `pe.actions.last`
+* Concept of "value types" from specification and implementation
 
 ### Changed
 

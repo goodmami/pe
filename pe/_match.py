@@ -2,8 +2,6 @@
 from typing import Union, List, Dict, Any
 import textwrap
 
-from pe._constants import Value
-from pe._errors import Error
 from pe._definition import Definition
 
 
@@ -55,15 +53,11 @@ class Match:
         return dict(self._kwargs or ())
 
     def value(self):
-        return evaluate(self._args, self.pe.value)
+        return evaluate(self._args)
 
 
-def evaluate(args, value: Value):
-    if value == Value.ITERABLE:
-        return args
-    elif value == Value.ATOMIC:
+def evaluate(args):
+    if args:
         return args[0]
-    elif value == Value.EMPTY:
-        return None
     else:
-        raise Error(f'invalid value type: {value!r}')
+        return None

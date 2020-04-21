@@ -1,6 +1,6 @@
 
 import pe
-from pe.actions import Getter, Constant, Pack, Fail, Raw
+from pe.actions import Constant, Pack, Fail, Raw
 
 
 Json = pe.compile(
@@ -33,7 +33,6 @@ Json = pe.compile(
     BADCOMMA <- ',' &(RBRACE / RBRACK)
     ''',
     actions={
-        'Start': Getter(0),
         'Object': Pack(dict),
         'Member': Pack(tuple),
         'Array': Pack(list),

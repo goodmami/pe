@@ -258,7 +258,6 @@ def _regex(defn: Definition, defs, grpid):
     func = _regex_op_map.get(defn.op)
     if func:
         rgx = func(defn, defs, grpid)
-        rgx.value = defn.value  # don't change the value type
         return rgx
     else:
         return defn

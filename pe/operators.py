@@ -1,8 +1,8 @@
 
 
-from typing import Union, List, Dict, Tuple, Pattern, Callable
+from typing import Union, List, Dict, Pattern, Callable
 
-from pe._constants import ANONYMOUS, Operator, Value
+from pe._constants import ANONYMOUS, Operator
 from pe._errors import GrammarError
 from pe._definition import Definition
 
@@ -38,36 +38,20 @@ def _validate(arg: _Def) -> Definition:
         return arg
 
 
-def _atomic(op: Operator, args: Tuple) -> Definition:
-    return Definition(op, args, Value.ATOMIC)
-
-
-def _iterable(op: Operator, args: Tuple) -> Definition:
-    return Definition(op, args, Value.ITERABLE)
-
-
-def _empty(op: Operator, args: Tuple) -> Definition:
-    return Definition(op, args, Value.EMPTY)
-
-
-def _deferred(op: Operator, args: Tuple) -> Definition:
-    return Definition(op, args, Value.DEFERRED)
-
-
 def Dot():
-    return _empty(DOT, ())
+    return Definition(DOT, ())
 
 
 def Literal(string: str):
-    return _empty(LIT, (string,))
+    return Definition(LIT, (string,))
 
 
 def Class(chars: str):
-    return _empty(CLS, (chars,))
+    return Definition(CLS, (chars,))
 
 
 def Regex(pattern: Union[str, Pattern], flags: int = 0):
-    return _empty(RGX, (pattern, flags))
+    return Definition(RGX, (pattern, flags))
 
 
 def Sequence(*expressions: _Def):
@@ -81,7 +65,7 @@ def Sequence(*expressions: _Def):
                 _exprs.extend(expr.args[0])
             else:
                 _exprs.append(expr)
-        return _iterable(SEQ, (_exprs,))
+        return Definition(SEQ, (_exprs,))
 
 
 def Choice(*expressions: _Def):
@@ -95,54 +79,53 @@ def Choice(*expressions: _Def):
                 _exprs.extend(expr.args[0])
             else:
                 _exprs.append(expr)
-        return _iterable(CHC, (_exprs,))
+        return Definition(CHC, (_exprs,))
 
 
 def Optional(expression: _Def):
     expression = _validate(expression)
     if expression.op in (OPT, STR, PLS):
         raise GrammarError('multiple repeat operators')
-    return _iterable(OPT, (expression,))
+    return Definition(OPT, (expression,))
 
 
 def Star(expression: _Def):
     expression = _validate(expression)
     if expression.op in (OPT, STR, PLS):
         raise GrammarError('multiple repeat operators')
-    return _iterable(STR, (expression,))
+    return Definition(STR, (expression,))
 
 
 def Plus(expression: _Def):
     expression = _validate(expression)
     if expression.op in (OPT, STR, PLS):
         raise GrammarError('multiple repeat operators')
-    return _iterable(PLS, (expression,))
+    return Definition(PLS, (expression,))
 
 
 def Nonterminal(name: str):
-    return _deferred(SYM, (name,))
+    return Definition(SYM, (name,))
 
 
 def And(expression: _Def):
-    return _empty(AND, (_validate(expression),))
+    return Definition(AND, (_validate(expression),))
 
 
 def Not(expression: _Def):
-    return _empty(NOT, (_validate(expression),))
+    return Definition(NOT, (_validate(expression),))
 
 
 def Raw(expression: _Def):
-    return _atomic(RAW, (_validate(expression),))
+    return Definition(RAW, (_validate(expression),))
 
 
 def Bind(expression: _Def, name: str):
     assert isinstance(name, str)
-    return _empty(BND, (_validate(expression), name))
+    return Definition(BND, (_validate(expression), name))
 
 
 def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
-    vtype = _deferred if action is None else _atomic
-    return vtype(RUL, (_validate(expression), action, name))
+    return Definition(RUL, (_validate(expression), action, name))
 
 
 class SymbolTable(Dict[str, Definition]):

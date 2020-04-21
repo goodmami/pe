@@ -1,8 +1,8 @@
 
 from typing import Dict, Callable
 
-from pe._constants import Operator, Value
-from pe._errors import Error, GrammarError
+from pe._constants import Operator
+from pe._errors import Error
 from pe._definition import Definition
 from pe.operators import Rule, Nonterminal
 
@@ -52,7 +52,6 @@ class Grammar:
         if self.final:
             raise Error('grammar is already finalized')
         defs = _insert_rules(self.definitions, self.actions)
-        _resolve_deferred(defs)
         # now recursively finalize expressions
         for expr in defs.values():
             _finalize(expr, defs, True)
@@ -71,42 +70,13 @@ def _insert_rules(defs, acts):
     return defs
 
 
-def _resolve_deferred(defs):
-    resolved = {}
-    for name, expr in defs.items():
-        if expr.value != Value.DEFERRED:
-            resolved[name] = expr.value
-    to_resolve = set(defs).difference(resolved)
-    while to_resolve:
-        found = False
-        for name in to_resolve:
-            expr = defs[name]
-            op = expr.op
-            inner = expr.args[0]
-            if op == Operator.SYM and inner in resolved:
-                resolved[name] = resolved[expr.args[0]]
-            elif op == Operator.RUL and inner.value != Value.DEFERRED:
-                resolved[name] = inner.value
-            if name in resolved:
-                expr.value = resolved[name]
-                to_resolve.remove(name)
-                found = True
-                break
-        if not found:
-            raise GrammarError('could not resolve expressions: {}'
-                               .format(', '.join(to_resolve)))
-
-
 def _finalize(expr, defs, structured):
     op = expr.op
     args = expr.args
-    if not structured:
-        expr.value = Value.EMPTY
     if op == Operator.SYM:
         name = args[0]
         if name not in defs:
             raise Error(f'undefined nonterminal: {args[0]}')
-        expr.value = defs[name].value
     elif op in (Operator.DOT, Operator.LIT, Operator.CLS, Operator.RGX):
         pass
     elif op in (Operator.SEQ, Operator.CHC):

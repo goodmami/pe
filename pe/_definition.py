@@ -1,7 +1,7 @@
 
 from typing import Dict, Tuple, Callable, Any
 
-from pe._constants import Operator, Value
+from pe._constants import Operator
 from pe._errors import Error
 from pe._escape import escape
 
@@ -26,15 +26,14 @@ DEF = Operator.DEF
 
 class Definition:
     """An abstract definition of a parsing expression."""
-    __slots__ = 'op', 'args', 'value',
+    __slots__ = 'op', 'args',
 
-    def __init__(self, op: Operator, args: Tuple[Any, ...], value: Value):
+    def __init__(self, op: Operator, args: Tuple[Any, ...]):
         self.op = op
         self.args = args
-        self.value = value
 
     def __repr__(self):
-        return f'({self.op}, {self.args!r}, {self.value!r})'
+        return f'({self.op}, {self.args!r})'
 
     def __str__(self):
         return _format(self, None)
@@ -43,8 +42,7 @@ class Definition:
         if not isinstance(other, Definition):
             return NotImplemented
         return (self.op == other.op
-                and self.args == other.args
-                and self.value == other.value)
+                and self.args == other.args)
 
     def format(self) -> str:
         return _format(self, DEF)

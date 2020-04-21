@@ -17,7 +17,6 @@ from pe._constants import (
     DEL_MEMO_SIZE,
     Operator,
     Flag,
-    Value,
 )
 from pe._errors import Error, ParseFailure, ParseError
 from pe._definition import Definition
@@ -90,14 +89,11 @@ class PackratParser(Parser):
             if name in exprs:
                 if isinstance(expr, Rule):
                     action = expr.action
-                    value = expr.value
                     expr = expr.expression
                 else:
                     action = None
-                    value = None
                 exprs[name].expression = expr
                 exprs[name].set_action(action)
-                exprs[name].value = value
             else:
                 exprs[name] = expr
 
@@ -112,7 +108,7 @@ class PackratParser(Parser):
         op = definition.op
         if op == Operator.SYM:
             name = definition.args[0]
-            return self._exprs.setdefault(name, Rule(name, None, None, None))
+            return self._exprs.setdefault(name, Rule(name, None, None))
         else:
             try:
                 meth = self._op_map[op]
@@ -279,7 +275,6 @@ class PackratParser(Parser):
         bound: Definition = definition.args[0]
         expression = self._def_to_expr(bound)
         name: str = definition.args[1]
-        expr_value = bound.value
 
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             end, args, kwargs = expression(s, pos, memo)
@@ -287,7 +282,7 @@ class PackratParser(Parser):
                 return FAIL, args, None
             if not kwargs:
                 kwargs = {}
-            kwargs[name] = evaluate(args, expr_value)
+            kwargs[name] = evaluate(args)
             return end, (), kwargs
 
         return _match
@@ -298,7 +293,7 @@ class PackratParser(Parser):
         name: str
         subdef, action, name = definition.args
         expression = self._def_to_expr(subdef)
-        return Rule(name, expression, action, subdef.value)
+        return Rule(name, expression, action)
 
     _op_map = {
         Operator.DOT: _terminal,
@@ -331,15 +326,12 @@ class Rule:
     def __init__(self,
                  name: str,
                  expression: Union[_Matcher, None],
-                 action: Union[Callable, None],
-                 value: Value):
+                 action: Union[Callable, None]):
         self.name = name
         self.expression = expression
         self.action = None
         if action:
             self.set_action(action)
-        # set value if action is an extended action type
-        self.value = value
 
     def set_action(self, action):
         if action and not isinstance(action, Action):
@@ -352,12 +344,11 @@ class Rule:
         if expression:
             end, args, kwargs = expression(s, pos, memo)
             action = self.action
-            value = self.value
             if end >= 0 and action:
                 if not kwargs:
                     kwargs = {}
                 try:
-                    args, kwargs = action(s, pos, end, value, args, kwargs)
+                    args, kwargs = action(s, pos, end, args, kwargs)
                 except ParseFailure as exc:
                     raise _make_parse_error(
                         s, pos, exc.message

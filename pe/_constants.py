@@ -42,13 +42,6 @@ class Operator(enum.Enum):
         return self.value[2]
 
 
-class Value(enum.Enum):
-    EMPTY = 'empty'
-    ATOMIC = 'atomic'
-    ITERABLE = 'iterable'
-    DEFERRED = 'deferred'
-
-
 class Flag(enum.Flag):
     NONE = 0
     DEBUG = _auto()  # print debugging info for compiled expression

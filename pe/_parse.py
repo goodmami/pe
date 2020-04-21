@@ -23,10 +23,10 @@ The syntax is defined as follows::
   Operator   <- LEFTARROW
   Expression <- Sequence (SLASH Sequence)*
   Sequence   <- Evaluated*
-  Evaluated  <- prefix:Prefix? Quantified
+  Evaluated  <- (prefix:Prefix)? Quantified
   Prefix     <- AND / NOT / TILDE / Binding
   Binding    <- Identifier COLON
-  Quantified <- Primary quantifier:Quantifier?
+  Quantified <- Primary (quantifier:Quantifier)?
   Quantifier <- QUESTION / STAR / PLUS
   Primary    <- Name / Group / Literal / Class / DOT
   Name       <- Identifier !Operator
@@ -94,7 +94,7 @@ from pe.operators import (
     SymbolTable,
 )
 from pe.packrat import PackratParser
-from pe.actions import Constant, Getter, Pack
+from pe.actions import Constant, Pack
 
 
 def _make_literal(s):
@@ -108,10 +108,8 @@ def _make_class(s):
 def _make_quantified(primary, quantifier=None):
     if not quantifier:
         return primary
-    elif len(quantifier) == 1:
-        return quantifier[0](primary)
     else:
-        raise Error(f'invalid quantifier: {quantifier!r}')
+        return quantifier(primary)
 
 
 def _make_binder(x):
@@ -121,10 +119,8 @@ def _make_binder(x):
 def _make_valued(quantified, prefix=None):
     if not prefix:
         return quantified
-    elif len(prefix) == 1:
-        return prefix[0](quantified)
     else:
-        raise Error(f'invalid prefix: {prefix!r}')
+        return prefix(quantified)
 
 
 def _make_sequential(exprs):
@@ -159,11 +155,11 @@ V.Grammar = Plus(V.Definition)
 V.Definition = Sequence(V.Identifier, V.LEFTARROW, V.Expression)
 V.Expression = Sequence(V.Sequence, Star(Sequence(V.SLASH, V.Sequence)))
 V.Sequence = Plus(V.Valued)
-V.Valued = Sequence(Bind(Optional(V.Prefix), name='prefix'), V.Quantified)
+V.Valued = Sequence(Optional(Bind(V.Prefix, name='prefix')), V.Quantified)
 V.Prefix = Choice(V.AND, V.NOT, V.TILDE, V.Binding)
 V.Binding = Sequence(V.Identifier, ':', V.Spacing)
 V.Quantified = Sequence(
-    V.Primary, Bind(Optional(V.Quantifier), name='quantifier')
+    V.Primary, Optional(Bind(V.Quantifier, name='quantifier'))
 )
 V.Quantifier = Choice(V.QUESTION, V.STAR, V.PLUS)
 V.Primary = Choice(V.Name, V.Group, V.Literal, V.Class, V.DOT)
@@ -225,7 +221,6 @@ V.EOL = Choice('\r\n', '\n', '\r')
 PEG = Grammar(
     definitions=V,
     actions={
-        'Start': Getter(0),
         'Grammar': _make_grammar,
         'Definition': Pack(tuple),
         'Expression': Pack(_make_prioritized),
