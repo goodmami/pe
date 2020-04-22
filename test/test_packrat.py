@@ -20,7 +20,7 @@ from pe.operators import (
     Choice as Chc,
     Rule as Rul,
 )
-from pe._grammar import Grammar as Grm
+from pe._grammar import Grammar
 from pe.actions import Pack
 from pe.packrat import PackratParser
 
@@ -109,11 +109,6 @@ data = [  # noqa: E127
                               'ab',     0, 2,    ((['a', 'b'],),
                                                   {},
                                                   ['a', 'b'])),
-
-    ('Grm0', Grm({'Start': abc}), 'a',  0, 1,    _blank),
-    ('Grm1', Grm({'Start': abc}), 'd',  0, FAIL, None),
-    ('Grm1', Grm({'Start': Non('A'), 'A': abc}),
-                                  'a',  0, 1,    _blank),
 ]
 
 
@@ -121,7 +116,8 @@ data = [  # noqa: E127
                          [row[1:] for row in data],
                          ids=[row[0] for row in data])
 def test_exprs(dfn, input, pos, end, match):
-    p = PackratParser(dfn)
+    g = Grammar({'Start': dfn})
+    p = PackratParser(g)
     m = p.match(input, pos=pos, flags=pe.NONE)
     if match is None:
         assert m is None

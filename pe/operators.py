@@ -5,6 +5,7 @@ from typing import Union, List, Dict, Pattern, Callable
 from pe._constants import ANONYMOUS, Operator
 from pe._errors import GrammarError
 from pe._definition import Definition
+from pe.actions import Action, Call
 
 
 DOT = Operator.DOT
@@ -125,6 +126,8 @@ def Bind(expression: _Def, name: str):
 
 
 def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
+    if action and not isinstance(action, Action):
+        action = Call(action)
     return Definition(RUL, (_validate(expression), action, name))
 
 

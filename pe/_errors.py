@@ -7,12 +7,6 @@ class GrammarError(Error):
     pass
 
 
-class ParseFailure(Error):
-
-    def __init__(self, message: str = None):
-        self.message = message
-
-
 class ParseError(Error):
 
     def __init__(self,
@@ -26,6 +20,32 @@ class ParseError(Error):
         self.lineno = lineno
         self.offset = offset
         self.text = text
+
+    @classmethod
+    def from_pos(cls,
+                 pos: int,
+                 text: str,
+                 message: str = None,
+                 filename: str = None):
+        """Instantiate from a full *text* and a file position *pos*"""
+
+        # this method should work for \n and \r\n newline sequences, which
+        # I assume covers all potential users
+        try:
+            start = text.rindex('\n', 0, pos) + 1
+        except ValueError:
+            start = 0
+        try:
+            end = text.index('\n', start)
+        except ValueError:
+            end = len(text)
+        lineno = text.count('\n', 0, start)
+        line = text[start:end]
+        return cls(message,
+                   filename=filename,
+                   lineno=lineno,
+                   offset=pos - start,
+                   text=line)
 
     def __str__(self):
         parts = []

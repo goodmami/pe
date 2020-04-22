@@ -18,14 +18,14 @@ from pe._constants import (
     Operator,
     Flag,
 )
-from pe._errors import Error, ParseFailure, ParseError
+from pe._errors import Error, ParseError
 from pe._definition import Definition
 from pe._match import Match, determine
 from pe._types import RawMatch, Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
 from pe._optimize import optimize
-from pe.actions import Action, Call
+from pe.actions import Action
 
 
 _Matcher = Callable[[str, int, Memo], RawMatch]
@@ -67,7 +67,7 @@ class PackratParser(Parser):
         if end < 0:
             if flags & Flag.STRICT:
                 failpos, message = _get_furthest_fail(args, memo)
-                exc = _make_parse_error(s, failpos, message)
+                exc = ParseError.from_pos(failpos, s, message=message)
                 raise exc
             else:
                 return None
@@ -92,7 +92,7 @@ class PackratParser(Parser):
                 else:
                     action = None
                 exprs[name].expression = expr
-                exprs[name].set_action(action)
+                exprs[name].action = action
             else:
                 exprs[name] = expr
 
@@ -288,7 +288,7 @@ class PackratParser(Parser):
 
     def _rule(self, definition: Definition) -> _Matcher:
         subdef: Definition
-        action: Union[Callable, None]
+        action: Action
         name: str
         subdef, action, name = definition.args
         expression = self._def_to_expr(subdef)
@@ -324,17 +324,10 @@ class Rule:
     """
     def __init__(self,
                  name: str,
-                 expression: Union[_Matcher, None],
-                 action: Union[Callable, None]):
+                 expression: _Matcher = None,
+                 action: Action = None):
         self.name = name
         self.expression = expression
-        self.action = None
-        if action:
-            self.set_action(action)
-
-    def set_action(self, action):
-        if action and not isinstance(action, Action):
-            action = Call(action)
         self.action = action
 
     def __call__(self, s: str, pos: int, memo: Memo) -> RawMatch:
@@ -346,12 +339,7 @@ class Rule:
             if end >= 0 and action:
                 if not kwargs:
                     kwargs = {}
-                try:
-                    args, kwargs = action(s, pos, end, args, kwargs)
-                except ParseFailure as exc:
-                    raise _make_parse_error(
-                        s, pos, exc.message
-                    ).with_traceback(exc.__traceback__)
+                args, kwargs = action(s, pos, end, args, kwargs)
             return end, args, kwargs
         else:
             raise NotImplementedError
@@ -374,20 +362,3 @@ def _get_furthest_fail(args, memo):
             failpos = memopos
             message = ', '.join(map(str, fails))
     return failpos, message
-
-
-def _make_parse_error(s, pos, message):
-    try:
-        start = s.rindex('\n', 0, pos) + 1
-    except ValueError:
-        start = 0
-    try:
-        end = s.index('\n', start)
-    except ValueError:
-        end = len(s)
-    lineno = s.count('\n', 0, start)
-    line = s[start:end]
-    return ParseError(message,
-                      lineno=lineno,
-                      offset=pos - start,
-                      text=line)

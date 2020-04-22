@@ -1,7 +1,7 @@
 
 from typing import Tuple, Dict, Optional
 
-from pe._errors import ParseFailure
+from pe._errors import ParseError
 from pe._match import determine
 
 
@@ -83,4 +83,5 @@ class Fail(Action):
         self.message = message
 
     def __call__(self, s, pos, end, args, kwargs):
-        raise ParseFailure(message=self.message.format(*args, **kwargs))
+        raise ParseError.from_pos(
+            pos, s, message=self.message.format(*args, **kwargs))
