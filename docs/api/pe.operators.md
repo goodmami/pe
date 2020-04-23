@@ -44,8 +44,8 @@
 
 ## Operator Functions
 
-Aside from the [Regex](#Regex) operator below, the rest are described
-by the [specification](../specification.md).
+Aside from the [Regex](#Regex) and [Debug](#Debug) operators below,
+the rest are described by the [specification](../specification.md).
 
 
 * pe.operators.**<a id="Dot" href="#Dot">Dot</a>**()
@@ -97,3 +97,15 @@ by the [specification](../specification.md).
 
 * pe.operators.**<a id="Rule" href="#Rule">Rule</a>**
   (*expression, action, name='\<anonymous\>'*)
+
+* pe.operators.**<a id="Debug" href="#Debug">Debug</a>**
+  (*expression*)
+
+  Match *expression* and return its results unchanged, but print a
+  message to indicate that the operation has occurred. When all other
+  operators are wrapped in [Debug](#Debug) operators, the concrete
+  syntax tree of a parse is displayed, at the cost of
+  performance. This operator is not generally meant to be used
+  manually and it has no representation in the grammar notation, but
+  rather it is inserted semi-automatically by compiling a grammar with
+  the [pe.DEBUG](#pe.md#DEBUG) flag.

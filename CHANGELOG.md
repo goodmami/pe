@@ -9,6 +9,7 @@
 * `pe.actions.Raw`
 * `pe.actions.Bind`
 * `pe.actions.Getter` (replaces `pe.actions.first` and `pe.actions.last`)
+* `pe.operators.Debug`
 
 ### Removed
 

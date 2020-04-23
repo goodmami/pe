@@ -22,6 +22,7 @@ SEQ = Operator.SEQ
 CHC = Operator.CHC
 RUL = Operator.RUL
 DEF = Operator.DEF
+DBG = Operator.DBG
 
 
 class Definition:
@@ -95,6 +96,10 @@ def _format_recursive(defn: Definition, prev_op: Operator) -> str:
     return fmt.format((prefix + body + suffix).format(*args[1:]))
 
 
+def _format_debug(defn: Definition, prev_op: Operator) -> str:
+    return _format(defn.args[0], prev_op)
+
+
 _Formatter = Callable[[Definition, Operator], str]
 
 
@@ -114,6 +119,7 @@ _format_map: Dict[Operator, _Formatter] = {
     SEQ: _format_recursive,
     CHC: _format_recursive,
     RUL: _format_recursive,
+    DBG: _format_debug,
 }
 
 

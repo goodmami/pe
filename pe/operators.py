@@ -23,6 +23,7 @@ BND = Operator.BND
 SEQ = Operator.SEQ
 CHC = Operator.CHC
 RUL = Operator.RUL
+DBG = Operator.DBG
 
 
 _Def = Union[str, Definition]
@@ -129,6 +130,10 @@ def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
     if action and not isinstance(action, Action):
         action = Call(action)
     return Definition(RUL, (_validate(expression), action, name))
+
+
+def Debug(expression: _Def):
+    return Definition(DBG, (_validate(expression),))
 
 
 class SymbolTable(Dict[str, Definition]):

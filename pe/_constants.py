@@ -32,6 +32,7 @@ class Operator(enum.Enum):
     RUL = (_auto(), 2, 'Applicative')  # (RUL, (expr, action, name))
     CHC = (_auto(), 1, 'Prioritized')  # (CHC, (exprs,))
     DEF = (_auto(), 0, 'Definitive')   # (DEF, (expr, name))
+    DBG = (_auto(), -1, 'Debug')       # (DBG, (expr,))
 
     @property
     def precedence(self):
