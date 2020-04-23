@@ -40,20 +40,6 @@ SEQ = Operator.SEQ
 CHC = Operator.CHC
 RUL = Operator.RUL
 
-# only need to map mutually recursive operators
-_op_map = {
-    OPT: Optional,
-    STR: Star,
-    PLS: Plus,
-    AND: And,
-    NOT: Not,
-    RAW: Raw,
-    BND: Bind,
-    SEQ: Sequence,
-    CHC: Choice,
-    RUL: Rule,
-}
-
 
 def optimize(g: Grammar, inline=True, regex=True):
     """Combine adjacent terms into a single regular expression."""
@@ -75,6 +61,21 @@ def optimize(g: Grammar, inline=True, regex=True):
     return Grammar(definitions=defs,
                    actions=g.actions,
                    start=g.start)
+
+
+# only need to map mutually recursive operators
+_op_map = {
+    OPT: Optional,
+    STR: Star,
+    PLS: Plus,
+    AND: And,
+    NOT: Not,
+    RAW: Raw,
+    BND: Bind,
+    SEQ: Sequence,
+    CHC: Choice,
+    RUL: Rule,
+}
 
 
 def _inline(defs, defn, visited):
