@@ -93,6 +93,7 @@ def _format_recursive(defn: Definition, prev_op: Operator) -> str:
         body = delimiter.join(_format(d, op) for d in args[0])
     else:
         body = _format(args[0], op)
+    body = body.replace('{', '{{').replace('}', '}}')
     return fmt.format((prefix + body + suffix).format(*args[1:]))
 
 
@@ -128,5 +129,5 @@ def _format(defn: Definition,
     try:
         func = _format_map[defn.op]
     except KeyError:
-        raise Error('inalid operation: {op!r}')
+        raise Error(f'invalid operation: {defn.op!r}')
     return func(defn, prev_op)
