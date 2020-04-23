@@ -9,7 +9,7 @@
 * `pe.actions.Raw`
 * `pe.actions.Bind`
 * `pe.actions.Getter` (replaces `pe.actions.first` and `pe.actions.last`)
-* `pe.operators.Debug`
+* `pe.operators.Debug` ([#9])
 
 ### Removed
 
@@ -24,6 +24,7 @@
 * Functions in `pe.actions` (`constant`, `pack`, `join`, `fail`) are now subclasses of `Action`: `Constant`, `Pack`, `Join`, `Fail`.
 * `pe.compile()` no longer takes an open file or a single definition as input
 * Grammar vs Expression parsing is more consistent internally
+* Packrat parser handles the Debug operator ([#9])
 
 
 ### Fixed
@@ -41,3 +42,5 @@ descent parser and a work-in-progress state-machine parser.
 
 [unreleased]: ../../tree/develop
 [v0.1.0]: ../../releases/tag/v0.1.0
+
+[#9]: https://github.com/goodmami/pe/issues/9

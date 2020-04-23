@@ -10,6 +10,7 @@ Packrat Parsing
 from typing import (Union, List, Dict, Callable, Iterable, Any)
 from collections import defaultdict
 import re
+import inspect
 
 from pe._constants import (
     FAIL,
@@ -25,6 +26,8 @@ from pe._types import RawMatch, Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
 from pe._optimize import optimize
+from pe._debug import debug
+from pe._misc import ansicolor
 from pe.actions import Action
 
 
@@ -33,16 +36,15 @@ _Matcher = Callable[[str, int, Memo], RawMatch]
 
 class PackratParser(Parser):
 
-    def __init__(self, grammar: Union[Grammar, Definition],
-                 flags: Flag = Flag.NONE):
-        if isinstance(grammar, Definition):
-            grammar = Grammar({'Start': grammar})
-
+    def __init__(self, grammar: Grammar, flags: Flag = Flag.NONE):
         super().__init__(grammar, flags=flags)
 
         grammar = optimize(grammar,
                            inline=flags & Flag.INLINE,
                            regex=flags & Flag.REGEX)
+        if flags & Flag.DEBUG:
+            grammar = debug(grammar)
+        self.modified_grammar = grammar
 
         self._exprs: Dict[str, Callable] = {}
         self._grammar_to_packrat(grammar)
@@ -67,7 +69,10 @@ class PackratParser(Parser):
         if end < 0:
             if flags & Flag.STRICT:
                 failpos, message = _get_furthest_fail(args, memo)
-                exc = ParseError.from_pos(failpos, s, message=message)
+                if failpos >= 0:
+                    exc = ParseError.from_pos(failpos, s, message=message)
+                else:
+                    exc = ParseError(message=message)
                 raise exc
             else:
                 return None
@@ -107,7 +112,7 @@ class PackratParser(Parser):
         op = definition.op
         if op == Operator.SYM:
             name = definition.args[0]
-            return self._exprs.setdefault(name, Rule(name, None, None))
+            return self._exprs.setdefault(name, Rule(name))
         else:
             try:
                 meth = self._op_map[op]
@@ -174,7 +179,8 @@ class PackratParser(Parser):
             _id = id(_match)
 
             if memo and pos in memo and _id in memo[pos]:
-                end, args, kwargs = memo[pos][_id]  # packrat memoization check
+                # packrat memoization check
+                end, args, kwargs = memo[pos][_id]
             else:
                 # clear memo beyond size limit
                 if memo and len(memo) > MAX_MEMO_SIZE:
@@ -294,6 +300,29 @@ class PackratParser(Parser):
         expression = self._def_to_expr(subdef)
         return Rule(name, expression, action)
 
+    def _debug(self, definition: Definition) -> _Matcher:
+        subdef: Definition = definition.args[0]
+        expression = self._def_to_expr(subdef)
+
+        def _match(s: str, pos: int, memo: Memo) -> RawMatch:
+            # for proper printing, only terminals can print after
+            # knowing the result
+            if subdef.op.precedence == 6 and subdef.op != Operator.SYM:
+                end, args, kwargs = expression(s, pos, memo)
+                indent = ' ' * len(inspect.stack(0))
+                color = 'green' if end >= 0 else 'red'
+                defstr = ansicolor(color, str(subdef))
+                print(f'{s[pos:pos+10]:<12} | {indent}{defstr}')
+            else:
+                print('{:<12} | {}{!s}'.format(
+                    s[pos:pos+10],
+                    ' ' * len(inspect.stack(0)),
+                    str(subdef)))
+                end, args, kwargs = expression(s, pos, memo)
+            return end, args, kwargs
+
+        return _match
+
     _op_map = {
         Operator.DOT: _terminal,
         Operator.LIT: _terminal,
@@ -310,6 +339,7 @@ class PackratParser(Parser):
         Operator.SEQ: _sequence,
         Operator.CHC: _choice,
         Operator.RUL: _rule,
+        Operator.DBG: _debug,
     }
 
 
@@ -346,8 +376,8 @@ class Rule:
 
 
 def _get_furthest_fail(args, memo):
-    failpos, defn = args
-    message = str(defn)
+    failpos = -1
+    message = 'failed to parse; use memoization for more details'
     # assuming we're here because of a failure, the max memo position
     # should be the furthest failure
     if memo:
@@ -355,9 +385,9 @@ def _get_furthest_fail(args, memo):
         fails = []
         if memopos > failpos:
             fails = [args[1]
-                     for pos, args, _
-                     in memo[memopos].values()
+                     for pos, args, _ in memo[memopos].values()
                      if pos < 0]
+
         if fails:
             failpos = memopos
             message = ', '.join(map(str, fails))
