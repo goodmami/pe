@@ -108,4 +108,4 @@ the rest are described by the [specification](../specification.md).
   performance. This operator is not generally meant to be used
   manually and it has no representation in the grammar notation, but
   rather it is inserted semi-automatically by compiling a grammar with
-  the [pe.DEBUG](#pe.md#DEBUG) flag.
+  the [pe.DEBUG](pe.md#DEBUG) flag.

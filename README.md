@@ -21,6 +21,12 @@ example:
 
 [parsing expression grammars]: https://en.wikipedia.org/wiki/Parsing_expression_grammar
 
+**Quick Links**
+
+* [Guides](docs/guides/README.md)
+* [API Documentation](docs/api/README.md)
+* [Example Parsers](examples/)
+
 
 ## Current Status
 
@@ -34,7 +40,8 @@ finalized.
 * Grammar notation is backward-compatible with standard PEG with few extensions
 * A [specification](docs/specification.md) describes the semantic
   effect of parsing (e.g., for mapping expressions to function calls)
-* Parsers are [fast and memory efficient][benchmarks]
+* Parsers are often faster than other parsing libraries, sometimes by
+  a lot; see the [benchmarks]
 * The API is intuitive and familiar; it's modeled on the standard
   API's [re] module
 * Grammar definitions and parser implementations are separate
