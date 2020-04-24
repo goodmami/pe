@@ -2,10 +2,11 @@
 # API Reference
 
 > **Note:** These documents are the reference for the full API. See
-> the [tutorial](tutorial.md) for information about usage.
+> the [guides](../guides/README.md) for a more user-friendly
+> introduction.
 
 
-* [pe](pe.md)
+* [**pe**](pe.md) (start here)
 * [pe.actions](pe.actions.md)
 * [pe.machine](pe.machine.md)
 * [pe.operators](pe.operators.md)

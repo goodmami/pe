@@ -2,7 +2,7 @@
 # Parsing Dates in TOML
 
 This guide explains how one could parse date and time values in [TOML]
-documents. Here are some examples:
+documents. Here are some examples of dates and times:
 
     1979-05-27T00:32:00-07:00  # most specific: date, time, timezone offset
     1979-05-27T07:32:00        # no timezone offset
@@ -15,7 +15,7 @@ focuses on one part of it to help explain the usage of **pe**.
 [TOML]: https://github.com/toml-lang/toml
 [TOML example]: ../../examples/toml.py
 
-The workflow is like this:
+This guide covers three main tasks:
 
 * Inspect the TOML specification
 * Parse the syntactic form
@@ -88,11 +88,11 @@ First let's some of the differences between ABNF and PEG.
 * while ultimately it depends on the parsing algorithm, alternations
   in ABNF are ambiguous, whereas PEG's are prioritized
 * optionality uses `[ ... ]` in ABNF versus `( ... )?` in PEG
-* rule operators are `=` versus `<-` in PEG
-* comments begin with `;` versus `#` in PEG
+* rule operators are `=` versus `<-`
+* comments begin with `;` versus `#`
 * ABNF allows hyphens in names while PEG does not
 * ABNF has some built-in terms, like `DIGIT`, which we will define
-  ourselves in PEG
+  ourselves
 
 This list is sufficient for our purposes.
 
@@ -197,9 +197,17 @@ full_date <- DIGIT4 "-" DIGIT2 "-" DIGIT2
 ```
 
 And that's it, really. The named rules `date-fullyear`, `date-month`,
-and `date-mday` are not necessary (nor are they in ABNF), although it
-can make the grammar more explicit. For brevity's sake I will not
-introduce those rules here.
+and `date-mday` are just meaningful names assigned to simple patterns
+and are not necessary (nor are they in ABNF), although it can make the
+grammar more explicit. The individual rules would be useful if a
+distinct action was necessary for each component, e.g., for
+validation, or if some ambiguity needed clarification (consider if the
+date pattern was `DIGIT2 "-" DIGIT2 "-" DIGIT4`; is that that
+`MM-DD-YYYY` or `DD-MM-YYYY`?). Another concern is legibility, and the
+tradeoff here is meaningful names to quantity of rules. Since there is
+no real risk of confusion and no need for custom actions (see the
+[third section](#interpreting-the-values)), for brevity's sake I will
+not create separate rules for these components.
 
 Now let's try it out:
 
@@ -234,6 +242,9 @@ offset <- [-+] hour:DIGIT2 ":" minutes:DIGIT2
         / [Zz]
 
 ```
+
+## Interpreting the Values
+
 
 [TOML-license]: https://github.com/toml-lang/toml/blob/master/LICENSE
 [ABNF]: https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form

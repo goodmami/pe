@@ -7,7 +7,7 @@
   - [Parsing dates in TOML](guides/toml-dates.md)
   - [Differences with regular expressions](guides/regex-diffs.md)
 * [API Reference](api/README.md)
-  - [pe](api/pe.md)
+  - [**pe**](api/pe.md) (start here)
   - [pe.actions](api/pe.actions.md)
   - [pe.machine](api/pe.machine.md)
   - [pe.operators](api/pe.operators.md)
