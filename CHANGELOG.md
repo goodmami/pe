@@ -28,7 +28,7 @@
 * Grammar vs Expression parsing is more consistent internally
 * Packrat parser handles the Debug operator ([#9])
 * Grammar parser now warns on unlikely range ([#7])
-
+* Rename "raw" to "capture" throughout
 
 ### Fixed
 

@@ -16,7 +16,7 @@ STR = Operator.STR
 PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
-RAW = Operator.RAW
+CAP = Operator.CAP
 BND = Operator.BND
 SEQ = Operator.SEQ
 CHC = Operator.CHC
@@ -76,7 +76,7 @@ _format_decorators: Dict[Operator, Tuple[str, str, str]] = {
     PLS: ('', '', '+'),
     AND: ('&', '', ''),
     NOT: ('!', '', ''),
-    RAW: ('~', '', ''),
+    CAP: ('~', '', ''),
     BND: ('{}:', '', ''),
     SEQ: ('', ' ', ''),
     CHC: ('', ' / ', ''),
@@ -115,7 +115,7 @@ _format_map: Dict[Operator, _Formatter] = {
     PLS: _format_recursive,
     AND: _format_recursive,
     NOT: _format_recursive,
-    RAW: _format_recursive,
+    CAP: _format_recursive,
     BND: _format_recursive,
     SEQ: _format_recursive,
     CHC: _format_recursive,

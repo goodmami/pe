@@ -11,7 +11,7 @@ from pe.operators import (
     Nonterminal,
     And,
     Not,
-    Raw,
+    Capture,
     Bind,
 )
 from pe._parse import loads
@@ -89,9 +89,9 @@ def test_loads_not():
     assert eloads('!"a"  # comment') == Not('a')
 
 
-def test_loads_raw():
-    assert eloads('~"a"') == Raw('a')
-    assert eloads('~"a"  # comment') == Raw('a')
+def test_loads_capture():
+    assert eloads('~"a"') == Capture('a')
+    assert eloads('~"a"  # comment') == Capture('a')
 
 
 def test_loads_bind():

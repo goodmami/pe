@@ -19,10 +19,10 @@
 
   ```python
   from pe import Grammar
-  from pe.operators import SymbolTable, Optional, Raw, Sequence
+  from pe.operators import SymbolTable, Optional, Capture, Sequence
 
   g1 = Grammar(definitions={
-    'Float': Raw(
+    'Float': Capture(
         Sequence(Nonterminal('INTEGER'),
                  Optional(Nonterminal('FRACTION')),
                  Optional(Nonterminal('EXPONENT')))),
@@ -32,7 +32,7 @@
   })
 
   V = SymbolTable()
-  V.Float = Raw(
+  V.Float = Capture(
       Sequence(V.INTEGER,
                Optional(V.FRACTION),
                Optional(V.EXPONENT)))
@@ -89,7 +89,7 @@ the rest are described by the [specification](../specification.md).
 * pe.operators.**<a id="Not" href="#Not">Not</a>**
   (*expression*)
 
-* pe.operators.**<a id="Raw" href="#Raw">Raw</a>**
+* pe.operators.**<a id="Capture" href="#Capture">Capture</a>**
   (*expression*)
 
 * pe.operators.**<a id="Bind" href="#Bind">Bind</a>**

@@ -96,7 +96,7 @@
   the argument order is different than the parsing order.
 
 
-* *class* pe.actions.**<a id="Raw" href="#Raw">Raw</a>**
+* *class* pe.actions.**<a id="Capture" href="#Capture">Capture</a>**
   (*func*)
 
   Call *func* with the substring as its only argument as follows:
@@ -123,7 +123,8 @@
 
   This action is useful for filtering out substrings, such as for
   escaped newlines in multiline strings as in Python or [TOML]. Also,
-  unlike [Raw](#Raw), this action passes any bound values to *func*.
+  unlike [Capture](#Capture), this action passes any bound values to
+  *func*.
 
 
 * *class* pe.actions.**<a id="Constant" href="#Constant">Constant</a>**

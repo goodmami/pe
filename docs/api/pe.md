@@ -119,9 +119,9 @@
     >>> from pe.packrat import PackratParser
     >>> from pe import Grammar
     >>> from pe.operators import (
-    ...    Class, Optional, Star, Raw, Sequence, Choice)
+    ...    Class, Optional, Star, Capture, Sequence, Choice)
     >>> g = Grammar(
-    ...     {'Integer': Raw(
+    ...     {'Integer': Capture(
     ...         Sequence(
     ...             Optional('-'),
     ...             Choice('0', Sequence(Class('1-9'),

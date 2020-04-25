@@ -18,7 +18,7 @@ STR = Operator.STR
 PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
-RAW = Operator.RAW
+CAP = Operator.CAP
 BND = Operator.BND
 SEQ = Operator.SEQ
 CHC = Operator.CHC
@@ -117,8 +117,8 @@ def Not(expression: _Def):
     return Definition(NOT, (_validate(expression),))
 
 
-def Raw(expression: _Def):
-    return Definition(RAW, (_validate(expression),))
+def Capture(expression: _Def):
+    return Definition(CAP, (_validate(expression),))
 
 
 def Bind(expression: _Def, name: str):

@@ -4,7 +4,7 @@ from pe.operators import (
     Regex,
     Sequence,
     Nonterminal,
-    Raw,
+    Capture,
 )
 from pe._grammar import Grammar
 from pe._parse import loads
@@ -58,7 +58,7 @@ def test_regex():
     assert (rload(r'A <- "a" [bc]') ==
             grm({'A': Regex(r'a[bc]')}))
     assert (rload(r'A <- ~("a" [bc])') ==
-            grm({'A': Raw(Regex(r'a[bc]'))}))
+            grm({'A': Capture(Regex(r'a[bc]'))}))
     assert (rload(r'A <- "a" B  B <- [bc]') ==
             grm({'A': Sequence(Regex('a'), Nonterminal('B')),
                  'B': Regex('[bc]')}))
@@ -68,7 +68,7 @@ def test_regex():
     assert (rload(r'A <- "a" ~([bc] / "d")*') ==
             grm({'A': Sequence(
                 Regex(r'a'),
-                Raw(Regex(
+                Capture(Regex(
                     r'(?=(?P<_2>(?:(?=(?P<_1>[bc]|d))(?P=_1))*))(?P=_2)')))}))
 
 

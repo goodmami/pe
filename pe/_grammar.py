@@ -79,7 +79,7 @@ def _finalize(expr, defs, structured):
     elif op in (Operator.SEQ, Operator.CHC):
         for term in args[0]:
             _finalize(term, defs, structured)
-    elif op == Operator.RAW:
+    elif op == Operator.CAP:
         _finalize(args[0], defs, False)
     else:
         _finalize(args[0], defs, structured)

@@ -14,7 +14,7 @@ from pe.operators import (
     Nonterminal,
     And,
     Not,
-    Raw,
+    Capture,
     Bind,
 )
 
@@ -84,9 +84,9 @@ def test_Not():
     assert Not('foo') == Not(Literal('foo'))
 
 
-def test_Raw():
-    assert Raw(Dot()) == Def(Op.RAW, (Dot(),))
-    assert Raw('foo') == Raw(Literal('foo'))
+def test_Capture():
+    assert Capture(Dot()) == Def(Op.CAP, (Dot(),))
+    assert Capture('foo') == Capture(Literal('foo'))
 
 
 def test_Bind():

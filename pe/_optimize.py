@@ -18,7 +18,7 @@ from pe.operators import (
     Plus,
     And,
     Not,
-    Raw,
+    Capture,
     Bind,
     Rule,
 )
@@ -34,7 +34,7 @@ STR = Operator.STR
 PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
-RAW = Operator.RAW
+CAP = Operator.CAP
 BND = Operator.BND
 SEQ = Operator.SEQ
 CHC = Operator.CHC
@@ -70,7 +70,7 @@ _op_map = {
     PLS: Plus,
     AND: And,
     NOT: Not,
-    RAW: Raw,
+    CAP: Capture,
     BND: Bind,
     SEQ: Sequence,
     CHC: Choice,
@@ -210,9 +210,9 @@ def _regex_not(defn, defs, grpid):
         return Not(d)
 
 
-def _regex_raw(defn, defs, grpid):
+def _regex_capture(defn, defs, grpid):
     subdef = _regex(defn.args[0], defs, grpid)
-    return Raw(subdef)
+    return Capture(subdef)
 
 
 def _regex_bind(defn, defs, grpid):
@@ -238,7 +238,7 @@ _regex_op_map = {
     PLS: _regex_plus,
     AND: _regex_and,
     NOT: _regex_not,
-    RAW: _regex_raw,
+    CAP: _regex_capture,
     BND: _regex_bind,
     SEQ: _regex_sequence,
     CHC: _regex_choice,

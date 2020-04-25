@@ -87,7 +87,7 @@ from pe.operators import (
     Plus,
     And,
     Not,
-    Raw,
+    Capture,
     Bind,
     Sequence,
     Choice,
@@ -161,12 +161,12 @@ V.Name = Sequence(V.Identifier, V.Spacing, Not(V.LEFTARROW))
 V.Group = Sequence(V.OPEN, V.Expression, V.CLOSE)
 V.Literal = Sequence(
     Choice(
-        Raw(Sequence("'", Star(Sequence(Not("'"), V.Char)), "'")),
-        Raw(Sequence('"', Star(Sequence(Not('"'), V.Char)), '"'))),
+        Capture(Sequence("'", Star(Sequence(Not("'"), V.Char)), "'")),
+        Capture(Sequence('"', Star(Sequence(Not('"'), V.Char)), '"'))),
     V.Spacing
 )
 V.Class = Sequence(
-    Raw(Sequence('[', Star(Sequence(Not(']'), V.Range)), ']')), V.Spacing
+    Capture(Sequence('[', Star(Sequence(Not(']'), V.Range)), ']')), V.Spacing
 )
 
 # Non-recursive patterns
@@ -188,7 +188,7 @@ V.Range = Choice(Sequence(V.Char, '-', Choice(V.RangeEndWarn, V.Char)), V.Char)
 V.IdentStart = Class('a-zA-Z_')
 V.IdentCont = Class('a-zA-Z_0-9')
 V.Identifier = Sequence(
-    Raw(Sequence(V.IdentStart, Star(V.IdentCont))), V.Spacing
+    Capture(Sequence(V.IdentStart, Star(V.IdentCont))), V.Spacing
 )
 
 # Tokens
@@ -223,7 +223,7 @@ PEG = Grammar(
         'Valued': _make_valued,
         'AND': Constant(And),
         'NOT': Constant(Not),
-        'TILDE': Constant(Raw),
+        'TILDE': Constant(Capture),
         'Binding': _make_binder,
         'Quantified': _make_quantified,
         'QUESTION': Constant(Optional),

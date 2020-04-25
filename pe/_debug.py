@@ -43,7 +43,7 @@ _op_map = {
     Operator.PLS: _debug_recursive,
     Operator.AND: _debug_recursive,
     Operator.NOT: _debug_recursive,
-    Operator.RAW: _debug_recursive,
+    Operator.CAP: _debug_recursive,
     Operator.BND: _debug_recursive,
     Operator.SEQ: _debug_combining,
     Operator.CHC: _debug_combining,

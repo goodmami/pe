@@ -83,7 +83,7 @@ e1 / e2      # ordered choice of e1 and e2
 &e           # positive lookahead
 !e           # negative lookahead
 
-# (extension) raw substring
+# (extension) capture substring
 ~e           # result of e is matched substring
 
 # (extension) binding
@@ -99,8 +99,8 @@ Name <- ...  # define a rule named 'Name'
 When a parsing expression matches an input, it returns a `Match`
 object, which is similar to those of Python's
 [re](https://docs.python.org/3/library/re.html) module for regular
-expressions. By default, nothing is captured, but the raw (`~`)
-operator emits the substring of the matching expression, similar to
+expressions. By default, nothing is captured, but the capture operator
+(`~`) emits the substring of the matching expression, similar to
 regular expression's capturing groups:
 
 ```python

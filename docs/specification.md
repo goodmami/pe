@@ -37,7 +37,7 @@ following sections.
 | `q`      | (default)     | [Valued]      | Match quantified term `q`; consume input; pass up values  |
 | `&q`     | [And]         | [Valued]      | Succeed if `q` matches; consume no input; suppress values |
 | `!q`     | [Not]         | [Valued]      | Fail if `q` matches; consume no input; suppress values    |
-| `~q`     | [Raw]         | [Valued]      | Match `q`; consume input; emit substring matched by `q`   |
+| `~q`     | [Capture]     | [Valued]      | Match `q`; consume input; emit substring matched by `q`   |
 | `name:q` | [Bind]        | [Valued]      | Match `q`; consume input; bind value to 'name'            |
 | `v`      | (default)     | [Sequential]  | Match valued term `v`                                     |
 | `v s`    | [Sequence]    | [Sequential]  | Match sequential term `s` only if `v` succeeded           |
@@ -141,7 +141,7 @@ Valued expressions specify the semantic effects of the expression,
 such as whether it consumes input, emits values, or binds values to
 names. The default (unannotated) valued expression consumes the input
 of its match and passes up any emitted or bound values. The [And],
-[Not], [Raw], and [Bind] operators all may change some of these
+[Not], [Capture], and [Bind] operators all may change some of these
 effects, such as whether input is consumed or what happens with
 emitted or bound values.
 
@@ -192,7 +192,7 @@ expressions compared to the equivalent in-situ expression.
 | `e+`           | [Plus]     | 5          | [Quantified]    |
 | `&e`           | [And]      | 4          | [Valued]        |
 | `!e`           | [Not]      | 4          | [Valued]        |
-| `~e`           | [Raw]      | 4          | [Valued]        |
+| `~e`           | [Capture]  | 4          | [Valued]        |
 | `name:e`       | [Bind]     | 4          | [Valued]        |
 | `e1 e2`        | [Sequence] | 3          | [Sequential]    |
 | (none)         | [Rule]     | 2          | [Applicative]   |
@@ -204,10 +204,10 @@ expressions compared to the equivalent in-situ expression.
 
 During parsing, **pe** accumulates and transforms values in two
 channels: the *emitted-value sequence* and the *bound-value
-mapping*. The [Raw] and [Rule] expressions *emit* values, i.e.,
+mapping*. The [Capture] and [Rule] expressions *emit* values, i.e.,
 introduce a value onto the emitted-value sequence. The [Bind]
 expression *binds* a [determined] value to a name in the bound-value
-mapping. The [And], [Not], [Raw], and [Rule] expressions also
+mapping. The [And], [Not], [Capture], and [Rule] expressions also
 *suppress* previously emitted or bound values, while [Bind] only
 suppresses the previously emitted values. All other expressions *pass
 up* any emitted or bound values.
@@ -566,15 +566,15 @@ given expression fails at the current position in the input, but no
 input is consumed and no values are passed up.
 
 
-### Raw
-[Raw]: #raw
+### Capture
+[Capture]: #capture
 
 - Notation: `~e`
-- Function: [Raw](api/pe.operators.md#Raw)(*expression*)
+- Function: [Capture](api/pe.operators.md#Capture)(*expression*)
 - Type: [Valued]
 
-The Raw operator succeeds when the given expression succeeds at the
-current position in the input. It suppresses any emitted or bound
+The Capture operator succeeds when the given expression succeeds at
+the current position in the input. It suppresses any emitted or bound
 values and bindings from the given expression and then emits the
 substring matched by the given expression.
 

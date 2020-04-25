@@ -265,7 +265,7 @@ class PackratParser(Parser):
     def _not(self, definition: Definition) -> _Matcher:
         return self._lookahead(definition.args[0], False)
 
-    def _raw(self, definition: Definition) -> _Matcher:
+    def _capture(self, definition: Definition) -> _Matcher:
         expression = self._def_to_expr(definition.args[0])
 
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
@@ -334,7 +334,7 @@ class PackratParser(Parser):
         Operator.PLS: _plus,
         Operator.AND: _and,
         Operator.NOT: _not,
-        Operator.RAW: _raw,
+        Operator.CAP: _capture,
         Operator.BND: _bind,
         Operator.SEQ: _sequence,
         Operator.CHC: _choice,

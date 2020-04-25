@@ -1,6 +1,6 @@
 
 import pe
-from pe.actions import Constant, Pack, Fail, Raw
+from pe.actions import Constant, Pack, Fail, Capture
 
 
 Json = pe.compile(
@@ -36,9 +36,9 @@ Json = pe.compile(
         'Object': Pack(dict),
         'Member': Pack(tuple),
         'Array': Pack(list),
-        'String': Raw(lambda s: s[1:-1]),
-        'Integer': Raw(int),
-        'Float': Raw(float),
+        'String': Capture(lambda s: s[1:-1]),
+        'Integer': Capture(int),
+        'Float': Capture(float),
         'TRUE': Constant(True),
         'FALSE': Constant(False),
         'NULL': Constant(None),

@@ -3,7 +3,7 @@ import re
 import datetime
 
 import pe
-from pe.actions import Pack, Constant, Join, Raw
+from pe.actions import Pack, Constant, Join, Capture
 
 
 grammar = r'''
@@ -351,15 +351,15 @@ actions = {
     'hex_int': lambda x: int(x, 16),
     'oct_int': lambda x: int(x, 8),
     'bin_int': lambda x: int(x, 2),
-    'float': Raw(float),
+    'float': Capture(float),
     'true': Constant(True),
     'false': Constant(False),
     'flexible_date_time': datetime.datetime,
     'local_time': datetime.time,
     'time_offset': toml_time_offset,
     'sec_frac': toml_sec_frac,
-    'DIGIT2': Raw(int),
-    'DIGIT4': Raw(int),
+    'DIGIT2': Capture(int),
+    'DIGIT4': Capture(int),
     'array': Pack(list),
     'std_table': Table,
     'inline_table': Pack(dict),

@@ -26,7 +26,7 @@ class Operator(enum.Enum):
     PLS = (_auto(), 5, 'Quantified')   # (PLS, (expr,))
     AND = (_auto(), 4, 'Valued')       # (AND, (expr,))
     NOT = (_auto(), 4, 'Valued')       # (NOT, (expr,))
-    RAW = (_auto(), 4, 'Valued')       # (RAW, (expr,))
+    CAP = (_auto(), 4, 'Valued')       # (CAP, (expr,))
     BND = (_auto(), 4, 'Valued')       # (BND, (expr, name))
     SEQ = (_auto(), 3, 'Sequential')   # (SEQ, (exprs,))
     RUL = (_auto(), 2, 'Applicative')  # (RUL, (expr, action, name))
