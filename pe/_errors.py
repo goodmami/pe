@@ -3,6 +3,10 @@ class Error(Exception):
     """Exception raised for invalid parsing expressions."""
 
 
+class GrammarWarning(Warning):
+    pass
+
+
 class GrammarError(Error):
     pass
 

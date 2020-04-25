@@ -94,7 +94,7 @@ from pe.operators import (
     SymbolTable,
 )
 from pe.packrat import PackratParser
-from pe.actions import Constant, Pack
+from pe.actions import Constant, Pack, Warn
 
 
 def _make_literal(s):
@@ -183,7 +183,8 @@ V.Char = Choice(
     Sequence('\\', Choice(V.Special, V.Octal, V.UTF8, V.UTF16, V.UTF32)),
     Sequence(Not('\\'), Dot())
 )
-V.Range = Choice(Sequence(V.Char, '-', V.Char), V.Char)
+V.RangeEndWarn = Literal(']')
+V.Range = Choice(Sequence(V.Char, '-', Choice(V.RangeEndWarn, V.Char)), V.Char)
 V.IdentStart = Class('a-zA-Z_')
 V.IdentCont = Class('a-zA-Z_0-9')
 V.Identifier = Sequence(
@@ -232,6 +233,11 @@ PEG = Grammar(
         'Literal': _make_literal,
         'Class': _make_class,
         'DOT': Constant(Dot()),
+        'RangeEndWarn': Warn(
+            'The second character in a range may be an unescaped "]", '
+            'but this is often a mistake. Silence this warning by '
+            'escaping the hyphen (\\-) or the right bracket (\\]), '
+            'depending on what was intended.')
     }
 )
 

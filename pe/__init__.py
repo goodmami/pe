@@ -6,6 +6,7 @@ __all__ = [
     'MEMOIZE',
     'OPTIMIZE',
     'Error',
+    'GrammarWarning',
     'GrammarError',
     'ParseError',
     'Grammar',
@@ -19,7 +20,12 @@ __all__ = [
 
 from pe._meta import __version__  # noqa: F401
 from pe._constants import Flag
-from pe._errors import Error, GrammarError, ParseError
+from pe._errors import (
+    Error,
+    GrammarWarning,
+    GrammarError,
+    ParseError,
+)
 from pe._grammar import Grammar
 from pe._match import Match
 from pe._escape import escape, unescape

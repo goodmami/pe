@@ -1,7 +1,8 @@
 
 from typing import Tuple, Dict, Optional
+import warnings
 
-from pe._errors import ParseError
+from pe._errors import ParseError, GrammarWarning
 from pe._match import determine
 
 
@@ -91,3 +92,13 @@ class Fail(Action):
     def __call__(self, s, pos, end, args, kwargs):
         raise ParseError.from_pos(
             pos, s, message=self.arg.format(*args, **kwargs))
+
+
+class Warn(Action):
+
+    def __init__(self, message):
+        self.arg = message
+
+    def __call__(self, s, pos, end, args, kwargs):
+        warnings.warn(self.arg, GrammarWarning)
+        return args, kwargs
