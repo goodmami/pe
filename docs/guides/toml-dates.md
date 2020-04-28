@@ -11,19 +11,16 @@ Here are some examples of TOML dates and times:
     1979-05-27                 # date only
     07:32:00                   # "local" time only
 
-For a full parser, see the [TOML example]; this guide
-focuses on one part of it to help explain the usage of **pe**.
+For a full parser, see the [TOML example]; this guide focuses on one
+part of it to help explain the usage of **pe**.
 
-[TOML]: https://github.com/toml-lang/toml
-[TOML example]: ../../examples/toml.py
+This guide covers the following tasks:
 
-This guide covers three main tasks:
+* [Inspecting the TOML specification](#dates-in-the-toml-specification)
+* [Parsing the syntactic form](#parsing-the-form)
+* [Adding semantic actions to create a datetime object](#interpreting-the-values)
+* [Going Further: Simplifying the Grammar](#going-further-simplifying-the-grammar)
 
-* Inspecting the TOML specification
-* Parsing the syntactic form
-* Adding semantic actions to create a [datetime] object
-
-[datetime]: https://docs.python.org/3/library/datetime.html#datetime.datetime
 
 ## Dates in the TOML Specification
 
@@ -40,8 +37,8 @@ would encode time without dates, it allows for a "local" time as well.
 ### date-time in the ABNF
 
 Following is the `date-time` section of the ABNF
-([link](https://github.com/toml-lang/toml/blob/0050f6fe64d82b3ba14968bf0b299a5608641165/toml.abnf#L157-L190
-)):
+([link][TOML-ABNF]). Look it over to get just a basic idea of how it
+parses the dates shown above:
 
 ```abnf
 ;; Date and Time (as defined in RFC 3339)
@@ -110,11 +107,9 @@ Now we will build a parser that only recognizes valid dates and
 times. In the next section we add semantic actions to transform the
 parses into interpreted values.
 
-First import **pe** as well as the
-[typing](https://docs.python.org/3/library/typing.html) module:
+First import **pe**:
 
-```python
->>> from typing import *
+```python-console
 >>> import pe
 
 ```
@@ -124,8 +119,8 @@ start symbol and matches a grammar against some inputs. It will show
 us if an input matched the grammar and, if so, what part of the input
 matched.
 
-```python
->>> def test(start: str, definitions: str, inputs: List[str]) -> None:
+```python-console
+>>> def test(start, definitions, inputs):
 ...     grammar = f'Start <- {start}\n{definitions}'
 ...     for inp in inputs:
 ...         m = pe.match(grammar, inp)
@@ -150,7 +145,7 @@ leading zeros, we don't need to worry about single-digit numbers
 (e.g., September is `09`, not `9`, etc.). This is what we get:
 
 
-```python
+```python-console
 >>> digits = r'''
 ...     DIGIT  <- [0-9]
 ...     DIGIT2 <- DIGIT DIGIT
@@ -161,7 +156,7 @@ leading zeros, we don't need to worry about single-digit numbers
 
 Now let's try out each pattern:
 
-```python
+```python-console
 >>> test('DIGIT', digits, ['', '0', '01', '0123', 'a'])
 FAILURE: 
 SUCCESS: (0)
@@ -193,7 +188,8 @@ as `DIGIT2` being followed by `-` (in dates) or `:` (in times).
 
 ### Dates
 
-With two and four digit parsing we can construct dates. Here are the relevant patterns from the ABNF:
+With two and four digit parsing we can construct dates. Here are the
+relevant patterns from the ABNF:
 
 ```abnf
 date-fullyear  = 4DIGIT
@@ -204,7 +200,7 @@ full-date      = date-fullyear "-" date-month "-" date-mday
 
 We can rewrite it in PEG as follows:
 
-```python
+```python-console
 >>> date = r'''
 ...     date  <- year "-" month "-" day
 ...     year  <- DIGIT4
@@ -217,7 +213,7 @@ We can rewrite it in PEG as follows:
 And that's it, really. Now let's make sure it parses expected dates
 and rejects unexpected ones:
 
-```python
+```python-console
 >>> test('date', date + digits, ['2020-04-23', '23-04-2020'])
 SUCCESS: (2020-04-23)
 FAILURE: 23-04-2020
@@ -232,7 +228,7 @@ FAILURE: 23-04-2020
 > parsing: prioritized choice. If we altered the `date` pattern as
 > follows, with the rest the same, we would introduce a grammar bug:
 >
-> ```python
+> ```python-console
 > >>> date = r'''
 > ...     date  <- (year2 / year4) "-" month "-" day
 > ...     year2 <- DIGIT2
@@ -249,7 +245,7 @@ FAILURE: 23-04-2020
 > never be attempted. The solution is to swap the order of `year2` and
 > `year4`:
 >
-> ```python
+> ```python-console
 > >>> date = r'''
 > ...     date <- (year4 / year2) "-" month "-" day
 > ... '''
@@ -278,12 +274,12 @@ time-secfrac   = "." 1*DIGIT
 This grammar would match times such as `10:49:14` or `10:49:14.8312`.
 Here is a straightforward conversion to PEG:
 
-```python
+```python-console
 >>> time = r'''
-...     time    <- hour ":" minutes ":" seconds secfrac?
+...     time    <- hour ":" minute ":" second secfrac?
 ...     hour    <- DIGIT2
-...     minutes <- DIGIT2
-...     seconds <- DIGIT2
+...     minute  <- DIGIT2
+...     second  <- DIGIT2
 ...     secfrac <- "." DIGIT+
 ... '''
 
@@ -291,7 +287,7 @@ Here is a straightforward conversion to PEG:
 
 Now we test it:
 
-```python
+```python-console
 >>> test('time', time + digits, ['10:49:14', '10:49:14.8312', '10:49'])
 SUCCESS: (10:49:14)
 SUCCESS: (10:49:14.8312)
@@ -324,9 +320,9 @@ is better expressed with a character class. In addition, due to ABNF's
 case insensitivity with literals, the `"Z"` needs to be expressed with
 a `[Zz]` character class.
 
-```python
+```python-console
 >>> offset = r'''
-...     offset <- [-+] hour ":" minutes
+...     offset <- [-+] hour ":" minute
 ...             / [Zz]
 ... '''
 
@@ -337,15 +333,14 @@ a `[Zz]` character class.
 > second character of an `A-B` range does not need to be escaped in
 > PEG, even if it is `]`. This is due to how the notation was
 > originally defined, and **pe** strives to be backward compatible
-> with the original notation. See [Class](../specification.md#class)
-> in **pe**'s [specification](../specification.md) for more
-> information. For this reason, `[+-]` is not a valid character class
-> for the characters `+` and `-`. In these situations, **pe** will
-> warn you about the potential problem.
+> with the original notation. See [Class] in **pe**'s [specification]
+> for more information. For this reason, `[+-]` is not a valid
+> character class for the characters `+` and `-`. In these situations,
+> **pe** will warn you about the potential problem.
 
 Let's test the pattern against some offsets:
 
-```python
+```python-console
 >>> grammar = offset + time + digits
 >>> test('offset', grammar, ['Z', 'z', '+02:00', '-08:00', '02:00'])
 SUCCESS: (Z)
@@ -381,7 +376,7 @@ but it looks like they are already ordered from most to least
 specific, so there is no chance of a pattern preempting a better
 match. Here's a fairly straightforward translation:
 
-```python
+```python-console
 >>> date_time = r'''
 ...     date_time        <- offset_date_time / local_date_time / local_date / local_time
 ...     offset_date_time <- date time_delim time offset
@@ -400,7 +395,7 @@ what is the difference between `offset_date_time` and
 
 Now we can test the full grammar:
 
-```python
+```python-console
 >>> grammar = date_time + date + time + offset + digits
 >>> test('date_time', grammar,
 ...      ['1979-05-27T00:32:00-07:00',
@@ -414,8 +409,8 @@ SUCCESS: (07:32:00)
 
 ```
 
-Next we will look at how to use semantic actions to construct a
-[datetime] object representing a parsed date or time.
+Next we will look at how to use semantic actions to construct
+[datetime] objects representing a parsed date or time.
 
 
 ## Interpreting the Values
@@ -424,7 +419,7 @@ The parser we created above will recognize dates and times but it does
 not construct any objects as it parses, not even concrete or abstract
 syntax trees. We can see this by looking at the value of the match:
 
-```python
+```python-console
 >>> m = pe.match(grammar, '2020-04-23')
 >>> print(m.group())
 2020-04-23
@@ -437,11 +432,11 @@ None
 >
 > You may have noticed that I used the `grammar` string in
 > `pe.match()` without encoding a start symbol as I did in the
-> `test()` function. With [pe.match()](../api/pe.md#match) and
-> [pe.compile()](../api/pe.md#compile), the start symbol is just the
-> first definition in the grammar, regardless of what its name is.
+> `test()` function. With [pe.match()] and [pe.compile()], the start
+> symbol is just the first definition in the grammar, regardless of
+> what its name is.
 
-Sometimes recognizing a string is enough, such as for producing
+Sometimes recognizing a string is enough, such as for simple format
 validators, and in those cases it can be faster to not construct any
 objects. But more often you'll want the parser to actually produce
 something from what it parses. When the parser produces some object as
@@ -451,8 +446,248 @@ parser can emit values: through captures and semantic actions.
 
 ### Captures and Actions
 
+Captures are special expressions that take the substring matched by a
+subexpression and emit it. Actions transform emitted values, e.g., for
+converting a captured string into an integer or for grouping multiple
+values into a list. Actions can also work if there are no emitted
+values, such as for returning constant values.
 
+What we want to do is transform the parsed components of a date into
+[datetime] objects. Let's start by looking at ways to construct these
+objects. Once we match the full string, we could pass it to
+[datetime.fromisoformat], but there are some downsides: (a) it
+requires Python 3.7, which is not the minimum version needed by
+**pe**; (b) it wouldn't work for times without dates; and (c) it means
+that some other code needs to parse the string again, which is neither
+efficient nor satisfying. Instead let's look at how to instantiate a
+[datetime.datetime] object directly:
 
+```python
+datetime.datetime(year, month, day, hour=0, minute=0, second=0, microsecond=0, tzinfo=None, *, fold=0)
+```
+
+Since we are already parsing those components separately, we can pass
+them along to these parameters, but first we need to capture and
+convert these values. Since they all use the `DIGIT2` or `DIGIT4`
+definitions, we can capture at that point:
+
+```python-console
+>>> digits = r'''
+...     DIGIT  <- [0-9]
+...     DIGIT2 <- ~( DIGIT DIGIT )
+...     DIGIT4 <- ~( DIGIT2 DIGIT2 )
+... '''
+
+```
+
+And let's see what happens:
+
+```python-console
+>>> grammar = date_time + date + time + offset + digits
+>>> m = pe.match(grammar, '2020-04-23')
+>>> print(m.group())
+2020-04-23
+>>> print(m.value())
+2020
+
+```
+
+But why is only `'2020'` returned? The [Match.value()] method returns
+the [determined value], which is only the first emitted value or
+`None` if there are no emitted values (as shown earlier). This might
+be confusing at first but it's actually quite useful. The other values
+are still there and they're accessible with the [Match.groups()]
+method:
+
+```python-console
+>>> print(m.groups())
+('2020', '04', '23')
+
+```
+
+The other place that uses the *determined value* is when binding a
+value to a name (i.e., a named capture). Actions, however, use all
+emitted and bound values, and we will use that to our
+advantage. Actions are assigned on the [pe.compile()] or [pe.match()]
+functions' `actions` parameter. For example, we can convert the
+matched substrings to integers as follows:
+
+```python-console
+>>> actions = {'DIGIT2': int, 'DIGIT4': int}
+>>> m = pe.match(grammar, '2020-04-23', actions=actions)
+>>> print(m.groups())
+(2020, 4, 23)
+
+```
+
+> **Aside: Capture expressions versus Capture actions**
+>
+> If your primary purpose for using a capture expression (e.g.,
+> `~[0-9]+`) is to apply some operation on it such as numeric
+> conversion, you might consider the [Capture] action. Using a capture
+> expression and a separate action achieves the same end, but it takes
+> two operations to achieve that end instead of one. If you want to
+> keep the string value, or you are not capturing the entire defined
+> expression (i.e., some part will be ignored), stick with capture
+> expressions. Here's an example of using the [Capture] action:
+>
+> ```python-console
+> >>> from pe.actions import Capture
+> >>> m = pe.match(r'DIGITS <- [0-9]+',
+> ...              '123',
+> ...              actions={'DIGITS': Capture(int)})
+> >>> m.value()
+> 123
+>
+> ```
+>
+> For this guide, however, I will stick with using capture
+> expressions and simple actions.
+
+## Constructing `datetime` Objects
+
+In order to get our integer values into [datetime] objects, we will
+exploit the fact that the positional parameters of [datetime.datetime]
+are in the same order as our date format. All we have to do is assign
+[datetime.datetime] as the action. Here I will use [pe.compile()] to
+streamline things a bit.
+
+```
+>>> import datetime
+>>> actions.update(date_time=datetime.datetime)
+>>> parser = pe.compile(grammar, actions=actions)
+>>> parser.match('2020-04-23').value()
+datetime.datetime(2020, 4, 23, 0, 0)
+>>> parser.match('2020-04-23T10:28:08').value()
+datetime.datetime(2020, 4, 23, 10, 28, 8)
+>>> parser.match('2020-04-23T10:28:08.134').value()
+datetime.datetime(2020, 4, 23, 10, 28, 8)
+>>> parser.match('2020-04-23T10:28:08Z').value()
+datetime.datetime(2020, 4, 23, 10, 28, 8)
+>>> parser.match('2020-04-23T10:28:08-07:00').value()
+Traceback (most recent call last):
+  ...
+TypeError: tzinfo argument must be None or of a tzinfo subclass, not type 'int'
+
+```
+
+This is pretty close, but there are two things left to do for these
+objects: (1) fractional seconds, and (2) time offsets.
+
+### Fractional Seconds
+
+The `secfrac` definition does not use `DIGIT2` nor `DIGIT4`, so it
+does not get the captured and converted integer value. While the
+[datetime] objects take a `microsecond` integer argument, casting
+`secfrac`'s digits directly to an integer as with `DIGIT2` and
+`DIGIT4` would be a mistake, as leading zeros would be ignored (`.01`
+and `.1` would yield the same integer). Instead we can write a custom
+function that casts the match as a float, then convert that to
+microseconds. But first we need to capture the `secfrac` match. Here's
+how that could be done:
+
+```python-console
+>>> time = r'''
+...     time    <- hour ":" minute ":" second secfrac?
+...     hour    <- DIGIT2
+...     minute  <- DIGIT2
+...     second  <- DIGIT2
+...     secfrac <- ~( "." DIGIT+ )  # capture full expression
+... '''
+>>> grammar = date_time + date + time + offset + digits
+>>> def secfrac_to_int(s: str) -> int:
+...     return int(float(s) * 1_000_000)
+...
+>>> actions.update(secfrac=secfrac_to_int)
+>>> parser = pe.compile(grammar, actions=actions)
+>>> parser.match('2020-04-23T10:28:08.134').value()
+datetime.datetime(2020, 4, 23, 10, 28, 8, 134000)
+
+```
+
+### Time Offsets
+
+Constructing time offsets is more complicated. Firstly, if you get an
+offset but no microsecond value, the positional arguments will not be
+used correctly (the offset will be used as the microsecond
+value). This is an easy fix with **pe**'s binding expressions. We will
+change the `offset_date_time` definition in the grammar as follows:
+
+```python-console
+>>> date_time = r'''
+...     date_time        <- offset_date_time / local_date_time / local_date / local_time
+...     offset_date_time <- date time_delim time tzinfo:offset  # bind offset to tzinfo name
+...     local_date_time  <- date time_delim time
+...     local_date       <- date
+...     local_time       <- time
+...     time_delim       <- [Tt ]
+... '''
+
+```
+
+Now the offset, if present, will always be passed as the `tzinfo`
+parameter. If it's not present, the `tzinfo` parameter is not set and
+uses the default value.
+
+Next we need to construct the appropriate object when an offset is
+given. The [datetime] documentation describes [datetime.tzinfo] as an
+abstract base class for which you define your own subclasses for
+particular timezones, or you can use the generic [datetime.timezone]
+class. Since we are not working with one particular timezone, the
+[datetime.timezone] class will work. It is created with the following
+signature
+
+```python
+datetime.timezone(offset, name=None)
+```
+
+The *offset* argument is a [datetime.timedelta] object, which is
+created with the following signature:
+
+```python
+datetime.timedelta(days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0)
+```
+
+As you can see, with only hour and minute values we cannot simply use
+[datetime.timedelta] as the action because the positional arguments would not line up (as with [datetime.datetime] above). Unfortunately, binding expression do not work here for two reasons:
+
+1. They will not handle negative offsets properly
+2. They don't help us wrap the [datetime.timedelta] with a [datetime.timezone] object
+
+So in this case it makes sense to write a function. We could make it
+work with only [datetime] classes as actions by restructuring the
+grammar, but it would be neither intuitive nor efficient. Here is a
+function that does what we want, but we still need to modify the
+grammar in order to capture the offset's sign.
+
+```python-console
+>>> def delta_to_tzinfo(sign: str, hours: int, minutes: int) -> datetime.tzinfo:
+...     delta = datetime.timedelta(hours=hours, minutes=minutes)
+...     if sign == '-':
+...         delta *= -1
+...     return datetime.timezone(delta)
+...
+>>> offset = r'''
+...     offset <- delta / utc
+...     delta  <- ~[-+] hour ":" minute
+...     utc    <- [Zz]
+... '''
+>>> from pe.actions import Constant
+>>> grammar = date_time + date + time + offset + digits
+>>> actions.update(delta=delta_to_tzinfo, utc=Constant(datetime.timezone.utc))
+>>> parser = pe.compile(grammar, actions=actions)
+>>> parser.match('2020-04-23T10:28:08Z').value()
+datetime.datetime(2020, 4, 23, 10, 28, 8, tzinfo=datetime.timezone.utc)
+>>> parser.match('2020-04-23T10:28:08-07:00').value()
+datetime.datetime(2020, 4, 23, 10, 28, 8, tzinfo=datetime.timezone(datetime.timedelta(-1, 61200)))
+
+```
+
+Note that the `offset` pattern had to be split so that the new `delta`
+pattern triggers the action for hour:minute offsets and the `utc`
+pattern returns the constant value for the UTC offset. There are other
+ways of accomplishing this, but this way makes it clear what each
+alternative does.
 
 ## Going Further: Simplifying the Grammar
 
@@ -460,7 +695,7 @@ parser can emit values: through captures and semantic actions.
 ```peg
 date_time        <- offset_date_time / local_date_time / local_date / local_time
 
-offset_date_time <- date time_delim time offset
+offset_date_time <- date time_delim time tzinfo:offset
 local_date_time  <- date time_delim time
 local_date       <- date
 local_time       <- time
@@ -471,24 +706,25 @@ year             <- DIGIT4
 month            <- DIGIT2
 day              <- DIGIT2
 
-time             <- hour ":" minutes ":" seconds secfrac?
+time             <- hour ":" minute ":" second secfrac?
 hour             <- DIGIT2
-minutes          <- DIGIT2
-seconds          <- DIGIT2
+minute           <- DIGIT2
+second           <- DIGIT2
 secfrac          <- ~( "." DIGIT+ )
 
-offset           <- [-+] hour:hour ":" minutes:minutes
-                  / [Zz]
+offset           <- delta / utc
+delta            <- ~[-+] hour ":" minute
+utc              <- [Zz]
 
 ```
 
-The named rules `date-fullyear`, `date-month`,
-and `date-mday` are just meaningful names assigned to simple patterns
-and are not necessary (nor are they in ABNF), although it can make the
-grammar more explicit. The individual rules would be useful if a
-distinct action was necessary for each component, e.g., for
-validation, or if some ambiguity needed clarification (consider if the
-date pattern was `DIGIT2 "-" DIGIT2 "-" DIGIT4`; is that that
+The named rules `year`, `month`, `day`, `hour`, `minute`, and
+`second` are just meaningful names assigned to simple patterns and
+are not necessary (nor are their counterparts in ABNF), although it
+can make the grammar more explicit. The individual rules would be
+useful if a distinct action was necessary for each component, e.g.,
+for validation, or if some ambiguity needed clarification (consider if
+the date pattern was `DIGIT2 "-" DIGIT2 "-" DIGIT4`; is that that
 `MM-DD-YYYY` or `DD-MM-YYYY`?). Another concern is legibility, and the
 tradeoff here is meaningful names to quantity of rules. Since there is
 no real risk of confusion and no need for custom actions (see the
@@ -503,14 +739,34 @@ date_time  <- date ( [Tt ] time (tzinfo:offset)? )?
 date       <- DIGIT4 "-" DIGIT2 "-" DIGIT2
 time       <- DIGIT2 ":" DIGIT2 ":" DIGIT2 time_secfrac?
 secfrac    <- ~( "." DIGIT+ )
-offset     <- [-+] hour:DIGIT2 ":" minutes:DIGIT2
-            / [Zz]
+offset     <- delta / utc
+delta      <- ~[-+] DIGIT2 ":" DIGIT2
+utc        <- [Zz]
 
 ```
 
+[pe.match()]: ../api/pe.md#match
+[pe.compile()]: ../api/pe.md#compile
+[Match.value()]: ../api/pe.md#Match-value
+[Match.groups()]: ../api/pe.md#Match-groups
+[Match.groups()]: ../api/pe.actions.md#Capture
+[specification]: ../specification.md
+[determined value]: ../specification.md#value-determination
+[Class]: ../specification.md#class
+[TOML example]: ../../examples/toml.py
 
+[TOML]: https://github.com/toml-lang/toml
 [TOML-license]: https://github.com/toml-lang/toml/blob/master/LICENSE
-[ABNF]: https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form
-[toml.abnf]: https://github.com/toml-lang/toml/blob/master/toml.abnf
+[TOML-ABNF]: https://github.com/toml-lang/toml/blob/0050f6fe64d82b3ba14968bf0b299a5608641165/toml.abnf#L157-L190
 [toml-v1.0.0-rc.1.md]: https://github.com/toml-lang/toml/blob/master/versions/en/toml-v1.0.0-rc.1.md
+[toml.abnf]: https://github.com/toml-lang/toml/blob/master/toml.abnf
+
+[datetime]: https://docs.python.org/3/library/datetime.html
+[datetime.datetime]: https://docs.python.org/3/library/datetime.html#datetime.datetime
+[datetime.fromisoformat]: https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat
+[datetime.tzinfo]: https://docs.python.org/3/library/datetime.html#datetime.tzinfo
+[datetime.timezone]: https://docs.python.org/3/library/datetime.html#datetime.timezone
+[datetime.timedelta]: https://docs.python.org/3/library/datetime.html#datetime.timedelta
+
+[ABNF]: https://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_form
 [RFC 3339]: https://tools.ietf.org/html/rfc3339
