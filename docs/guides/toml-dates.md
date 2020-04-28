@@ -544,18 +544,27 @@ matched substrings to integers as follows:
 > For this guide, however, I will stick with using capture
 > expressions and simple actions.
 
-## Constructing `datetime` Objects
+### Constructing `datetime` Objects
 
 In order to get our integer values into [datetime] objects, we will
 exploit the fact that the positional parameters of [datetime.datetime]
-are in the same order as our date format. All we have to do is assign
+are in the same order as our date formats. All we have to do is assign
 [datetime.datetime] as the action. Here I will use [pe.compile()] to
 streamline things a bit.
 
-```
+```python-console
 >>> import datetime
->>> actions.update(date_time=datetime.datetime)
+>>> actions.update(
+...     offset_date_time=datetime.datetime,
+...     local_date_time=datetime.datetime,
+...     local_date=datetime.datetime)
 >>> parser = pe.compile(grammar, actions=actions)
+
+```
+
+Then we can test it with the parser's `match()` method:
+
+```python-console
 >>> parser.match('2020-04-23').value()
 datetime.datetime(2020, 4, 23, 0, 0)
 >>> parser.match('2020-04-23T10:28:08').value()
@@ -574,7 +583,7 @@ TypeError: tzinfo argument must be None or of a tzinfo subclass, not type 'int'
 This is pretty close, but there are two things left to do for these
 objects: (1) fractional seconds, and (2) time offsets.
 
-### Fractional Seconds
+#### Fractional Seconds
 
 The `secfrac` definition does not use `DIGIT2` nor `DIGIT4`, so it
 does not get the captured and converted integer value. While the
@@ -605,7 +614,7 @@ datetime.datetime(2020, 4, 23, 10, 28, 8, 134000)
 
 ```
 
-### Time Offsets
+#### Time Offsets
 
 Constructing time offsets is more complicated. Firstly, if you get an
 offset but no microsecond value, the positional arguments will not be
@@ -658,7 +667,8 @@ So in this case it makes sense to write a function. We could make it
 work with only [datetime] classes as actions by restructuring the
 grammar, but it would be neither intuitive nor efficient. Here is a
 function that does what we want, but we still need to modify the
-grammar in order to capture the offset's sign.
+grammar in order to capture the offset's sign and to separate the two
+alternative patterns so we can assign separate actions.
 
 ```python-console
 >>> def delta_to_tzinfo(sign: str, hours: int, minutes: int) -> datetime.tzinfo:
@@ -676,21 +686,40 @@ grammar in order to capture the offset's sign.
 >>> grammar = date_time + date + time + offset + digits
 >>> actions.update(delta=delta_to_tzinfo, utc=Constant(datetime.timezone.utc))
 >>> parser = pe.compile(grammar, actions=actions)
->>> parser.match('2020-04-23T10:28:08Z').value()
-datetime.datetime(2020, 4, 23, 10, 28, 8, tzinfo=datetime.timezone.utc)
->>> parser.match('2020-04-23T10:28:08-07:00').value()
-datetime.datetime(2020, 4, 23, 10, 28, 8, tzinfo=datetime.timezone(datetime.timedelta(-1, 61200)))
+>>> parser.match('2020-04-23T10:28:08Z').value().tzinfo.tzname(None)
+'UTC'
+>>> parser.match('2020-04-23T10:28:08-07:00').value().tzinfo.tzname(None)
+'UTC-07:00'
 
 ```
 
-Note that the `offset` pattern had to be split so that the new `delta`
-pattern triggers the action for hour:minute offsets and the `utc`
-pattern returns the constant value for the UTC offset. There are other
-ways of accomplishing this, but this way makes it clear what each
-alternative does.
+There is probably some way to combine the `utc` and `delta` patterns
+so they use the same action (noting that calling [datetime.timedelta]
+with no arguments is a delta of 0, the same as UTC), but it might
+obfuscate the grammar a bit, so it's probably not worth it.
+
+
+### Constructing `time` Objects
+
+Finally we need to construct [datetime.time] objects for inputs that
+do not include a date. By now this should seem obvious, and besides
+we've already dealt with times inside of [datetime.datetime]
+objects. All we need is an action:
+
+```python-console
+>>> actions.update(local_time=datetime.time)
+>>> parser = pe.compile(grammar, actions=actions)
+>>> parser.match('07:41:00').value()
+datetime.time(7, 41)
+>>> parser.match('07:41:13.0867').value()
+datetime.time(7, 41, 13, 86700)
+
+```
 
 ## Going Further: Simplifying the Grammar
 
+Now we have a complete parser for TOML-style dates and times. Here is
+the full grammar:
 
 ```peg
 date_time        <- offset_date_time / local_date_time / local_date / local_time
@@ -718,32 +747,39 @@ utc              <- [Zz]
 
 ```
 
-The named rules `year`, `month`, `day`, `hour`, `minute`, and
-`second` are just meaningful names assigned to simple patterns and
-are not necessary (nor are their counterparts in ABNF), although it
-can make the grammar more explicit. The individual rules would be
-useful if a distinct action was necessary for each component, e.g.,
-for validation, or if some ambiguity needed clarification (consider if
-the date pattern was `DIGIT2 "-" DIGIT2 "-" DIGIT4`; is that that
-`MM-DD-YYYY` or `DD-MM-YYYY`?). Another concern is legibility, and the
-tradeoff here is meaningful names to quantity of rules. Since there is
-no real risk of confusion and no need for custom actions (see the
-[third section](#interpreting-the-values)), for brevity's sake I will
-not create separate rules for these components.
+It's not too complicated, but it could be even simpler. The named
+rules `year`, `month`, `day`, `hour`, `minute`, and `second` are just
+meaningful names assigned to simple patterns and are not necessary
+(nor are their counterparts in ABNF), although it can make the grammar
+more explicit. The individual rules would be useful if a distinct
+action was necessary for each component, e.g., for validation, or if
+some ambiguity needed clarification (consider if the date pattern was
+`DIGIT2 "-" DIGIT2 "-" DIGIT4`; is that that `MM-DD-YYYY` or
+`DD-MM-YYYY`?). Another concern is legibility, and the tradeoff here
+is meaningful names to quantity of rules. Since there is no real risk
+of confusion and no need for custom actions (see the [third
+section](#interpreting-the-values)), for brevity's sake we can inline
+these definitions.
 
+Also, if you take a look at the three date patterns, you'll see that
+`offset_date_time` is just `local_date_time` with an offset, and
+`local_date_time` is just `local_date` with a time. These can be
+easily expressed as a single expression. Here is the revised grammar:
 
 ```peg
-date_time  <- date ( [Tt ] time (tzinfo:offset)? )?
-            / time
+date_time        <- offset_date_time / local_time
+offset_date_time <- date ( [Tt ] time (tzinfo:offset)? )?
+local_time       <- time
 
-date       <- DIGIT4 "-" DIGIT2 "-" DIGIT2
-time       <- DIGIT2 ":" DIGIT2 ":" DIGIT2 time_secfrac?
-secfrac    <- ~( "." DIGIT+ )
-offset     <- delta / utc
-delta      <- ~[-+] DIGIT2 ":" DIGIT2
-utc        <- [Zz]
+date             <- DIGIT4 "-" DIGIT2 "-" DIGIT2
+time             <- DIGIT2 ":" DIGIT2 ":" DIGIT2 time_secfrac?
+secfrac          <- ~( "." DIGIT+ )
+offset           <- delta / utc
+delta            <- ~[-+] DIGIT2 ":" DIGIT2
+utc              <- [Zz]
 
 ```
+
 
 [pe.match()]: ../api/pe.md#match
 [pe.compile()]: ../api/pe.md#compile
@@ -763,6 +799,7 @@ utc        <- [Zz]
 
 [datetime]: https://docs.python.org/3/library/datetime.html
 [datetime.datetime]: https://docs.python.org/3/library/datetime.html#datetime.datetime
+[datetime.time]: https://docs.python.org/3/library/datetime.html#datetime.time
 [datetime.fromisoformat]: https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat
 [datetime.tzinfo]: https://docs.python.org/3/library/datetime.html#datetime.tzinfo
 [datetime.timezone]: https://docs.python.org/3/library/datetime.html#datetime.timezone
