@@ -2,6 +2,13 @@
 
 ## [Unreleased][unreleased]
 
+(no unreleased changes)
+
+
+## [v0.2.0][]
+
+**Release date: 2020-04-28**
+
 ### Added
 
 * `pe.GrammarWarning` ([#7])
@@ -45,6 +52,7 @@ descent parser and a work-in-progress state-machine parser.
 
 [unreleased]: ../../tree/develop
 [v0.1.0]: ../../releases/tag/v0.1.0
+[v0.2.0]: ../../releases/tag/v0.2.0
 
 [#7]: https://github.com/goodmami/pe/issues/7
 [#9]: https://github.com/goodmami/pe/issues/9
