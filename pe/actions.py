@@ -27,7 +27,7 @@ class Call(Action):
         return (self.arg(*args, **kwargs),), None
 
 
-class Raw(Action):
+class Capture(Action):
     def __init__(self, func=str):
         self.arg = func
 

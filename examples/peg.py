@@ -53,5 +53,5 @@ peg_acceptor = pe.compile(
 def test_accept():
     assert peg_acceptor.match('A <- "a"')
     assert peg_acceptor.match('A <- B   B <- "b"')
-    assert not peg_acceptor.match('"c"')
-    assert not peg_acceptor.match('A <- `c`')
+    assert not peg_acceptor.match('"c"', flags=pe.NONE)
+    assert not peg_acceptor.match('A <- `c`', flags=pe.NONE)
