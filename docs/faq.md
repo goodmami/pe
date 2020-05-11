@@ -1,5 +1,8 @@
 
-# Differences with Regular Expressions
+# Frequently Asked Questions
+
+
+## How Do Parsing Expressions Differ from Regular Expressions?
 
 Parsing expressions are a lot like regular expressions with a few key
 differences, as discussed below. For the examples in this section,
@@ -11,7 +14,9 @@ import **pe** and [re] as follows:
 
 ```
 
-## Backtracking
+[re]: https://docs.python.org/3/library/re.html
+
+### Backtracking
 
 
 Parsing expressions has limited backtracking; only prioritized choice
@@ -41,7 +46,7 @@ alternatives should be tried first:
 
 Practically, this means that lookahead assertions are more important.
 
-## Recursion
+### Recursion
 
 Parsing expressions match recursively using nonterminals and grammars.
 
@@ -52,7 +57,7 @@ Parsing expressions match recursively using nonterminals and grammars.
 ```
 
 
-## Captures
+### Captures
 
 Capturing groups in regular expressions are very similar to **pe**
 captures. Both serve to take the substring of matched subexpression
@@ -89,4 +94,53 @@ Another difference is that named captures (called *bound values* in
 
 ```
 
-[re]: https://docs.python.org/3/library/re.html
+
+## Does pe Support Left-Recursion?
+
+No. There is an feature request at
+[#11](https://github.com/goodmami/pe/issues/11), but it hasn't been a
+priority yet.
+
+**Description**
+
+> Top-down parsers can get stuck in an infinite loop on left-recursive
+> grammar definitions, such as the following:
+>
+> ```peg
+> expr <- expr "+" term
+> ```
+>
+> When parsing `expr`, the parser will call `expr` again before
+> consuming anything, and this continues infinitely (or until some
+> recursion limit is reached). Sometimes left-recursive definitions
+> are more natural to write and when parsed (as intended) they provide
+> left-associativity (e.g., so `5 - 3 + 2` parses as `(5 - 3) + 2` and
+> not `5 - (3 + 2)`).
+
+
+## Does pe Parse Indentation?
+
+Yes, it can parse whitespace like indentation, but if it is meaningful
+(e.g., indentation in Python, YAML, or Markdown) then you'll need to
+write an appropriate action to assign the meaning.
+
+**Description**
+
+> PEG by itself is not context-sensitive enough to decide whether some
+> line is a child or not of its previous line depending on the indent
+> levels of the previous and current lines.  For example, say you want
+> to parse Markdown-style lists:
+>
+> ```markdown
+> - one
+>   - one.one
+>     still one.one
+>   - one.two
+> - two
+> ```
+>
+> There's currently no way for the parser to decide that the second
+> and third bullets belong under the first one and that the last one
+> is a sibling of the first. What you would do instead is parse each
+> line and capture the indent level, then use an action to group lines
+> into blocks.
