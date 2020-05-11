@@ -7,6 +7,12 @@ from pe._match import determine
 
 
 class Action:
+
+    __slots__ = 'arg',
+
+    def __init__(self):
+        self.arg = None
+
     def __repr__(self):
         return f'{type(self).__name__}({self.arg!r})'
 
@@ -20,6 +26,9 @@ class Action:
 
 
 class Call(Action):
+
+    __slots__ = ()
+
     def __init__(self, func):
         self.arg = func
 
@@ -28,6 +37,9 @@ class Call(Action):
 
 
 class Capture(Action):
+
+    __slots__ = ()
+
     def __init__(self, func=str):
         self.arg = func
 
@@ -36,6 +48,9 @@ class Capture(Action):
 
 
 class Bind(Action):
+
+    __slots__ = ()
+
     def __init__(self, name: str):
         self.arg = name
 
@@ -47,6 +62,8 @@ class Bind(Action):
 
 class Constant(Action):
 
+    __slots__ = ()
+
     def __init__(self, value):
         self.arg = value
 
@@ -56,6 +73,8 @@ class Constant(Action):
 
 class Pack(Action):
 
+    __slots__ = ()
+
     def __init__(self, func):
         self.arg = func
 
@@ -64,6 +83,8 @@ class Pack(Action):
 
 
 class Join(Action):
+
+    __slots__ = 'sep',
 
     def __init__(self, func, sep=''):
         self.arg = func
@@ -77,6 +98,9 @@ class Join(Action):
 
 
 class Getter(Action):
+
+    __slots__ = ()
+
     def __init__(self, i):
         self.arg = i
 
@@ -85,6 +109,8 @@ class Getter(Action):
 
 
 class Fail(Action):
+
+    __slots__ = ()
 
     def __init__(self, message):
         self.arg = message
@@ -95,6 +121,8 @@ class Fail(Action):
 
 
 class Warn(Action):
+
+    __slots__ = ()
 
     def __init__(self, message):
         self.arg = message

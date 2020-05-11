@@ -104,7 +104,7 @@
     ```
 
 
-## Classes
+## Grammar Objects
 
 * *class* pe.**<a id="Grammar" href="#Grammar">Grammar</a>**
   (*definitions=None, actions=None, start='Start'*)
@@ -135,6 +135,9 @@
 
     ```
 
+
+## Parser Objects
+
 * *class* pe.**<a id="Parser" href="#Parser">Parser</a>**
   (*grammar, flags=pe.NONE*)
 
@@ -153,8 +156,9 @@
     [pe.STRICT](#STRICT) or [pe.MEMOIZE](#MEMOIZE).
 
 
-* *class* pe.**<a id="Match" href="#Match">Match</a>**
-  (*string, pos, end, pe, args, kwargs*)
+## Match Objects
+
+* *class* pe.**<a id="Match-init" href="#Match-init">Match</a>**
 
   A match object contains information about a successful match.
 
@@ -164,14 +168,14 @@
     The string the expression was matched against.
 
 
-  * **<a id="Match-pos" href="#Match-pos">pos</a>**
+  * **<a id="Match-start" href="#Match-start">start</a>** ()
 
-    The position in the string where the match began.
+    Return the position in the string where the match began.
 
 
-  * **<a id="Match-end" href="#Match-end">end</a>**
+  * **<a id="Match-end" href="#Match-end">end</a>** ()
 
-    The position in the string where the match ended.
+    Return the position in the string where the match ended.
 
 
   * **<a id="Match-group" href="#Match-group">group</a>**
@@ -186,29 +190,29 @@
     does not exist, an IndexError is raised.
 
 
-  * **<a id="Match-groups" href="#Match-groups">groups</a>**()
+  * **<a id="Match-groups" href="#Match-groups">groups</a>** ()
 
     Return the tuple of emitted values.
 
 
-  * **<a id="Match-groupdict" href="#Match-groupdict">groupdict</a>**()
+  * **<a id="Match-groupdict" href="#Match-groupdict">groupdict</a>** ()
 
     Return the dictionary of bound values.
 
 
-  * **<a id="Match-value" href="#Match-value">value</a>**()
+  * **<a id="Match-value" href="#Match-value">value</a>** ()
 
     Return the result of evaluating the input against the expression.
 
 
 ## Exceptions
 
-* *class* pe.**<a id="Error" href="#Error">Error</a>**()
+* *class* pe.**<a id="Error" href="#Error">Error</a>** ()
 
   General error class raised by erroneous **pe** operations.
 
 
-* *class* pe.**<a id="GrammarError" href="#GrammarError">GrammarError</a>**()
+* *class* pe.**<a id="GrammarError" href="#GrammarError">GrammarError</a>** ()
 
   *Inherits from [pe.Error](#Error).*
 

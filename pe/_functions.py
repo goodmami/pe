@@ -47,7 +47,7 @@ def match(pattern: str,
 
     Example:
         >>> import pe
-        >>> pe.match(r'"-"? [1-9] [0-9]*', '-12345').value()
+        >>> pe.match(r'"-"? [1-9] [0-9]*', '-12345').group()
         '-12345'
     """
     expr = compile(pattern,

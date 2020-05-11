@@ -151,7 +151,7 @@ func(*match.groups(), **match.groupdict())
 ```
 
 The result of this function call becomes the only emitted value going
-forward, and all bound values are cleared.
+forward and all bound values are cleared.
 
 For more control, **pe** provides the [Action] class and a number of
 subclasses for various use-cases. These actions have access to more
