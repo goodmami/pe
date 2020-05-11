@@ -1,6 +1,13 @@
 
 # Frequently Asked Questions
 
+**Contents**
+
+- [How do parsing expressions differ from regular expressions?](#how-do-parsing-expressions-differ-from-regular-expressions)
+- [Does **pe** support left-recursion?](#does-pe-support-left-recursion)
+- [Does **pe** parse indentation?](#does-pe-parse-indentation)
+
+
 
 ## How Do Parsing Expressions Differ from Regular Expressions?
 

@@ -17,6 +17,6 @@
   - [pe.operators](api/pe.operators.md)
   - [pe.packrat](api/pe.packrat.md)
 * [FAQ](faq.md)
-  - [How do parsing expressions differ from regular expressions?](faw.md#how-do-parsing-expressions-differ-from-regular-expressions)
+  - [How do parsing expressions differ from regular expressions?](faq.md#how-do-parsing-expressions-differ-from-regular-expressions)
   - [Does **pe** support left-recursion?](faq.md#does-pe-support-left-recursion)
   - [Does **pe** parse indentation?](faq.md#does-pe-parse-indentation)

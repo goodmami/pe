@@ -23,8 +23,11 @@ example:
 
 **Quick Links**
 
-* [Guides](docs/guides/README.md)
-* [API Documentation](docs/api/README.md)
+* [Documentation](docs/README.md)
+  - [Specification](docs/specification.md)
+  - [Guides](docs/guides/README.md)
+  - [API Documentation](docs/api/README.md)
+  - [FAQ](docs/faq.md)
 * [Example Parsers](examples/)
 
 
