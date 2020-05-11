@@ -33,7 +33,7 @@ abseq = Seq('a', 'b')
 _blank = ((), {}, None)
 
 data = [  # noqa: E127
-    # id     definition       input,   pos,scan, (groups, groupdict, value)
+    # id     definition       input,  start,end, (groups, groupdict, value)
     ('Dot0', Dot(),           'aaa',    0, 1,    _blank),
     ('Dot1', Dot(),           '   ',    0, 1,    _blank),
     ('Dot2', Dot(),           '',       0, FAIL, None),
@@ -123,7 +123,7 @@ def test_exprs(dfn, input, pos, end, match):
         assert m is None
     else:
         groups, groupdict, value = match
-        assert m.end == end
+        assert m.end() == end
         assert m.groups() == groups
         assert m.groupdict() == groupdict
         assert m.value() == value

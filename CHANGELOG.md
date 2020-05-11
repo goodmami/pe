@@ -2,7 +2,14 @@
 
 ## [Unreleased][unreleased]
 
-(no unreleased changes)
+### Added
+
+* `pe.Match.span()` ([#12])
+
+### Changed
+
+* Changed `pe.Match.pos` to `pe.Match.start()` ([#12])
+* Changed `pe.Match.end` to `pe.Match.end()` ([#12])
 
 
 ## [v0.2.0][]
@@ -56,3 +63,4 @@ descent parser and a work-in-progress state-machine parser.
 
 [#7]: https://github.com/goodmami/pe/issues/7
 [#9]: https://github.com/goodmami/pe/issues/9
+[#12]: https://github.com/goodmami/pe/issues/12

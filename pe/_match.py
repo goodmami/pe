@@ -1,5 +1,5 @@
 
-from typing import Union, List, Dict, Any
+from typing import Union, Tuple, List, Dict, Any
 import textwrap
 
 from pe._definition import Definition
@@ -8,7 +8,7 @@ from pe._definition import Definition
 class Match:
     """The result of a parsing expression match."""
 
-    __slots__ = 'string', 'pos', 'end', 'pe', '_args', '_kwargs'
+    __slots__ = 'string', '_pos', '_end', 'pe', '_args', '_kwargs'
 
     def __init__(self,
                  string: str,
@@ -18,24 +18,33 @@ class Match:
                  args: List,
                  kwargs: Dict):
         self.string = string
-        self.pos = pos
-        self.end = end
+        self._pos = pos
+        self._end = end
         self.pe = pe
         self._args = args
         self._kwargs = kwargs
 
     def __repr__(self):
-        pos, end = self.pos, self.end
+        pos, end = self._pos, self._end
         string = self.string[pos:end]
         substr = textwrap.shorten(string, width=20, placeholder='...')
         return (f'<{type(self).__name__} object;'
                 f' span=({pos}, {end}), match={substr!r}>')
 
+    def start(self) -> int:
+        return self._pos
+
+    def end(self) -> int:
+        return self._end
+
+    def span(self) -> Tuple[int, int]:
+        return (self._pos, self._end)
+
     def group(self, key_or_index: Union[str, int] = 0) -> Any:
         if not isinstance(key_or_index, (str, int)):
             raise TypeError(type(key_or_index))
         if key_or_index == 0:
-            return self.string[self.pos:self.end]
+            return self.string[self._pos:self._end]
         elif isinstance(key_or_index, int):
             index = key_or_index - 1
             if index < 0 or index >= len(self._args):

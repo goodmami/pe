@@ -125,7 +125,7 @@ matched.
 ...     for inp in inputs:
 ...         m = pe.match(grammar, inp)
 ...         if m:
-...             print(f'SUCCESS: ({m.group()}){inp[m.end:]}')
+...             print(f'SUCCESS: ({m.group()}){inp[m.end():]}')
 ...         else:
 ...             print(f'FAILURE: {inp}')
 ...
