@@ -77,6 +77,20 @@
   argument, possibly with keyword arguments, such as [list] or [dict].
 
 
+* *class* pe.actions.**<a id="Pair" href="#Pair">Pair</a>**
+  (*func*)
+
+  Call *func* with the paired off emitted values and the bound
+  values as follows:
+
+  ```python
+  func(zip(args[::2], args[1::2]), **kwargs)
+  ```
+
+  This class is useful for functions that take exactly one iterable
+  argument, possibly with keyword arguments, such as [list] or [dict].
+
+
 * *class* pe.actions.**<a id="Bind" href="#Bind">Bind</a>**
   (*name*)
 

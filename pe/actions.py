@@ -82,6 +82,17 @@ class Pack(Action):
         return (self.arg(args, **kwargs),), None
 
 
+class Pair(Action):
+
+    __slots__ = ()
+
+    def __init__(self, func):
+        self.arg = func
+
+    def __call__(self, s, pos, end, args, kwargs):
+        return (self.arg(zip(args[::2], args[1::2]), **kwargs),), None
+
+
 class Join(Action):
 
     __slots__ = 'sep',

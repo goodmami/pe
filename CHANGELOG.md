@@ -5,6 +5,7 @@
 ### Added
 
 * `pe.Match.span()` ([#12])
+* `pe.actions.Pair` ([#13])
 
 ### Changed
 
@@ -64,3 +65,4 @@ descent parser and a work-in-progress state-machine parser.
 [#7]: https://github.com/goodmami/pe/issues/7
 [#9]: https://github.com/goodmami/pe/issues/9
 [#12]: https://github.com/goodmami/pe/issues/12
+[#13]: https://github.com/goodmami/pe/issues/13

@@ -1,6 +1,6 @@
 
 import pe
-from pe.actions import Constant, Pack, Fail, Capture
+from pe.actions import Constant, Pack, Pair, Fail, Capture
 
 
 Json = pe.compile(
@@ -33,8 +33,7 @@ Json = pe.compile(
     BADCOMMA <- ',' &(RBRACE / RBRACK)
     ''',
     actions={
-        'Object': Pack(dict),
-        'Member': Pack(tuple),
+        'Object': Pair(dict),
         'Array': Pack(list),
         'String': Capture(lambda s: s[1:-1]),
         'Integer': Capture(int),
