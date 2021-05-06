@@ -10,7 +10,7 @@ from pe._constants import Operator
 from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
-    Sequence,
+    Class,
     Regex,
     Choice,
     Optional,
@@ -20,6 +20,7 @@ from pe.operators import (
     Not,
     Capture,
     Bind,
+    Sequence,
     Rule,
 )
 

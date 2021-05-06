@@ -17,9 +17,9 @@ def test_compile_parser():
     assert isinstance(p, PackratParser)
     assert p.match('a')
 
-    # p = pe.compile(r'"a"', parser='machine')
-    # assert isinstance(p, MachineParser)
-    # assert p.match('a')
+    p = pe.compile(r'"a"', parser='machine')
+    assert isinstance(p, MachineParser)
+    assert p.match('a')
 
 
 def test_compile_actions():
