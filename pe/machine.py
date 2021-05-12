@@ -17,7 +17,7 @@ from pe._types import Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
 from pe._optimize import optimize
-from pe.actions import Action, Capture, Bind
+from pe.actions import Action, Bind
 from pe.operators import Rule
 
 
@@ -33,13 +33,14 @@ class OpCode(IntEnum):
     RETURN = 7
     JUMP = 8
     MARK = 9       # aka CaptureBegin
-    APPLY = 10
-    REGEX = 11
-    LITERAL = 12
-    CLASS = 13
-    DOT = 14
-    # BIND = 14
-    # RULE = 15
+    CAPTURE = 10       # aka CaptureBegin
+    APPLY = 11
+    REGEX = 12
+    LITERAL = 13
+    CLASS = 14
+    DOT = 15
+    # BIND = 16
+    # RULE = 17
 
 
 # Alias these for performance and convenience
@@ -54,6 +55,7 @@ CALL = OpCode.CALL
 RETURN = OpCode.RETURN
 JUMP = OpCode.JUMP
 MARK = OpCode.MARK
+CAPTURE = OpCode.CAPTURE
 APPLY = OpCode.APPLY
 REGEX = OpCode.REGEX
 LITERAL = OpCode.LITERAL
@@ -207,6 +209,10 @@ class MachineParser(Parser):
             elif opcode == MARK:
                 stack.append((-1, -1, pos, len(args), len(kwargs)))
 
+            elif opcode == CAPTURE:
+                mark = stack.pop()[2]
+                args.append(s[mark:pos])
+
             elif opcode == PASS:
                 break
 
@@ -310,7 +316,8 @@ def _not(defn):
 
 
 def _cap(defn):
-    return _rul(Rule(defn.args[0], Capture(str)))
+    pis = _parsing_instructions(defn.args[0])
+    return [Instruction(MARK)] + pis + [Instruction(CAPTURE)]
 
 
 def _bnd(defn):
