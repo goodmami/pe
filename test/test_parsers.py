@@ -23,6 +23,7 @@ from pe.operators import (
 from pe._grammar import Grammar
 from pe.actions import Pack
 from pe.packrat import PackratParser
+from pe.machine import MachineParser
 
 
 # don't reuse these in value-changing operations like Bind
@@ -49,11 +50,11 @@ data = [  # noqa: E127
     ('Lit8', Lit('abc',),     'abcabc', 1, FAIL, None),
     ('Lit9', Lit('abc',),     'abcabc', 3, 6,    _blank),
 
-    ('Cls0', Cls('[ab]',),    'a',      0, 1,    _blank),
-    ('Cls1', Cls('[ab]',),    'aa',     0, 1,    _blank),
-    ('Cls2', Cls('[ab]',),    'b',      0, 1,    _blank),
-    ('Cls3', Cls('[ab]',),    'a',      1, FAIL, None),
-    ('Cls4', Cls('[ab]',),    'ab',     1, 2,    _blank),
+    ('Cls0', Cls('ab',),      'a',      0, 1,    _blank),
+    ('Cls1', Cls('ab',),      'aa',     0, 1,    _blank),
+    ('Cls2', Cls('ab',),      'b',      0, 1,    _blank),
+    ('Cls3', Cls('ab',),      'a',      1, FAIL, None),
+    ('Cls4', Cls('ab',),      'ab',     1, 2,    _blank),
 
     ('Rgx0', Rgx('a*'),       'aaa',    0, 3,    _blank),
     ('Rgx1', Rgx('a|b',),     'b',      0, 1,    _blank),
@@ -95,8 +96,10 @@ data = [  # noqa: E127
                                                   {},
                                                   'a')),
     ('Cap4', Cap(Str(abc)),   'aabbc',  0, 5,    (('aabbc',), {}, 'aabbc')),
-    ('Cap5', Seq(Cap(abc), Cls('xyz'), Cap(abc)),
+    ('Cap5', Seq(Cap(abc), xyz, Cap(abc)),
                               'axb',    0, 3,    (('a', 'b'), {}, 'a')),
+    ('Cap6', Chc(Seq(Cap(abc), Cap(xyz)), Seq(Cap(abc), Cap(abc))),
+                              'aa',     0, 2,    (('a', 'a'), {}, 'a')),
 
     ('Rul0', Rul(abc, None),  'a',      0, 1,    _blank),
     ('Rul1', Rul(Cap(abc), None), 'a',  0, 1,    (('a',), {}, 'a')),
@@ -112,12 +115,16 @@ data = [  # noqa: E127
 ]
 
 
-@pytest.mark.parametrize('dfn,input,pos,end,match',
-                         [row[1:] for row in data],
-                         ids=[row[0] for row in data])
-def test_exprs(dfn, input, pos, end, match):
+@pytest.mark.parametrize('parser,dfn,input,pos,end,match',
+                         [(parser,) + row[1:]
+                          for parser in [PackratParser, MachineParser]
+                          for row in data],
+                         ids=[f'{parser}-{row[0]}'
+                              for parser in ['Pack', 'Mach']
+                              for row in data])
+def test_exprs(parser, dfn, input, pos, end, match):
     g = Grammar({'Start': dfn})
-    p = PackratParser(g)
+    p = parser(g)
     m = p.match(input, pos=pos, flags=pe.NONE)
     if match is None:
         assert m is None
