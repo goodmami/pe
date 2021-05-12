@@ -80,6 +80,8 @@ data = [  # noqa: E127
 
     ('Bnd0', Bnd(Cls('abc'), name='x'),
                               'a',      0, 1,    ((), {'x': None}, None)),
+    ('Bnd1', Bnd(Cap(Cls('abc')), name='x'),
+                              'a',      0, 1,    ((), {'x': 'a'}, None)),
 
     ('Seq0', Seq(abc),        'aaa',    0, 1,    _blank),
     ('Seq1', Seq(abc, abc),   'bbb',    0, 2,    _blank),
@@ -100,6 +102,9 @@ data = [  # noqa: E127
                               'axb',    0, 3,    (('a', 'b'), {}, 'a')),
     ('Cap6', Chc(Seq(Cap(abc), Cap(xyz)), Seq(Cap(abc), Cap(abc))),
                               'aa',     0, 2,    (('a', 'a'), {}, 'a')),
+    ('Cap7', Cap(Cap(abc)),   'abc',    0, 1,    (('a',), {}, 'a')),
+    ('Cap8', Cap(Bnd(Cap(abc), name='x')),
+                              'abc',    0, 1,    (('a',), {}, 'a')),
 
     ('Rul0', Rul(abc, None),  'a',      0, 1,    _blank),
     ('Rul1', Rul(Cap(abc), None), 'a',  0, 1,    (('a',), {}, 'a')),
@@ -112,6 +117,8 @@ data = [  # noqa: E127
                               'ab',     0, 2,    ((['a', 'b'],),
                                                   {},
                                                   ['a', 'b'])),
+    ('Rul6', Cap(Rul(Cap(abc), lambda x: int(x, 16), name='A')),
+                              'abc',    0, 1,    (('a',), {}, 'a')),
 ]
 
 

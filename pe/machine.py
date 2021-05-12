@@ -6,7 +6,7 @@ Inspired by Medeiros and Ierusalimschy, 2008, "A Parsing Machine for PEGs"
 
 """
 
-from typing import Union, Tuple, List, Optional, Any, NamedTuple
+from typing import Union, Tuple, List, Dict, Optional, Any
 import re
 from enum import IntEnum
 
@@ -32,15 +32,13 @@ class OpCode(IntEnum):
     CALL = 6
     RETURN = 7
     JUMP = 8
-    MARK = 9       # aka CaptureBegin
-    CAPTURE = 10       # aka CaptureBegin
-    APPLY = 11
-    REGEX = 12
-    LITERAL = 13
-    CLASS = 14
-    DOT = 15
-    # BIND = 16
-    # RULE = 17
+    REGEX = 9
+    LITERAL = 10
+    CLASS = 11
+    DOT = 12
+    NOOP = 13
+    # BIND = 14
+    # RULE = 15
 
 
 # Alias these for performance and convenience
@@ -54,23 +52,34 @@ FAILTWICE = OpCode.FAILTWICE
 CALL = OpCode.CALL
 RETURN = OpCode.RETURN
 JUMP = OpCode.JUMP
-MARK = OpCode.MARK
-CAPTURE = OpCode.CAPTURE
-APPLY = OpCode.APPLY
 REGEX = OpCode.REGEX
 LITERAL = OpCode.LITERAL
 CLASS = OpCode.CLASS
 DOT = OpCode.DOT
+NOOP = OpCode.NOOP
 
 
-class Instruction(NamedTuple):
-    opcode: OpCode                   # what kind of instruction
-    arg: Any = None                  # argument (e.g., REGEX pattern)
-
-
-_Step = Tuple[int, Any, Optional[Action]]  # (opcode, arg, action)
 _State = Tuple[int, int, int, int, int]  # (opidx, pos, mark, argidx, kwidx)
 _Binding = Tuple[str, Any]
+_Instruction = Tuple[
+    OpCode,
+    Any,              # op argument
+    bool,             # marking
+    bool,             # capturing
+    Optional[Action]  # rule action
+]
+_Program = List[_Instruction]
+_Index = Dict[str, int]
+
+
+def Instruction(
+    opcode: OpCode,
+    arg: Any = None,
+    marking: bool = False,
+    capturing: bool = False,
+    action: Optional[Action] = None,
+) -> _Instruction:
+    return (opcode, arg, marking, capturing, action)
 
 
 class MachineParser(Parser):
@@ -86,7 +95,7 @@ class MachineParser(Parser):
         # if flags & Flag.DEBUG:
         #     grammar = debug(grammar)
         pi, index = _make_program(grammar)
-        self.pi: List[_Step] = pi
+        self.pi: _Program = pi
         self._index = index
 
     @property
@@ -101,99 +110,138 @@ class MachineParser(Parser):
               pos: int = 0,
               flags: Flag = Flag.NONE) -> Union[Match, None]:
         memo: Union[Memo, None] = None
-        end, args, kwargs = self._match(s, pos, memo)
+        args: List[Any] = []
+        kwargs: List[_Binding] = []
+        end = _match(self, s, pos, args, kwargs, memo)
         if end < 0:
             return None
         else:
-            return Match(s, pos, end, self.grammar[self.start], args, kwargs)
+            return Match(
+                s,
+                pos,
+                end,
+                self.grammar[self.start],
+                args,
+                dict(kwargs)
+            )
 
-    def _match(self, s: str, pos: int, memo: Optional[Memo]):  # noqa: C901
-        pi = self.pi
-        stack: List[_State] = [
-            (0, 0, -1, 0, 0),    # failure (top-level backtrack entry)
-            (-1, -1, -1, 0, 0),  # success
-        ]
-        args: List[Any] = []
-        kwargs: List[_Binding] = []
 
-        idx = self._index[self.start]
-        while stack:
-            mark = -1
-            opcode, arg = pi[idx]
+def _match(
+    parser: MachineParser,
+    s: str,
+    pos: int,
+    args: List[Any],
+    kwargs: List[_Binding],
+    memo: Optional[Memo],
+) -> int:
+    pi = parser.pi
+    index = parser._index
+    stack: List[_State] = [
+        (0, 0, -1, 0, 0),    # failure (top-level backtrack entry)
+        (-1, -1, -1, 0, 0),  # success
+    ]
+    push = stack.append
+    pop = stack.pop
 
-            if opcode == REGEX:
-                m = arg.match(s, pos)
-                if m is None:
-                    idx = FAILURE
-                else:
-                    pos = m.end()
+    idx: int = index[parser.start]
+    while stack:
+        mark = -1
+        opcode, arg, marking, capturing, action = pi[idx]
 
-            elif opcode == LITERAL:
-                if s.startswith(arg, pos):
-                    pos += len(arg)
-                else:
-                    idx = FAILURE
+        if marking:
+            push((-1, -1, pos, len(args), len(kwargs)))
 
-            # elif opcode == CLASS:
-            #     # chars = arg
-            #     try:
-            #         if s[pos] in arg:
-            #             end = pos + 1
-            #             pos = end
-            #         else:
-            #             idx = FAILURE
-            #     except IndexError:
-            #         idx = FAILURE
+        if opcode == REGEX:
+            m = arg.match(s, pos)
+            if m is None:
+                idx = FAILURE
+            else:
+                pos = m.end()
 
-            elif opcode == DOT:
-                try:
-                    s[pos]
-                except IndexError:
-                    idx = FAILURE
-                else:
-                    pos += 1
-
-            elif opcode == BRANCH:
-                stack.append(
-                    (idx + arg, pos, mark, len(args), len(kwargs))
-                )
-                idx += 1
-                continue
-
-            elif opcode == CALL:
-                stack.append((idx + 1, -1, -1, -1, -1))
-                idx = self._index[arg]
-                continue
-
-            elif opcode == COMMIT:
-                stack.pop()
-                idx += arg
-                continue
-
-            elif opcode == UPDATE:
-                next_idx, _, prev_mark, _, _ = stack.pop()
-                stack.append(
-                    (next_idx, pos, prev_mark, len(args), len(kwargs))
-                )
-                idx += arg
-                continue
-
-            elif opcode == RESTORE:
-                pos = stack.pop()[1]
-                idx += arg
-                continue
-
-            elif opcode == FAILTWICE:
-                pos = stack.pop()[1]
+        elif opcode == LITERAL:
+            if s.startswith(arg, pos):
+                pos += len(arg)
+            else:
                 idx = FAILURE
 
-            elif opcode == RETURN:
-                idx = stack.pop()[0]
-                continue
+        # elif opcode == CLASS:
+        #     # chars = arg
+        #     try:
+        #         if s[pos] in arg:
+        #             end = pos + 1
+        #             pos = end
+        #         else:
+        #             idx = FAILURE
+        #     except IndexError:
+        #         idx = FAILURE
 
-            elif opcode == APPLY:
-                _, _, mark, argidx, kwidx = stack.pop()
-                _args, _kwargs = arg(
+        elif opcode == DOT:
+            try:
+                s[pos]
+            except IndexError:
+                idx = FAILURE
+            else:
+                pos += 1
+
+        elif opcode == BRANCH:
+            push((idx + arg, pos, mark, len(args), len(kwargs)))
+            idx += 1
+            continue
+
+        elif opcode == CALL:
+            push((idx + 1, -1, -1, -1, -1))
+            idx = index[arg]
+            continue
+
+        elif opcode == COMMIT:
+            pop()
+            idx += arg
+            continue
+
+        elif opcode == UPDATE:
+            next_idx, _, prev_mark, _, _ = pop()
+            push((next_idx, pos, prev_mark, len(args), len(kwargs)))
+            idx += arg
+            continue
+
+        elif opcode == RESTORE:
+            pos = pop()[1]
+            idx += arg
+            continue
+
+        elif opcode == FAILTWICE:
+            pos = pop()[1]
+            idx = FAILURE
+
+        elif opcode == RETURN:
+            idx = pop()[0]
+            continue
+
+        elif opcode == PASS:
+            break
+
+        elif opcode == FAIL:
+            idx = FAILURE
+
+        elif opcode != NOOP:
+            raise Error(f'invalid operation: {opcode}')
+
+        if idx == FAILURE:
+            idx, pos, _, argidx, kwidx = pop()
+            while pos < 0:  # pos is >= 0 only for backtracking entries
+                idx, pos, _, argidx, kwidx = pop()
+            args[argidx:] = []
+            if kwargs:
+                kwargs[kwidx:] = []
+        else:
+            if capturing:
+                _, _, mark, argidx, kwidx = pop()
+                args[argidx:] = [s[mark:pos]]
+                kwargs[kwidx:] = []
+
+            if action:
+                _, _, mark, argidx, kwidx = pop()
+                _args, _kwargs = action(
                     s,
                     mark,
                     pos,
@@ -206,48 +254,24 @@ class MachineParser(Parser):
                 else:
                     kwargs[kwidx:] = _kwargs.items()
 
-            elif opcode == MARK:
-                stack.append((-1, -1, pos, len(args), len(kwargs)))
+            idx += 1
 
-            elif opcode == CAPTURE:
-                mark = stack.pop()[2]
-                args.append(s[mark:pos])
-
-            elif opcode == PASS:
-                break
-
-            elif opcode == FAIL:
-                idx = FAILURE
-
-            else:
-                raise Error(f'invalid operation: {opcode}')
-
-            if idx == FAILURE:
-                idx, pos, markidx, argidx, kwidx = stack.pop()
-                while pos < 0:  # pos is >= 0 only for backtracking entries
-                    idx, pos, markidx, argidx, kwidx = stack.pop()
-                args[argidx:] = []
-                if kwargs:
-                    kwargs[kwidx:] = []
-            else:
-                idx += 1
-
-        if not stack:
-            return -1, (), {}
-        return pos, args, kwargs
+    if not stack:
+        return -1
+    return pos
 
 
-def _make_program(grammar):
+def _make_program(grammar) -> Tuple[_Program, _Index]:
     """A "program" is a set of instructions and mappings."""
     index = {}
-    pi = [Instruction(FAIL)]  # special instruction for general failure
+    pi: List[_Instruction] = []
 
+    pi.append(Instruction(FAIL))  # special instruction for general failure
     for name in grammar.definitions:
         index[name] = len(pi)
         _pi = _parsing_instructions(grammar[name])
         pi.extend(_pi)
         pi.append(Instruction(RETURN))
-
     pi.append(Instruction(PASS))  # success condition
 
     return pi, index
@@ -317,7 +341,16 @@ def _not(defn):
 
 def _cap(defn):
     pis = _parsing_instructions(defn.args[0])
-    return [Instruction(MARK)] + pis + [Instruction(CAPTURE)]
+    if not pis[0][2]:
+        pis[0] = (*pis[0][:2], True, *pis[0][3:])
+    else:
+        pis.insert(0, Instruction(NOOP, marking=True))
+    pi = pis[-1]
+    if not pi[3] and not pi[4] and pi[0] not in (COMMIT, UPDATE):
+        pis[-1] = (*pi[:3], True, *pi[4:])
+    else:
+        pis.append(Instruction(NOOP, capturing=True))
+    return pis
 
 
 def _bnd(defn):
@@ -349,7 +382,17 @@ def _rul(defn):
     pis = _parsing_instructions(subdefn)
     if action is None:
         return pis
-    return [Instruction(MARK)] + pis + [Instruction(APPLY, action)]
+    pi = pis[0]
+    if not pi[2]:
+        pis[0] = (*pi[:2], True, *pi[3:])
+    else:
+        pis.insert(0, Instruction(NOOP, marking=True))
+    pi = pis[-1]
+    if not pi[4] and pi[0] not in (COMMIT, UPDATE):
+        pis[-1] = (*pi[:4], action)
+    else:
+        pis.append(Instruction(NOOP, action=action))
+    return pis
 
 
 _op_map = {
