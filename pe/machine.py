@@ -16,6 +16,7 @@ from pe._match import Match
 from pe._types import Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
+from pe._escape import unescape
 from pe._optimize import optimize
 from pe.actions import Action, Bind
 from pe.operators import Rule
@@ -83,7 +84,6 @@ def Instruction(
 
 
 class MachineParser(Parser):
-    __slots__ = 'grammar', 'pi', '_index',
 
     def __init__(self, grammar: Grammar,
                  flags: Flag = Flag.NONE):
@@ -112,7 +112,8 @@ class MachineParser(Parser):
         memo: Union[Memo, None] = None
         args: List[Any] = []
         kwargs: List[_Binding] = []
-        end = _match(self, s, pos, args, kwargs, memo)
+        idx = self._index[self.start]
+        end = _match(self.pi, idx, s, pos, args, kwargs, memo)
         if end < 0:
             return None
         else:
@@ -127,53 +128,67 @@ class MachineParser(Parser):
 
 
 def _match(
-    parser: MachineParser,
+    pi: _Program,
+    idx: int,
     s: str,
     pos: int,
     args: List[Any],
     kwargs: List[_Binding],
     memo: Optional[Memo],
 ) -> int:
-    pi = parser.pi
-    index = parser._index
     stack: List[_State] = [
         (0, 0, -1, 0, 0),    # failure (top-level backtrack entry)
         (-1, -1, -1, 0, 0),  # success
     ]
+    # lookup optimizations
     push = stack.append
     pop = stack.pop
+    startswith = s.startswith
 
-    idx: int = index[parser.start]
     while stack:
         mark = -1
         opcode, arg, marking, capturing, action = pi[idx]
 
         if marking:
-            push((-1, -1, pos, len(args), len(kwargs)))
+            push((0, -1, pos, len(args), len(kwargs)))
 
         if opcode == REGEX:
-            m = arg.match(s, pos)
+            m = arg(s, pos)
             if m is None:
                 idx = FAILURE
             else:
                 pos = m.end()
 
         elif opcode == LITERAL:
-            if s.startswith(arg, pos):
+            if startswith(arg, pos):
                 pos += len(arg)
             else:
                 idx = FAILURE
 
-        # elif opcode == CLASS:
-        #     # chars = arg
-        #     try:
-        #         if s[pos] in arg:
-        #             end = pos + 1
-        #             pos = end
-        #         else:
-        #             idx = FAILURE
-        #     except IndexError:
-        #         idx = FAILURE
+        elif opcode == CLASS:
+            try:
+                c = s[pos]
+            except IndexError:
+                idx = FAILURE
+            else:
+                i = 1
+                matched = arg[0] == c
+                max_i = len(arg) - 1
+                while not matched and i < max_i:
+                    if arg[i] == '-':
+                        if arg[i-1] <= c <= arg[i+1]:
+                            matched = True
+                        i += 3
+                    else:
+                        if arg[i] == c:
+                            matched = True
+                        i += 1
+                if not matched and arg[-1] == c:
+                    matched = True
+                if matched:
+                    pos += 1
+                else:
+                    idx = FAILURE
 
         elif opcode == DOT:
             try:
@@ -190,7 +205,7 @@ def _match(
 
         elif opcode == CALL:
             push((idx + 1, -1, -1, -1, -1))
-            idx = index[arg]
+            idx = arg
             continue
 
         elif opcode == COMMIT:
@@ -261,20 +276,28 @@ def _match(
     return pos
 
 
+# Captures and actions cannot be placed on these operators because of
+# their effect on the stack
+NO_CAP_OR_ACT = {CALL, COMMIT, UPDATE, RESTORE, FAILTWICE, RETURN}
+
+
 def _make_program(grammar) -> Tuple[_Program, _Index]:
     """A "program" is a set of instructions and mappings."""
     index = {}
-    pi: List[_Instruction] = []
+    pis: List[_Instruction] = []
 
-    pi.append(Instruction(FAIL))  # special instruction for general failure
+    pis.append(Instruction(FAIL))  # special instruction for general failure
     for name in grammar.definitions:
-        index[name] = len(pi)
-        _pi = _parsing_instructions(grammar[name])
-        pi.extend(_pi)
-        pi.append(Instruction(RETURN))
-    pi.append(Instruction(PASS))  # success condition
+        index[name] = len(pis)
+        _pis = _parsing_instructions(grammar[name])
+        pis.extend(_pis)
+        pis.append(Instruction(RETURN))
+    # replace call symbols with locations
+    pis = [(pi[0], index[pi[1]], *pi[2:]) if pi[0] == CALL else pi
+           for pi in pis]
+    pis.append(Instruction(PASS))  # success condition
 
-    return pi, index
+    return pis, index
 
 
 def _dot(defn):
@@ -286,16 +309,12 @@ def _lit(defn):
 
 
 def _cls(defn):
-    s = (defn.args[0]
-         .replace('[', '\\[')
-         .replace(']', '\\]'))
-    pat = re.compile(f'[{s}]')
-    return [Instruction(REGEX, pat)]
+    return [Instruction(CLASS, unescape(defn.args[0]))]
 
 
 def _rgx(defn):
     pat = re.compile(f'{defn.args[0]}', flags=defn.args[1])
-    return [Instruction(REGEX, pat)]
+    return [Instruction(REGEX, pat.match)]
 
 
 def _opt(defn):
@@ -346,7 +365,7 @@ def _cap(defn):
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if not pi[3] and not pi[4] and pi[0] not in (COMMIT, UPDATE):
+    if not pi[3] and not pi[4] and pi[0] not in NO_CAP_OR_ACT:
         pis[-1] = (*pi[:3], True, *pi[4:])
     else:
         pis.append(Instruction(NOOP, capturing=True))
@@ -388,7 +407,7 @@ def _rul(defn):
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if not pi[4] and pi[0] not in (COMMIT, UPDATE):
+    if not pi[4] and pi[0] not in NO_CAP_OR_ACT:
         pis[-1] = (*pi[:4], action)
     else:
         pis.append(Instruction(NOOP, action=action))

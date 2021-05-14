@@ -8,7 +8,7 @@ from pe.operators import (
     Literal as Lit,
     Class as Cls,
     Regex as Rgx,
-    # Nonterminal as Non,
+    Nonterminal as Sym,
     Optional as Opt,
     Star as Str,
     Plus as Pls,
@@ -61,6 +61,9 @@ data = [  # noqa: E127
     ('Rgx2', Rgx('(?:a)(b)(?:c)(d)',),
                               'abcd',   0, 4,    _blank),
 
+    ('Sym0', Sym('abc'),      'a',      0, 1,    _blank),
+    ('Sym1', Sym('abc'),      'd',      0, 0,    None),
+
     ('Opt0', Opt(abc),        'd',      0, 0,    _blank),
     ('Opt1', Opt(abc),        'ab',     0, 1,    _blank),
     ('Opt2', Opt(abseq),      'd',      0, 0,    _blank),
@@ -97,13 +100,18 @@ data = [  # noqa: E127
     ('Cap3', Str(Cap(abc)),   'aabbc',  0, 5,    (('a', 'a', 'b', 'b', 'c',),
                                                   {},
                                                   'a')),
+    # Captures inside/outside repetition are handled differently
     ('Cap4', Cap(Str(abc)),   'aabbc',  0, 5,    (('aabbc',), {}, 'aabbc')),
     ('Cap5', Seq(Cap(abc), xyz, Cap(abc)),
                               'axb',    0, 3,    (('a', 'b'), {}, 'a')),
+    # Captures of partial match are discarded
     ('Cap6', Chc(Seq(Cap(abc), Cap(xyz)), Seq(Cap(abc), Cap(abc))),
                               'aa',     0, 2,    (('a', 'a'), {}, 'a')),
+    # Capture suppresses inner values
     ('Cap7', Cap(Cap(abc)),   'abc',    0, 1,    (('a',), {}, 'a')),
     ('Cap8', Cap(Bnd(Cap(abc), name='x')),
+                              'abc',    0, 1,    (('a',), {}, 'a')),
+    ('Cap9', Cap(Rul(Cap(abc), lambda x: int(x, 16), name='A')),
                               'abc',    0, 1,    (('a',), {}, 'a')),
 
     ('Rul0', Rul(abc, None),  'a',      0, 1,    _blank),
@@ -117,8 +125,13 @@ data = [  # noqa: E127
                               'ab',     0, 2,    ((['a', 'b'],),
                                                   {},
                                                   ['a', 'b'])),
-    ('Rul6', Cap(Rul(Cap(abc), lambda x: int(x, 16), name='A')),
-                              'abc',    0, 1,    (('a',), {}, 'a')),
+
+    # Regression tests for Machine Parser
+    ('Rgr0', Cap(Sym('abc')), 'a',      0, 1,    (('a',), {}, 'a')),
+    ('Rgr1', Cap(Sym('abcs')), 'aaa',   0, 3,    (('aaa',), {}, 'aaa')),
+    ('Rgr2', Seq(abc, Not(Dot())),
+                              'a',      0, 1,    _blank),
+
 ]
 
 
@@ -130,7 +143,7 @@ data = [  # noqa: E127
                               for parser in ['Pack', 'Mach']
                               for row in data])
 def test_exprs(parser, dfn, input, pos, end, match):
-    g = Grammar({'Start': dfn})
+    g = Grammar({'Start': dfn, 'abc': abc, 'abcs': Str(abc)})
     p = parser(g)
     m = p.match(input, pos=pos, flags=pe.NONE)
     if match is None:
