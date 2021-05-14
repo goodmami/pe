@@ -7,6 +7,7 @@ import re
 from itertools import groupby, count
 
 from pe._constants import Operator
+from pe._errors import Error
 from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
@@ -103,7 +104,7 @@ def _inline(defs, defn, visited):
 
 
 def _regex_dot(defn, defs, grpid):
-    return Regex('.')
+    return Regex('(?s:.)')
 
 
 def _regex_literal(defn, defs, grpid):
@@ -111,7 +112,11 @@ def _regex_literal(defn, defs, grpid):
 
 
 def _regex_class(defn, defs, grpid):
-    return Regex(f'[{defn.args[0]}]')
+    s = (defn.args[0]
+         .replace('[', '\\[')
+         .replace(']', '\\]'))
+    # TODO: validate ranges
+    return Regex(f'[{s}]')
 
 
 def _regex_sequence(defn, defs, grpid):
@@ -262,3 +267,12 @@ def _regex(defn: Definition, defs, grpid):
         return rgx
     else:
         return defn
+
+
+def regex(defn: Definition):
+    # this can be expanded if there are no nonterminals, captures, or actions
+    if defn.op not in (DOT, LIT, CLS, RGX):
+        raise Error(f'cannot convert {defn.op} to a regular expression')
+    elif defn.op != RGX:
+        defn = _regex(defn, {}, count(start=1))
+    return defn
