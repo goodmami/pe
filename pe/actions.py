@@ -1,5 +1,5 @@
 
-from typing import Tuple, Dict, Optional
+from typing import Sequence, Tuple, Dict, Optional
 import warnings
 
 from pe._errors import ParseError, GrammarWarning
@@ -20,7 +20,7 @@ class Action:
                  s: str,
                  pos: int,
                  end: int,
-                 args: Tuple,
+                 args: Sequence,
                  kwargs: Optional[Dict]) -> Tuple[Tuple, Optional[Dict]]:
         raise NotImplementedError
 
