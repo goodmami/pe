@@ -5,7 +5,7 @@ from pe.actions import Constant, Pack, Pair, Fail, Capture
 
 Json = pe.compile(
     r'''
-    Start    <- Spacing Value EOF
+    Start    <- Spacing Value Spacing EOF
     Value    <- Object / Array / String / Number / Constant / BADVALUE
     Object   <- LBRACE (Member (COMMA Member)*)? BADCOMMA? RBRACE
     Member   <- String COLON Value
