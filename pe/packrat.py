@@ -25,7 +25,7 @@ from pe._match import Match, determine
 from pe._types import RawMatch, Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
-from pe._optimize import optimize
+from pe._optimize import optimize, regex
 from pe._debug import debug
 from pe._misc import ansicolor
 from pe.actions import Action
@@ -123,18 +123,8 @@ class PackratParser(Parser):
 
     def _terminal(self, definition: Definition) -> _Matcher:
 
-        op = definition.op
-        if op == Operator.DOT:
-            _re = re.compile('.')
-        elif op == Operator.LIT:
-            _re = re.compile(re.escape(definition.args[0]))
-        elif op == Operator.CLS:
-            s = (definition.args[0]
-                 .replace('[', '\\[')
-                 .replace(']', '\\]'))
-            _re = re.compile(f'[{s}]')  # TODO: validate ranges
-        elif op == Operator.RGX:
-            _re = re.compile(definition.args[0], flags=definition.args[1])
+        definition = regex(definition)
+        _re = re.compile(definition.args[0], flags=definition.args[1])
 
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             m = _re.match(s, pos)

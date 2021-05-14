@@ -36,7 +36,7 @@ _blank = ((), {}, None)
 data = [  # noqa: E127
     # id     definition       input,  start,end, (groups, groupdict, value)
     ('Dot0', Dot(),           'aaa',    0, 1,    _blank),
-    ('Dot1', Dot(),           '   ',    0, 1,    _blank),
+    ('Dot1', Dot(),           '\n',     0, 1,    _blank),
     ('Dot2', Dot(),           '',       0, FAIL, None),
 
     ('Lit0', Lit('a',),       'a',      0, 1,    _blank),
