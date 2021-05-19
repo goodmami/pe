@@ -1,6 +1,7 @@
 
 import pe
 from pe.operators import (
+    Literal,
     Class,
     Regex,
     Sequence,
@@ -71,6 +72,12 @@ def test_common():
     assert (cload(r'A <- !"a" . "b"') ==
             cload(r'A <- ![a] . "b"') ==
             grm({'A': Sequence(Class('a', negate=True), Literal('b'))}))
+    # now show the dropped sequence
+    assert (cload(r'A <- !"a" .') ==
+            cload(r'A <- ![a] .') ==
+            grm({'A': Class('a', negate=True)}))
+
+
 def test_regex():
     assert (rload(r'A <- "a"') ==
             grm({'A': Regex(r'a')}))

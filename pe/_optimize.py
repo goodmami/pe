@@ -137,6 +137,11 @@ def _common(defn):
                     subdefs[i:i+2] = [Class(clsstr, negate=True)]
             i += 1
 
+    # Sequence(x)  ->  x
+    if op == SEQ and len(defn.args[0]) == 1:
+        defn = defn.args[0][0]
+        op = defn.op
+
     return defn
 
 
