@@ -41,6 +41,7 @@ class PackratParser(Parser):
 
         grammar = optimize(grammar,
                            inline=flags & Flag.INLINE,
+                           common=flags & Flag.COMMON,
                            regex=flags & Flag.REGEX)
         if flags & Flag.DEBUG:
             grammar = debug(grammar)

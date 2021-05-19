@@ -49,5 +49,6 @@ class Flag(enum.Flag):
     STRICT = _auto()  # raise error on match failure
     MEMOIZE = _auto()  # use a packrat memo
     INLINE = _auto()  # inline non-recursive rules
+    COMMON = _auto()  # replace common idioms with faster alternatives
     REGEX = _auto()  # combine adjacent terms into a single regex
-    OPTIMIZE = INLINE | REGEX
+    OPTIMIZE = INLINE | COMMON | REGEX
