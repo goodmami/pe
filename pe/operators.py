@@ -48,8 +48,8 @@ def Literal(string: str):
     return Definition(LIT, (string,))
 
 
-def Class(chars: str):
-    return Definition(CLS, (chars,))
+def Class(chars: str, negate: bool = False):
+    return Definition(CLS, (chars, negate))
 
 
 def Regex(pattern: Union[str, Pattern], flags: int = 0):
