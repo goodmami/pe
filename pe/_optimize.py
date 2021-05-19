@@ -11,6 +11,7 @@ from pe._errors import Error
 from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
+    Class,
     Regex,
     Choice,
     Optional,
@@ -42,7 +43,7 @@ CHC = Operator.CHC
 RUL = Operator.RUL
 
 
-def optimize(g: Grammar, inline=True, regex=True):
+def optimize(g: Grammar, inline=True, common=True, regex=True):
     """Combine adjacent terms into a single regular expression."""
     defs = g.definitions
 
@@ -50,6 +51,12 @@ def optimize(g: Grammar, inline=True, regex=True):
         new = {}
         for name, defn in defs.items():
             new[name] = _inline(defs, defn, {name})
+        defs = new
+
+    if common:
+        new = {}
+        for name, defn in defs.items():
+            new[name] = _common(defn)
         defs = new
 
     if regex:
@@ -103,6 +110,36 @@ def _inline(defs, defn, visited):
             return defn
 
 
+def _common(defn):
+    op = defn.op
+
+    # descend first
+    make_op = _op_map.get(op)
+    if op in (SEQ, CHC):
+        defn = make_op(*(_common(d) for d in defn.args[0]))
+    elif make_op:
+        defn = make_op(_common(defn.args[0]), *defn.args[1:])
+
+    # ![...] .  ->  [^...]
+    # !"." .    ->  [^.]
+    if op == SEQ:
+        subdefs = defn.args[0]
+        i = 0
+        while i < len(subdefs) - 1:
+            d = subdefs[i]
+            if (d.op == NOT and subdefs[i+1].op == DOT):
+                notd = d.args[0]
+                if notd.op == CLS:
+                    negated = not notd.args[1]
+                    subdefs[i:i+2] = [Class(notd.args[0], negate=negated)]
+                elif notd.op == LIT and len(notd.args[0]) == 1:
+                    clsstr = re.escape(notd.args[0])
+                    subdefs[i:i+2] = [Class(clsstr, negate=True)]
+            i += 1
+
+    return defn
+
+
 def _regex_dot(defn, defs, grpid):
     return Regex('(?s:.)')
 
@@ -112,46 +149,25 @@ def _regex_literal(defn, defs, grpid):
 
 
 def _regex_class(defn, defs, grpid):
+    neg = '^' if defn.args[1] else ''
     s = (defn.args[0]
          .replace('[', '\\[')
          .replace(']', '\\]'))
     # TODO: validate ranges
-    return Regex(f'[{s}]')
+    return Regex(f'[{neg}{s}]')
 
 
 def _regex_sequence(defn, defs, grpid):
-    subdefs = _seq_first_pass(defs, defn.args[0], grpid)
-    subdefs = _seq_join_unstructured(subdefs)
-    return Sequence(*subdefs)
-
-
-def _seq_first_pass(defs, subdefs, grpid):
-    i = 0
-    # Special case: ![abc] . -> [^abc]
-    while i < len(subdefs):
-        d = subdefs[i]
-        if (i != len(subdefs) - 1 and d.op == NOT and subdefs[i+1].op == DOT):
-            notd = d.args[0]
-            if notd.op == CLS:
-                yield Regex(f'[^{notd.args[0]}]')
-                i += 1
-            elif notd.op == LIT and len(notd.args[0]) == 1:
-                yield Regex(f'[^{re.escape(notd.args[0])}]')
-                i += 1
-            else:
-                yield _regex(d, defs, grpid)
-        else:
-            yield _regex(d, defs, grpid)
-        i += 1
-
-
-def _seq_join_unstructured(subdefs):
-    for k, grp in groupby(subdefs, key=lambda d: d.op):
+    _subdefs = [_regex(subdef, defs, grpid) for subdef in defn.args[0]]
+    subdefs = []
+    for k, grp in groupby(_subdefs, key=lambda d: d.op):
         # only join regexes in sequence if unstructured
         if k == RGX:
-            yield Regex(''.join(d.args[0] for d in grp))
+            subdefs.append(Regex(''.join(d.args[0] for d in grp)))
         else:
-            yield from grp
+            subdefs.extend(grp)
+
+    return Sequence(*subdefs)
 
 
 def _regex_choice(defn, defs, grpid):

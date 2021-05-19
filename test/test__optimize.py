@@ -1,6 +1,7 @@
 
 import pe
 from pe.operators import (
+    Class,
     Regex,
     Sequence,
     Nonterminal,
@@ -11,17 +12,24 @@ from pe._parse import loads
 from pe._optimize import optimize
 
 
-def gload(s, inline=False, regex=False):
+def gload(s, inline=False, common=False, regex=False):
     start, defmap = loads(s)
-    return optimize(Grammar(defmap, start=start), inline=inline, regex=regex)
+    return optimize(Grammar(defmap, start=start),
+                    inline=inline,
+                    common=common,
+                    regex=regex)
 
 
 def iload(s):
     return gload(s, inline=True)
 
 
-def rload(s):
-    return gload(s, regex=True)
+def cload(s):
+    return gload(s, common=True)
+
+
+def rload(s, common=False):
+    return gload(s, common=common, regex=True)
 
 
 def grm(d):
@@ -52,6 +60,17 @@ def test_inline():
                       flags=pe.INLINE).match('ab').value() == 'b'
 
 
+def test_common():
+    assert (cload(r'A <- "a"') ==
+            gload(r'A <- "a"'))
+    assert (cload(r'A <- !"a"') ==
+            gload(r'A <- !"a"'))
+    assert (cload(r'A <- !"a"') ==
+            gload(r'A <- !"a"'))
+    # add "b" to avoid dropping the sequence
+    assert (cload(r'A <- !"a" . "b"') ==
+            cload(r'A <- ![a] . "b"') ==
+            grm({'A': Sequence(Class('a', negate=True), Literal('b'))}))
 def test_regex():
     assert (rload(r'A <- "a"') ==
             grm({'A': Regex(r'a')}))
@@ -85,12 +104,14 @@ def test_regex_values():
 
 def test_regex_not_dot():
     assert (rload(r'A <- !"a" .')
+            == grm({'A': Regex(r'(?!a)(?s:.)')}))
+    assert (rload(r'A <- !"a" .', common=True)
             == grm({'A': Regex(r'[^a]')}))
-    assert (rload(r'A <- !"\\" .')
+    assert (rload(r'A <- !"\\" .', common=True)
             == grm({'A': Regex(r'[^\\]')}))
-    assert (rload(r'A <- ![\\] .')
+    assert (rload(r'A <- ![\\] .', common=True)
             == grm({'A': Regex(r'[^\\]')}))
-    assert (rload(r'A <- ![abc] .')
+    assert (rload(r'A <- ![abc] .', common=True)
             == grm({'A': Regex(r'[^abc]')}))
-    assert (rload(r'A <- (![abc] .)*')
+    assert (rload(r'A <- (![abc] .)*', common=True)
             == grm({'A': Regex(r'(?=(?P<_1>(?:[^abc])*))(?P=_1)')}))
