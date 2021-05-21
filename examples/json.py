@@ -10,7 +10,7 @@ Json = pe.compile(
     Object   <- LBRACE (Member (COMMA Member)*)? BADCOMMA? RBRACE
     Member   <- String COLON Value
     Array    <- LBRACK (Value (COMMA Value)*)? BADCOMMA? RBRACK
-    String   <- ["] (!["\\] .)* ('\\' . / (!["\\] .)+)* ["]
+    String   <- ["] ~( (!["\\] .)* ('\\' . / (!["\\] .)+)* ) ["]
     Number   <- Integer / Float
     Constant <- TRUE / FALSE / NULL
     Integer  <- INTEGER ![.eE]
@@ -35,7 +35,6 @@ Json = pe.compile(
     actions={
         'Object': Pair(dict),
         'Array': Pack(list),
-        'String': Capture(lambda s: s[1:-1]),
         'Integer': Capture(int),
         'Float': Capture(float),
         'TRUE': Constant(True),
