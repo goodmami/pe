@@ -526,8 +526,9 @@ cdef class Literal(Scanner):
 
 
 cdef class CharacterClass(Scanner):
-    cdef list _ranges
     cdef str _chars
+    cdef str _ranges
+    cdef int _rangelen
     cdef bint _negate
     cdef public:
         int mincount, maxcount
@@ -543,7 +544,7 @@ cdef class CharacterClass(Scanner):
         cdef int i = 0, n = len(clsstr)
         while i < n-2:
             if clsstr[i+1] == '-':
-                ranges.append((clsstr[i], clsstr[i+2]))
+                ranges.extend((clsstr[i], clsstr[i+2]))
                 i += 3
             else:
                 chars.append(clsstr[i])
@@ -553,26 +554,30 @@ cdef class CharacterClass(Scanner):
             chars.append(clsstr[i])
             i += 1
         self._chars = ''.join(chars)
-        self._ranges = ranges
+        self._ranges = ''.join(ranges)
+        self._rangelen = len(self._ranges)
         self._negate = negate
         self.mincount = mincount
         self.maxcount = maxcount
 
     cdef int _scan(self, str s, int pos, int slen) except -2:
-        cdef Py_UCS4 a, b, c
+        cdef Py_UCS4 c
+        cdef str ranges = self._ranges
         cdef bint matched
         cdef int mincount = self.mincount
         cdef int maxcount = self.maxcount
+        cdef int i = 0
         while maxcount and pos < slen:
             c = s[pos]
             matched = False
             if c in self._chars:
                 matched = True
             else:
-                for a, b in self._ranges:
-                    if a <= c <= b:
+                while i < self._rangelen:
+                    if ranges[i] <= c <= ranges[i+1]:
                         matched = True
                         break
+                    i += 2
             if matched ^ self._negate:
                 pos += 1
                 maxcount -= 1
