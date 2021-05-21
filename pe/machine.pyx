@@ -37,7 +37,7 @@ cdef enum OpCode:
     CALL = 6
     RETURN = 7
     JUMP = 8
-    TERMINAL = 9
+    SCAN = 9
     NOOP = 10
 
 
@@ -79,25 +79,38 @@ cdef State* pop(State* state) except? NULL:
 
 
 _Binding = Tuple[str, Any]
-_Instruction = Tuple[
-    int,              # OpCode,
-    Any,              # op argument
-    bool,             # marking
-    bool,             # capturing
-    Optional[Action]  # rule action
-]
-_Program = List[_Instruction]
 _Index = Dict[str, int]
 
 
-def Instruction(
-    opcode: int, #OpCode,
-    arg: Any = None,
-    marking: bool = False,
-    capturing: bool = False,
-    action: Optional[Action] = None,
-) -> _Instruction:
-    return (opcode, arg, marking, capturing, action)
+cdef class Instruction:
+    cdef public:
+        OpCode opcode
+        short oploc
+        Scanner scanner
+        bint marking
+        bint capturing
+        object action
+        str name
+
+    def __init__(
+        self,
+        OpCode opcode, short oploc=1,
+        Scanner scanner=None,
+        bint marking=False,
+        bint capturing=False,
+        object action=None,
+        str name=None
+    ):
+        self.opcode = opcode
+        self.oploc = oploc
+        self.scanner = scanner
+        self.marking = marking
+        self.capturing = capturing
+        self.action = action
+        self.name = name
+
+
+_Program = List[Instruction]
 
 
 class MachineParser(Parser):
@@ -190,67 +203,67 @@ cdef class _Parser:
             raise TypeError
         # lookup optimizations
         pi = self.pi
-        cdef OpCode opcode
+        # cdef OpCode opcode
         cdef int slen = len(s)
-        cdef Scanner scanner
+        cdef Instruction instr
         while state:
-            opcode, arg, marking, capturing, action = pi[idx]
+            instr = pi[idx]
+            # opcode, arg, marking, capturing, action = pi[idx]
 
-            if marking:
+            if instr.marking:
                 state = push(0, -1, pos, len(args), len(kwargs), state)
 
-            if opcode == TERMINAL:
-                scanner = arg
-                pos = scanner._scan(s, pos, slen)
+            if instr.opcode == SCAN:
+                pos = instr.scanner._scan(s, pos, slen)
                 if pos < 0:
                     idx = FAILURE
 
-            elif opcode == BRANCH:
-                state = push(idx + arg, pos, -1, len(args), len(kwargs), state)
+            elif instr.opcode == BRANCH:
+                state = push(idx + instr.oploc, pos, -1, len(args), len(kwargs), state)
                 idx += 1
                 continue
 
-            elif opcode == CALL:
+            elif instr.opcode == CALL:
                 state = push(idx + 1, -1, -1, -1, -1, state)
-                idx = arg
+                idx = instr.oploc
                 continue
 
-            elif opcode == COMMIT:
+            elif instr.opcode == COMMIT:
                 state = pop(state)
-                idx += arg
+                idx += instr.oploc
                 continue
 
-            elif opcode == UPDATE:
+            elif instr.opcode == UPDATE:
                 state.pos = pos
                 state.argidx = len(args)
                 state.kwidx = len(kwargs)
-                idx += arg
+                idx += instr.oploc
                 continue
 
-            elif opcode == RESTORE:
+            elif instr.opcode == RESTORE:
                 pos = state.pos
                 state = pop(state)
-                idx += arg
+                idx += instr.oploc
                 continue
 
-            elif opcode == FAILTWICE:
+            elif instr.opcode == FAILTWICE:
                 pos = state.pos
                 state = pop(state)
                 idx = FAILURE
 
-            elif opcode == RETURN:
+            elif instr.opcode == RETURN:
                 idx = state.opidx
                 state = pop(state)
                 continue
 
-            elif opcode == PASS:
+            elif instr.opcode == PASS:
                 break
 
-            elif opcode == FAIL:
+            elif instr.opcode == FAIL:
                 idx = FAILURE
 
-            elif opcode != NOOP:
-                raise Error(f'invalid operation: {opcode}')
+            elif instr.opcode != NOOP:
+                raise Error(f'invalid operation: {instr.opcode}')
 
             if idx == FAILURE:
                 # pos is >= 0 only for backtracking entries
@@ -263,13 +276,13 @@ cdef class _Parser:
                     kwargs[state.kwidx:] = []
                 state = pop(state)  # pop backtracking entry
             else:
-                if capturing:
+                if instr.capturing:
                     args[state.argidx:] = [s[state.mark:pos]]
                     kwargs[state.kwidx:] = []
                     state = pop(state)
 
-                if action:
-                    _args, _kwargs = action(
+                if instr.action is not None:
+                    _args, _kwargs = instr.action(
                         s,
                         state.mark,
                         pos,
@@ -300,7 +313,7 @@ NO_CAP_OR_ACT = {CALL, COMMIT, UPDATE, RESTORE, FAILTWICE, RETURN}
 def _make_program(grammar) -> Tuple[_Program, _Index]:
     """A "program" is a set of instructions and mappings."""
     index = {}
-    pis: List[_Instruction] = []
+    pis: _Program = []
 
     pis.append(Instruction(FAIL))  # special instruction for general failure
     for name in grammar.definitions:
@@ -308,33 +321,38 @@ def _make_program(grammar) -> Tuple[_Program, _Index]:
         _pis = _parsing_instructions(grammar[name])
         pis.extend(_pis)
         pis.append(Instruction(RETURN))
-    # replace call symbols with locations
-    pis = [(pi[0], index[pi[1]], *pi[2:]) if pi[0] == CALL else pi
-           for pi in pis]
+
+    # add locations to calls
+    for pi in pis:
+        if pi.opcode == CALL:
+            pi.oploc = index[pi.name]
+
     pis.append(Instruction(PASS))  # success condition
 
     return pis, index
 
 
 def _dot(defn):
-    return [Instruction(TERMINAL, Dot())]
+    return [Instruction(SCAN, scanner=Dot())]
 
 
 def _lit(defn):
-    return [Instruction(TERMINAL, Literal(defn.args[0]))]
+    return [Instruction(SCAN, scanner=Literal(defn.args[0]))]
 
 
 def _cls(defn, mincount=1, maxcount=1):
-    return [Instruction(TERMINAL,
-                        CharacterClass(unescape(defn.args[0]),
-                                       negate=defn.args[1],
-                                       mincount=mincount,
-                                       maxcount=maxcount))]
+    cclass = CharacterClass(
+        unescape(defn.args[0]),
+        negate=defn.args[1],
+        mincount=mincount,
+        maxcount=maxcount
+    )
+    return [Instruction(SCAN, scanner=cclass)]
 
 
 def _rgx(defn):
     pat = re.compile(f'{defn.args[0]}', flags=defn.args[1])
-    return [Instruction(TERMINAL, Regex(pat))]
+    return [Instruction(SCAN, scanner=Regex(pat))]
 
 
 def _opt(defn):
@@ -349,28 +367,29 @@ def _pls(defn): return _rpt(defn, 1)
 
 
 def _rpt(defn, mincount):
-    pi = _parsing_instructions(defn.args[0])
-    if (len(pi) == 1
-        and pi[0][0] == TERMINAL
-        and isinstance(pi[0][1], CharacterClass)
-        and not any(x for x in pi[0][2:])
+    pis = _parsing_instructions(defn.args[0])
+    if (len(pis) == 1
+        and pis[0].opcode == SCAN
+        and isinstance(pis[0].scanner, CharacterClass)
+        and not (pis[0].marking or pis[0].capturing)
+        and pis[0].action is None
     ):
-        _, scanner, marking, capturing, action = pi[0]
-        scanner.mincount = mincount
-        scanner.maxcount = -1
-        return [Instruction(TERMINAL,
-                            scanner,
-                            marking=marking,
-                            capturing=capturing,
-                            action=action)]
-    return [*(pi * mincount),
-            Instruction(BRANCH, len(pi) + 2),
-            *pi,
-            Instruction(UPDATE, -len(pi))]
+        pi = pis[0]
+        pi.scanner.mincount = mincount
+        pi.scanner.maxcount = -1
+        return [Instruction(SCAN,
+                            scanner=pi.scanner,
+                            marking=pi.marking,
+                            capturing=pi.capturing,
+                            action=pi.action)]
+    return [*(pis * mincount),
+            Instruction(BRANCH, len(pis) + 2),
+            *pis,
+            Instruction(UPDATE, -len(pis))]
 
 
 def _sym(defn):
-    return [Instruction(CALL, defn.args[0])]
+    return [Instruction(CALL, name=defn.args[0])]
 
 
 def _and(defn):
@@ -390,13 +409,16 @@ def _not(defn):
 
 def _cap(defn):
     pis = _parsing_instructions(defn.args[0])
-    if not pis[0][2]:
-        pis[0] = (*pis[0][:2], True, *pis[0][3:])
+    if not pis[0].marking:
+        pis[0].marking = True
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if not pi[3] and not pi[4] and pi[0] not in NO_CAP_OR_ACT:
-        pis[-1] = (*pi[:3], True, *pi[4:])
+    if (not pi.capturing
+        and pi.action is None
+        and pi.opcode not in NO_CAP_OR_ACT
+    ):
+        pis[-1].capturing = True
     else:
         pis.append(Instruction(NOOP, capturing=True))
     return pis
@@ -432,13 +454,13 @@ def _rul(defn):
     if action is None:
         return pis
     pi = pis[0]
-    if not pi[2]:
-        pis[0] = (*pi[:2], True, *pi[3:])
+    if not pi.marking:
+        pi.marking = True
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if not pi[4] and pi[0] not in NO_CAP_OR_ACT:
-        pis[-1] = (*pi[:4], action)
+    if pi.action is None and pi.opcode not in NO_CAP_OR_ACT:
+        pi.action = action
     else:
         pis.append(Instruction(NOOP, action=action))
     return pis
