@@ -133,8 +133,7 @@ def _common(defn):
                     negated = not notd.args[1]
                     subdefs[i:i+2] = [Class(notd.args[0], negate=negated)]
                 elif notd.op == LIT and len(notd.args[0]) == 1:
-                    clsstr = re.escape(notd.args[0])
-                    subdefs[i:i+2] = [Class(clsstr, negate=True)]
+                    subdefs[i:i+2] = [Class(notd.args[0], negate=True)]
             i += 1
 
     # Sequence(x)  ->  x
@@ -155,11 +154,11 @@ def _regex_literal(defn, defs, grpid):
 
 def _regex_class(defn, defs, grpid):
     neg = '^' if defn.args[1] else ''
-    s = (defn.args[0]
-         .replace('[', '\\[')
-         .replace(']', '\\]'))
-    # TODO: validate ranges
-    return Regex(f'[{neg}{s}]')
+    clsstr = ''.join(
+        f'{re.escape(a)}-{re.escape(b)}' if b else re.escape(a)
+        for a, b in defn.args[0]
+    )
+    return Regex(f'[{neg}{clsstr}]')
 
 
 def _regex_sequence(defn, defs, grpid):

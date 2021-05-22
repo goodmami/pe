@@ -1,6 +1,6 @@
 
 
-from typing import Union, List, Dict, Pattern, Callable
+from typing import Union, List, Tuple, Dict, Pattern, Callable, overload
 
 from pe._constants import ANONYMOUS, Operator
 from pe._errors import GrammarError
@@ -48,8 +48,36 @@ def Literal(string: str):
     return Definition(LIT, (string,))
 
 
-def Class(chars: str, negate: bool = False):
-    return Definition(CLS, (chars, negate))
+@overload
+def Class(arg: str, negate: bool) -> Definition:
+    ...
+
+
+@overload
+def Class(arg: List[Tuple[str, Union[str, None]]], negate: bool) -> Definition:
+    ...
+
+
+def Class(arg, negate: bool = False):
+    ranges: List[Tuple[str, Union[str, None]]]
+    if isinstance(arg, list):
+        ranges = arg
+    else:
+        assert isinstance(arg, str)
+        ranges = []
+        i = 0
+        while i < len(arg) - 2:
+            if arg[i+1] == '-':
+                ranges.append((arg[i], arg[i+2]))
+                i += 3
+            else:
+                ranges.append((arg[i], None))
+                i += 1
+        while i < len(arg):
+            ranges.append((arg[i], None))
+            i += 1
+
+    return Definition(CLS, (ranges, negate))
 
 
 def Regex(pattern: Union[str, Pattern], flags: int = 0):

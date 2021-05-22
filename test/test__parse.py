@@ -40,12 +40,19 @@ def test_loads_literal():
     assert eloads("'\\['") == Literal("[")
     assert eloads("'\\\\'") == Literal("\\")
     assert eloads("'\\]'") == Literal("]")
-    # TODO: octal, utf8, utf16, utf32, escape errors
+    assert eloads("'\\123'") == Literal('S')
+    assert eloads("'\\x61'") == Literal('a')
+    assert eloads("'\\u0061'") == Literal('a')
+    assert eloads("'\\U00000061'") == Literal('a')
 
 
 def test_loads_class():
     assert eloads('[xyz]') == Class('xyz')
     assert eloads('[xyz]  # comment') == Class('xyz')
+    assert eloads('[x-z]') == Class('x-z')
+    assert eloads('[\\[\\]]') == Class('[]')
+    assert eloads('[xy\\u007a]') == Class('xyz')
+    assert eloads('[\xe1bc]') == Class('ábc')
 
 
 def test_loads_nonterminal():

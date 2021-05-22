@@ -28,9 +28,12 @@ def test_Literal():
 
 
 def test_Class():
-    assert Class('foo') == Def(Op.CLS, ('foo', False))
-    assert Class('f') == Def(Op.CLS, ('f', False))
-    assert Class('f', negate=True) == Def(Op.CLS, ('f', True))
+    assert Class('foo') == Def(
+        Op.CLS,
+        ([('f', None), ('o', None), ('o', None)], False)
+    )
+    assert Class('f') == Def(Op.CLS, ([('f', None)], False))
+    assert Class('f', negate=True) == Def(Op.CLS, ([('f', None)], True))
 
 
 def test_Regex():

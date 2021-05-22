@@ -55,6 +55,9 @@ data = [  # noqa: E127
     ('Cls2', Cls('ab',),      'b',      0, 1,    _blank),
     ('Cls3', Cls('ab',),      'a',      1, FAIL, None),
     ('Cls4', Cls('ab',),      'ab',     1, 2,    _blank),
+    ('Cls5', Cls('a-c',),     'b',      0, 1,    _blank),
+    ('Cls6', Cls('a-c-z',),   'e',      0, FAIL, None),
+    ('Cls7', Cls('a-cd-z',),  'e',      0, 1,    _blank),
 
     ('Rgx0', Rgx('a*'),       'aaa',    0, 3,    _blank),
     ('Rgx1', Rgx('a|b',),     'b',      0, 1,    _blank),

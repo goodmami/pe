@@ -342,7 +342,7 @@ def _lit(defn):
 
 def _cls(defn, mincount=1, maxcount=1):
     cclass = CharacterClass(
-        unescape(defn.args[0]),
+        defn.args[0],
         negate=defn.args[1],
         mincount=mincount,
         maxcount=maxcount
@@ -535,26 +535,13 @@ cdef class CharacterClass(Scanner):
 
     def __init__(
         self,
-        str clsstr,
+        list ranges,
         bint negate = False,
         int mincount = 1,
         int maxcount = 1
     ):
-        cdef list ranges = [], chars = []
-        cdef int i = 0, n = len(clsstr)
-        while i < n-2:
-            if clsstr[i+1] == '-':
-                ranges.extend((clsstr[i], clsstr[i+2]))
-                i += 3
-            else:
-                chars.append(clsstr[i])
-                i += 1
-        # remaining character(s) cannot be ranges
-        while i < n:
-            chars.append(clsstr[i])
-            i += 1
-        self._chars = ''.join(chars)
-        self._ranges = ''.join(ranges)
+        self._chars = ''.join(a for a, b in ranges if not b)
+        self._ranges = ''.join(a+b for a, b in ranges if b)
         self._rangelen = len(self._ranges)
         self._negate = negate
         self.mincount = mincount

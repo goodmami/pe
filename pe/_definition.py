@@ -58,8 +58,16 @@ def _format_literal(defn: Definition, prev_op: Operator) -> str:
 
 
 def _format_class(defn: Definition, prev_op: Operator) -> str:
-    # TODO: properly escape classes
-    return f'[{defn.args[0]}]'
+
+    def esc(s):
+        return escape(s, ignore='"\'')
+
+    clsstr = ''.join(f'{esc(a)}-{esc(b)}' if b else esc(a)
+                     for a, b in defn.args[0])
+    if defn.args[1]:
+        return f'''(![{clsstr}] .)'''
+    else:
+        return f'''[{clsstr}]'''
 
 
 def _format_regex(defn: Definition, prev_op: Operator) -> str:
