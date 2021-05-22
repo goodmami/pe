@@ -7,7 +7,6 @@ Inspired by Medeiros and Ierusalimschy, 2008, "A Parsing Machine for PEGs"
 """
 
 from typing import Union, Tuple, List, Dict, Optional, Any
-import re
 from enum import IntEnum
 
 from pe._constants import FAIL as FAILURE, Operator, Flag
@@ -16,8 +15,8 @@ from pe._match import Match
 from pe._types import Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
-from pe._escape import unescape
 from pe._optimize import optimize
+from pe.scanners import Scanner, Dot, Literal, CharacterClass, Regex
 from pe.actions import Action, Bind
 from pe.operators import Rule
 
@@ -33,13 +32,8 @@ class OpCode(IntEnum):
     CALL = 6
     RETURN = 7
     JUMP = 8
-    REGEX = 9
-    LITERAL = 10
-    CLASS = 11
-    DOT = 12
-    NOOP = 13
-    # BIND = 14
-    # RULE = 15
+    SCAN = 9
+    NOOP = 10
 
 
 # Alias these for performance and convenience
@@ -53,10 +47,7 @@ FAILTWICE = OpCode.FAILTWICE
 CALL = OpCode.CALL
 RETURN = OpCode.RETURN
 JUMP = OpCode.JUMP
-REGEX = OpCode.REGEX
-LITERAL = OpCode.LITERAL
-CLASS = OpCode.CLASS
-DOT = OpCode.DOT
+SCAN = OpCode.SCAN
 NOOP = OpCode.NOOP
 
 
@@ -64,10 +55,12 @@ _State = Tuple[int, int, int, int, int]  # (opidx, pos, mark, argidx, kwidx)
 _Binding = Tuple[str, Any]
 _Instruction = Tuple[
     OpCode,
-    Any,              # op argument
-    bool,             # marking
-    bool,             # capturing
-    Optional[Action]  # rule action
+    int,                # index argument
+    Optional[Scanner],  # scanner object or None
+    bool,               # marking
+    bool,               # capturing
+    Optional[Action],   # rule action
+    Optional[str]       # name
 ]
 _Program = List[_Instruction]
 _Index = Dict[str, int]
@@ -75,12 +68,14 @@ _Index = Dict[str, int]
 
 def Instruction(
     opcode: OpCode,
-    arg: Any = None,
+    oploc: int = 1,
+    scanner: Optional[Scanner] = None,
     marking: bool = False,
     capturing: bool = False,
     action: Optional[Action] = None,
+    name: Optional[str] = None,
 ) -> _Instruction:
-    return (opcode, arg, marking, capturing, action)
+    return (opcode, oploc, scanner, marking, capturing, action, name)
 
 
 class MachineParser(Parser):
@@ -137,92 +132,61 @@ def _match(
     kwargs: List[_Binding],
     memo: Optional[Memo],
 ) -> int:
+    if s is None:
+        raise TypeError
+    if args is None:
+        raise TypeError
+    if kwargs is None:
+        raise TypeError
+
     stack: List[_State] = [
         (0, 0, -1, 0, 0),    # failure (top-level backtrack entry)
         (-1, -1, -1, 0, 0),  # success
     ]
+
     # lookup optimizations
     push = stack.append
     pop = stack.pop
-    startswith = s.startswith
+    slen = len(s)
 
     while stack:
-        mark = -1
-        opcode, arg, marking, capturing, action = pi[idx]
+        # print(idx, pos, s[pos], len(stack))
+        # print(pi[idx])
+        opcode, oploc, scanner, marking, capturing, action, name = pi[idx]
 
         if marking:
             push((0, -1, pos, len(args), len(kwargs)))
 
-        if opcode == REGEX:
-            m = arg(s, pos)
-            if m is None:
+        if opcode == SCAN:
+            assert scanner is not None
+            pos = scanner._scan(s, pos, slen)
+            if pos < 0:
                 idx = FAILURE
-            else:
-                pos = m.end()
-
-        elif opcode == LITERAL:
-            if startswith(arg, pos):
-                pos += len(arg)
-            else:
-                idx = FAILURE
-
-        elif opcode == CLASS:
-            try:
-                c = s[pos]
-            except IndexError:
-                idx = FAILURE
-            else:
-                i = 1
-                matched = arg[0] == c
-                max_i = len(arg) - 1
-                while not matched and i < max_i:
-                    if arg[i] == '-':
-                        if arg[i-1] <= c <= arg[i+1]:
-                            matched = True
-                        i += 3
-                    else:
-                        if arg[i] == c:
-                            matched = True
-                        i += 1
-                if not matched and arg[-1] == c:
-                    matched = True
-                if matched:
-                    pos += 1
-                else:
-                    idx = FAILURE
-
-        elif opcode == DOT:
-            try:
-                s[pos]
-            except IndexError:
-                idx = FAILURE
-            else:
-                pos += 1
 
         elif opcode == BRANCH:
-            push((idx + arg, pos, mark, len(args), len(kwargs)))
+            push((idx + oploc, pos, -1, len(args), len(kwargs)))
             idx += 1
             continue
 
         elif opcode == CALL:
             push((idx + 1, -1, -1, -1, -1))
-            idx = arg
+            idx = oploc
             continue
 
         elif opcode == COMMIT:
             pop()
-            idx += arg
+            idx += oploc
             continue
 
         elif opcode == UPDATE:
             next_idx, _, prev_mark, _, _ = pop()
             push((next_idx, pos, prev_mark, len(args), len(kwargs)))
-            idx += arg
+            idx += oploc
             continue
 
         elif opcode == RESTORE:
             pos = pop()[1]
-            idx += arg
+            idx += oploc
             continue
 
         elif opcode == FAILTWICE:
@@ -294,7 +258,7 @@ def _make_program(grammar) -> Tuple[_Program, _Index]:
         pis.extend(_pis)
         pis.append(Instruction(RETURN))
     # replace call symbols with locations
-    pis = [(pi[0], index[pi[1]], *pi[2:]) if pi[0] == CALL else pi
+    pis = [(pi[0], index[pi[6]], *pi[2:]) if pi[0] == CALL else pi
            for pi in pis]
     pis.append(Instruction(PASS))  # success condition
 
@@ -302,20 +266,26 @@ def _make_program(grammar) -> Tuple[_Program, _Index]:
 
 
 def _dot(defn):
-    return [Instruction(DOT)]
+    return [Instruction(SCAN, scanner=Dot())]
 
 
 def _lit(defn):
-    return [Instruction(LITERAL, defn.args[0])]
+    return [Instruction(SCAN, scanner=Literal(defn.args[0]))]
 
 
-def _cls(defn):
-    return [Instruction(CLASS, unescape(defn.args[0]))]
+def _cls(defn, mincount=1, maxcount=1):
+    cclass = CharacterClass(
+        defn.args[0],
+        negate=defn.args[1],
+        mincount=mincount,
+        maxcount=maxcount
+    )
+    return [Instruction(SCAN, scanner=cclass)]
 
 
 def _rgx(defn):
-    pat = re.compile(f'{defn.args[0]}', flags=defn.args[1])
-    return [Instruction(REGEX, pat.match)]
+    pat, flags = defn.args
+    return [Instruction(SCAN, scanner=Regex(pat, flags=flags))]
 
 
 def _opt(defn):
@@ -325,23 +295,37 @@ def _opt(defn):
             Instruction(COMMIT, 1)]
 
 
-def _str(defn):
-    pi = _parsing_instructions(defn.args[0])
-    return [Instruction(BRANCH, len(pi) + 2),
-            *pi,
-            Instruction(UPDATE, -len(pi))]
+def _str(defn): return _rpt(defn, 0)
 
 
-def _pls(defn):
-    pi = _parsing_instructions(defn.args[0])
-    return [*pi,
-            Instruction(BRANCH, len(pi) + 2),
-            *pi,
-            Instruction(UPDATE, -len(pi))]
+def _pls(defn): return _rpt(defn, 1)
+
+
+def _rpt(defn, mincount):
+    pis = _parsing_instructions(defn.args[0])
+    if (
+        len(pis) == 1
+        and pis[0][0] == SCAN
+        and isinstance(pis[0][2], CharacterClass)
+        and not (pis[0][3] or pis[0][4])
+        and pis[0][5] is None
+    ):
+        pi = pis[0]
+        pi[2].mincount = mincount
+        pi[2].maxcount = -1
+        return [Instruction(SCAN,
+                            scanner=pi[2],
+                            marking=pi[3],
+                            capturing=pi[4],
+                            action=pi[5])]
+    return [*(pis * mincount),
+            Instruction(BRANCH, len(pis) + 2),
+            *pis,
+            Instruction(UPDATE, -len(pis))]
 
 
 def _sym(defn):
-    return [Instruction(CALL, defn.args[0])]
+    return [Instruction(CALL, name=defn.args[0])]
 
 
 def _and(defn):
@@ -361,13 +345,13 @@ def _not(defn):
 
 def _cap(defn):
     pis = _parsing_instructions(defn.args[0])
-    if not pis[0][2]:
-        pis[0] = (*pis[0][:2], True, *pis[0][3:])
+    if not pis[0][3]:
+        pis[0] = (*pis[0][:3], True, *pis[0][4:])
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if not pi[3] and not pi[4] and pi[0] not in NO_CAP_OR_ACT:
-        pis[-1] = (*pi[:3], True, *pi[4:])
+    if not pi[4] and not pi[5] and pi[0] not in NO_CAP_OR_ACT:
+        pis[-1] = (*pi[:4], True, *pi[5:])
     else:
         pis.append(Instruction(NOOP, capturing=True))
     return pis
@@ -403,13 +387,13 @@ def _rul(defn):
     if action is None:
         return pis
     pi = pis[0]
-    if not pi[2]:
-        pis[0] = (*pi[:2], True, *pi[3:])
+    if not pi[3]:
+        pis[0] = (*pi[:3], True, *pi[4:])
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if not pi[4] and pi[0] not in NO_CAP_OR_ACT:
-        pis[-1] = (*pi[:4], action)
+    if not pi[5] and pi[0] not in NO_CAP_OR_ACT:
+        pis[-1] = (*pi[:5], action, *pi[6:])
     else:
         pis.append(Instruction(NOOP, action=action))
     return pis
