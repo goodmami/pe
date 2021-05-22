@@ -285,7 +285,7 @@ escaped:
 
 - `'` in single-quoted string literals
 - `"` in double-quoted string literals
-- `[`, `-`, and `]` inside character classes
+- `[` and `]` inside character classes
 
 The other ASCII punctuation characters are currently unused but are
 reserved in expressions for potential future uses:
@@ -339,7 +339,6 @@ escape sequences or schemes are allowed:
 - `\r`: carriage return
 - `\"`: `"` character
 - `\'`: `'` character
-- `\-`: `-` character
 - `\[`: `[` character
 - `\]`: `]` character
 - `\\`: `\` character
@@ -420,10 +419,8 @@ It is invalid if a range separated by `-` has a first character with a
 value higher than the second character.
 
 The `[`, `]`, and `\` characters are special inside a character class
-and must be escaped if they are used literally. The `-` character must
-be escaped if it is meant literally in a position that would otherwise
-describe a range between two characters. Valid positions for the
-literal usage are as follows:
+and must be escaped if they are used literally. To use the `-`
+character literally, place it at one of the following locations:
 
 - at the beginning of the character class (e.g., `[-a-z]` matches `-`
   or `a` through `z`)
@@ -433,10 +430,7 @@ literal usage are as follows:
   or `/`)
 
 If the `-` is meant literally in a character class, it is recommended
-to be placed as the first character to avoid confusion. Additionally,
-it is recommended that it be escaped when describing a range from or
-to the `-` character as the `--` sequence is a set-difference operator
-in regular expression engines which may undergird the **pe** parser.
+to be placed as the first character to avoid confusion.
 
 
 ### Nonterminal

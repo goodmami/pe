@@ -54,7 +54,7 @@ def _format_dot(defn: Definition, prev_op: Operator) -> str:
 
 
 def _format_literal(defn: Definition, prev_op: Operator) -> str:
-    return f'''"{escape(defn.args[0], ignore="'-[]")}"'''
+    return f'''"{escape(defn.args[0], ignore="'[]")}"'''
 
 
 def _format_class(defn: Definition, prev_op: Operator) -> str:

@@ -40,9 +40,9 @@ The syntax is defined as follows::
   Literal    <- ~(['] ( !['] Char )* [']) Spacing
               / ~(["] ( !["] Char )* ["]) Spacing
 
-  Class      <- ~('[' ( !']' Range )* ']') Spacing
+  Class      <- '[' ~( !']' Range )* ']' Spacing
   Range      <- Char '-' Char / Char
-  Char       <- '\\' [tnvfr"'-\[\\\]]
+  Char       <- '\\' [tnvfr"'\[\\\]]
               / '\\' Oct Oct? Oct?
               / '\\' 'x' Hex Hex
               / '\\' 'u' Hex Hex Hex Hex
@@ -102,7 +102,7 @@ def _make_literal(s):
 
 
 def _make_class(s):
-    return Class(s[1:-1])  # pe.unescape(s[1:-1]))
+    return Class(pe.unescape(s))
 
 
 def _make_quantified(primary, quantifier=None):
@@ -166,13 +166,13 @@ V.Literal = Sequence(
     V.Spacing
 )
 V.Class = Sequence(
-    Capture(Sequence('[', Star(Sequence(Not(']'), V.Range)), ']')), V.Spacing
+    '[', Capture(Star(Sequence(Not(']'), V.Range))), ']', V.Spacing
 )
 
 # Non-recursive patterns
 
 # V.Operator = Choice(V.LEFTARROW)
-V.Special = Class('-tnvfr"\'[]\\\\')
+V.Special = Class('tnvfr"\'[]\\\\')
 V.Oct = Class('0-7')
 V.Hex = Class('0-9a-fA-F')
 V.Octal = Sequence(V.Oct, Optional(V.Oct), Optional(V.Oct))

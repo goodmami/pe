@@ -46,7 +46,6 @@ def test_escape():
     assert pe.escape('\r') == '\\r'
     assert pe.escape('"') == '\\"'
     assert pe.escape("'") == "\\'"
-    assert pe.escape('-') == '\\-'
     assert pe.escape('[') == '\\['
     assert pe.escape('\\') == '\\\\'
     assert pe.escape(']') == '\\]'
@@ -60,7 +59,6 @@ def test_unescape():
     assert pe.unescape('\\r') == '\r'
     assert pe.unescape('\\"') == '"'
     assert pe.unescape("\\'") == "'"
-    assert pe.unescape('\\-') == '-'
     assert pe.unescape('\\[') == '['
     assert pe.unescape('\\\\') == '\\'
     assert pe.unescape('\\]') == ']'

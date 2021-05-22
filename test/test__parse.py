@@ -37,7 +37,6 @@ def test_loads_literal():
     assert eloads('"\\r"') == Literal('\r')
     assert eloads('"\\""') == Literal('"')
     assert eloads("'\\''") == Literal("'")
-    assert eloads("'\\-'") == Literal("-")
     assert eloads("'\\['") == Literal("[")
     assert eloads("'\\\\'") == Literal("\\")
     assert eloads("'\\]'") == Literal("]")
