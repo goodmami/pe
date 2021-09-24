@@ -49,12 +49,12 @@ def Literal(string: str):
 
 
 @overload
-def Class(arg: str, negate: bool) -> Definition:
+def Class(arg: str, negate: bool = ...) -> Definition:
     ...
 
 
 @overload
-def Class(arg: List[Tuple[str, Union[str, None]]], negate: bool) -> Definition:
+def Class(arg: List[Tuple[str, Union[str, None]]], negate: bool = ...) -> Definition:
     ...
 
 

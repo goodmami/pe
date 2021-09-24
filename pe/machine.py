@@ -123,7 +123,7 @@ class MachineParser(Parser):
             )
 
 
-def _match(
+def _match(  # noqa: C901
     pi: _Program,
     idx: int,
     s: str,
