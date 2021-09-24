@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -42,3 +42,8 @@ jobs:
       run: |
         pip install mypy
         mypy pe
+    - name: Test extension module with pytest
+      run: |
+        pip install cython
+        cythonize -3i pe/*.pyx
+        pytest
