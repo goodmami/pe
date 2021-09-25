@@ -1,31 +1,74 @@
-# This workflows will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
+# Adapted from: https://github.com/pytries/marisa-trie/blob/master/.github/workflows/build-and-publish.yml
+# and: https://github.com/pypa/cibuildwheel/blob/main/examples/github-deploy.yml
 
-name: Upload Python Package
+name: Build & Publish
 
 on:
   release:
-    types: [created]
+    types: [published]
+  workflow_dispatch:
 
 jobs:
-  deploy:
-
-    runs-on: ubuntu-latest
-
+  build-wheels:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine
-    - name: Build and publish
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        python setup.py sdist bdist_wheel
-        twine upload dist/*
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Python
+        uses: actions/setup-python@v2
+      - name: Install build dependencies
+        run: python -m pip install --upgrade cython
+      - name: Cythonize code
+        run: cython -3 pe/*.pyx
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.2.0a1
+        env:
+          CIBW_SKIP: "pp*" # skip Pypy wheels
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: "pytest test/"
+      - uses: actions/upload-artifact@v2
+        with:
+          name: python-package-distributions
+          path: ./wheelhouse/*.whl
+
+  build-sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Python
+        uses: actions/setup-python@v2
+      - name: Build source distribution
+        run: python setup.py sdist
+      - name: Store the source distribution
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-package-distributions
+          path: dist
+          retention-days: 4
+
+  # publish:
+  #   needs:
+  #     - os-built-distributions
+  #     - source-distribution
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Download all the dists
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: python-package-distributions
+  #         path: dist/
+  #     - name: To be published
+  #       run: ls -l dist
+  #     - name: Publish
+  #       if: github.event.inputs.branch != ''
+  #       uses: pypa/gh-action-pypi-publish@release/v1.4.2
+  #       with:
+  #         user: __token__
+  #         password: ${{ secrets.PYPI_PASSWORD }}
+  #         skip_existing: true
