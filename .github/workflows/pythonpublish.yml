@@ -18,7 +18,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v2
       - name: Install dependencies
-        run: python -m pip install Cython~=0.29 pytest
+        run: python -m pip install --upgrade setuptools Cython~=0.29 pytest
       - name: Build source distribution
         run: python setup.py sdist
       - name: Install source distribution
@@ -28,7 +28,7 @@ jobs:
       - name: Store the source distribution
         uses: actions/upload-artifact@v2
         with:
-          name: python-package-distributions
+          name: dist
           path: dist
           retention-days: 4
 
@@ -43,8 +43,8 @@ jobs:
         uses: actions/checkout@v2
       - name: Install Python
         uses: actions/setup-python@v2
-      # - name: Install build dependencies
-      #   run: python -m pip install --upgrade cython
+      - name: Install build dependencies
+        run: python -m pip install --upgrade Cython~=0.29
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.2.0a1
         env:
@@ -53,7 +53,7 @@ jobs:
           CIBW_TEST_COMMAND: "pytest {project}/test/"
       - uses: actions/upload-artifact@v2
         with:
-          name: python-package-distributions
+          name: dist
           path: ./wheelhouse/*.whl
 
   # publish:
