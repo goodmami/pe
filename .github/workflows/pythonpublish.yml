@@ -17,10 +17,12 @@ jobs:
         uses: actions/checkout@v2
       - name: Install Python
         uses: actions/setup-python@v2
+      - name: Install dependencies
+        run: python -m pip install Cython~=0.29 pytest
       - name: Build source distribution
         run: python setup.py sdist
       - name: Install source distribution
-        run: python -m pip install dist/pe-*.tar.gz pytest
+        run: python -m pip install dist/pe-*.tar.gz
       - name: Test source distribution
         run: pytest test/
       - name: Store the source distribution
@@ -48,7 +50,7 @@ jobs:
         env:
           CIBW_SKIP: "pp*" # skip Pypy wheels
           CIBW_TEST_REQUIRES: pytest
-          CIBW_TEST_COMMAND: "pytest test/"
+          CIBW_TEST_COMMAND: "pytest {project}/test/"
       - uses: actions/upload-artifact@v2
         with:
           name: python-package-distributions
