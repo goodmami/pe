@@ -3,6 +3,7 @@
 import os
 
 from setuptools import setup
+from Cython.Build import cythonize
 
 base_dir = os.path.dirname(__file__)
 
@@ -44,5 +45,6 @@ setup(
     packages=[
         'pe',
     ],
+    ext_modules=cythonize('pe/*.pyx', language_level='3'),
     python_requires='>=3.6'
 )
