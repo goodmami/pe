@@ -18,6 +18,8 @@ def compile(source: Union[str, Grammar],
         from pe.packrat import PackratParser as parser_class
     elif parsername == 'machine':
         from pe.machine import MachineParser as parser_class  # type: ignore
+    elif parsername == 'machine-python':
+        from pe._py_machine import MachineParser as parser_class  # type: ignore
     else:
         raise Error(f'unsupported parser: {parser}')
 

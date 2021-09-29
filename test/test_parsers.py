@@ -23,7 +23,11 @@ from pe.operators import (
 from pe._grammar import Grammar
 from pe.actions import Pack
 from pe.packrat import PackratParser
-from pe.machine import MachineParser
+from pe._py_machine import MachineParser as PyMachineParser
+try:
+    from pe._cy_machine import MachineParser as CyMachineParser
+except ImportError:
+    CyMachineParser = None
 
 
 # don't reuse these in value-changing operations like Bind
@@ -140,12 +144,16 @@ data = [  # noqa: E127
 
 @pytest.mark.parametrize('parser,dfn,input,pos,end,match',
                          [(parser,) + row[1:]
-                          for parser in [PackratParser, MachineParser]
+                          for parser in [PackratParser,
+                                         PyMachineParser,
+                                         CyMachineParser]
                           for row in data],
                          ids=[f'{parser}-{row[0]}'
-                              for parser in ['Pack', 'Mach']
+                              for parser in ['Packrat', 'Mach(p)', 'Mach(c)']
                               for row in data])
 def test_exprs(parser, dfn, input, pos, end, match):
+    if parser is None:
+        pytest.skip('extension module is not available')
     g = Grammar({'Start': dfn, 'abc': abc, 'abcs': Str(abc)})
     p = parser(g)
     m = p.match(input, pos=pos, flags=pe.NONE)
