@@ -43,7 +43,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.2.0a1
         env:
-          CIBW_SKIP: "pp* *-win32 *-manylinux_i686"  # skip PyPy, 32-bit
+          CIBW_SKIP: "pp* *-win32 *linux_i686"  # skip PyPy, 32-bit
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: "pytest {project}/test/"
       - uses: actions/upload-artifact@v2
@@ -65,7 +65,7 @@ jobs:
       - name: To be published
         run: ls -l dist
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@release/v1.4.2
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_PASSWORD }}
