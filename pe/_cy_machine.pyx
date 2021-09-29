@@ -576,6 +576,7 @@ cdef class CharacterClass(Scanner):
                 pos += 1
                 maxcount -= 1
                 mincount -= 1
+                i = 0
             else:
                 break
         if mincount > 0:

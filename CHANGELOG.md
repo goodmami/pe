@@ -9,6 +9,7 @@
 ### Fixed
 
 * Capture choices properly in the machine parser ([#17])
+* Character classes better handle multiple ranges ([#18])
 
 
 ## [v0.3.0][]
@@ -91,3 +92,4 @@ descent parser and a work-in-progress state-machine parser.
 [#12]: https://github.com/goodmami/pe/issues/12
 [#13]: https://github.com/goodmami/pe/issues/13
 [#17]: https://github.com/goodmami/pe/issues/17
+[#18]: https://github.com/goodmami/pe/issues/18
