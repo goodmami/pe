@@ -13,15 +13,26 @@
 
 **pe** is a library for parsing expressions, including [parsing
 expression grammars] (PEGs). It aims to join the expressive power of
-parsing expressions with the familiarity of regular expressions.  For
+parsing expressions with the familiarity of regular expressions. For
 example:
 
-``` python
+```python
 >>> import pe
->>> m = pe.match(r'["] (!["\\] . / "\\" .)* ["]',
-...              '"escaped \\"string\\"" ...')
->>> m.group()
-'"escaped \\"string\\""'
+>>> pe.match(r'"-"? [0-9]+', '-38')  # match an integer
+<Match object; span=(0, 3), match='-38'>
+```
+
+A grammar can be used for more complicated or recursive patterns:
+
+```python
+>>> float_parser = pe.compile(r'''
+...   Start    <- INTEGER FRACTION? EXPONENT?
+...   INTEGER  <- "-"? ("0" / [1-9] [0-9]*)
+...   FRACTION <- "." [0-9]+
+...   EXPONENT <- [Ee] [-+]? [0-9]+
+... ''')
+>>> float_parser.match('6.02e23')
+<Match object; span=(0, 7), match='6.02e23'>
 
 ```
 
