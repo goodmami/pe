@@ -2,9 +2,14 @@
 
 ## [Unreleased][unreleased]
 
+### Removed
+
+* `pe.scanners` is no longer part of the public API
+
 ### Fixed
 
 * Capture choices properly in the machine parser ([#17])
+
 
 ## [v0.3.0][]
 

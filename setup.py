@@ -21,7 +21,6 @@ elif not BUILD_OPTIONAL:
 ext = 'pyx' if CYTHONIZE else 'c'
 
 extensions = [
-    Extension('pe.scanners', [f'pe/scanners.{ext}'], optional=BUILD_OPTIONAL),
     Extension('pe.machine', [f'pe/machine.{ext}'], optional=BUILD_OPTIONAL),
 ]
 
