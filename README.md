@@ -1,9 +1,15 @@
-# <img src="docs/logo.png" width="60" alt="pe logo" /> Parsing Expressions
 
-[![PyPI Version](https://img.shields.io/pypi/v/pe)](https://pypi.org/project/pe)
-![Development Status](https://img.shields.io/pypi/status/pe)
-![Python Support](https://img.shields.io/pypi/pyversions/pe)
-[![Python Package](https://github.com/goodmami/pe/workflows/Python%20package/badge.svg)](https://github.com/goodmami/pe/actions?query=workflow%3A%22Python+package%22)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/goodmami/pe/main/docs/_static/pe-logo.svg" alt="pe logo">
+  <br>
+  <strong>Parsing Expressions</strong>
+  <br>
+  <a href="https://pypi.org/project/pe/"><img src="https://img.shields.io/pypi/v/pe.svg" alt="PyPI link"></a>
+  <img src="https://img.shields.io/pypi/pyversions/pe.svg" alt="Python Support">
+  <a href="https://github.com/goodmami/pe/actions?query=workflow%3A%22Python+package%22"><img src="https://github.com/goodmami/pe/workflows/Python%20package/badge.svg" alt="tests"></a>
+</p>
+
+---
 
 **pe** is a library for parsing expressions, including [parsing
 expression grammars] (PEGs). It aims to join the expressive power of
@@ -29,13 +35,6 @@ example:
   - [API Documentation](docs/api/README.md)
   - [FAQ](docs/faq.md)
 * [Example Parsers](examples/)
-
-
-## Current Status
-
-Please note that **pe** is very new and is currently *alpha*-level
-software. The API or behavior may change significantly as things are
-finalized.
 
 
 ## Features and Goals

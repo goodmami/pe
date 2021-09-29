@@ -1,16 +1,28 @@
 # Change Log
 
-## [Unreleased][unreleased]
+## [v0.3.0][]
+
+**Release date: 2021-09-28**
 
 ### Added
 
 * `pe.Match.span()` ([#12])
 * `pe.actions.Pair` ([#13])
+* `negate` parameter on `pe.operators.Class`
+* "Common" optimizations (currently only negated character classes)
+  via the `pe.COMMON` flag
+* `pe.scanners` module for the low-level text scanners
 
 ### Changed
 
 * Changed `pe.Match.pos` to `pe.Match.start()` ([#12])
 * Changed `pe.Match.end` to `pe.Match.end()` ([#12])
+* `-` is no longer an escapable character
+* `pe.machine` is now distributed as a compiled extension module
+
+### Fixed
+
+* `pe.machine` is now working again and passing the tests
 
 
 ## [v0.2.0][]
@@ -61,6 +73,7 @@ descent parser and a work-in-progress state-machine parser.
 [unreleased]: ../../tree/develop
 [v0.1.0]: ../../releases/tag/v0.1.0
 [v0.2.0]: ../../releases/tag/v0.2.0
+[v0.3.0]: ../../releases/tag/v0.3.0
 
 [#7]: https://github.com/goodmami/pe/issues/7
 [#9]: https://github.com/goodmami/pe/issues/9
