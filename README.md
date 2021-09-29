@@ -20,6 +20,7 @@ example:
 >>> import pe
 >>> pe.match(r'"-"? [0-9]+', '-38')  # match an integer
 <Match object; span=(0, 3), match='-38'>
+
 ```
 
 A grammar can be used for more complicated or recursive patterns:
