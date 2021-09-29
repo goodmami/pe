@@ -209,7 +209,6 @@ cdef class _Parser:
         cdef Instruction instr
         while state:
             instr = pi[idx]
-            # opcode, arg, marking, capturing, action = pi[idx]
 
             if instr.marking:
                 state = push(0, -1, pos, len(args), len(kwargs), state)
@@ -409,6 +408,7 @@ def _not(defn):
 
 
 def _cap(defn):
+    captured_choice = defn.args[0].op == Operator.CHC
     pis = _parsing_instructions(defn.args[0])
     if not pis[0].marking:
         pis[0].marking = True
@@ -418,6 +418,7 @@ def _cap(defn):
     if (not pi.capturing
         and pi.action is None
         and pi.opcode not in NO_CAP_OR_ACT
+        and not captured_choice
     ):
         pis[-1].capturing = True
     else:
@@ -490,3 +491,44 @@ def _parsing_instructions(defn):  # noqa: C901
         return _op_map[defn.op](defn)
     except KeyError:
         raise Error(f'invalid definition: {defn!r}')
+
+
+# for debugging
+
+# _OpCodeNames = {
+#     FAIL: 'FAIL',
+#     PASS: 'PASS',
+#     BRANCH: 'BRANCH',
+#     COMMIT: 'COMMIT',
+#     UPDATE: 'UPDATE',
+#     RESTORE: 'RESTORE',
+#     FAILTWICE: 'FAILTWICE',
+#     CALL: 'CALL',
+#     RETURN: 'RETURN',
+#     JUMP: 'JUMP',
+#     SCAN: 'SCAN',
+#     NOOP: 'NOOP',
+# }
+
+
+# cdef _print_program(pis: _Program):
+#     for i, pi in enumerate(pis):
+#         print(i,
+#               _OpCodeNames[pi.opcode],
+#               f'{pi.oploc:+}',
+#               'marking' if pi.marking else '',
+#               'capturing' if pi.capturing else '',
+#               'name' if pi.name else '')
+
+
+# cdef _print_stack(State* state):
+#     states = []
+#     while state:
+#         states.append(
+#             f'<State (opidx={state.opidx}, pos={state.pos}, mark={state.mark},'
+#             f' argidx={state.argidx}, kwidx={state.kwidx})>'
+#         )
+#         state = state.prev
+#     print(f'stack ({len(states)} entries):')
+#     for i, s in enumerate(reversed(states)):
+#         print(' '*i, s)

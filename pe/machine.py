@@ -344,13 +344,17 @@ def _not(defn):
 
 
 def _cap(defn):
+    captured_choice = defn.args[0].op == Operator.CHC
     pis = _parsing_instructions(defn.args[0])
     if not pis[0][3]:
         pis[0] = (*pis[0][:3], True, *pis[0][4:])
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if not pi[4] and not pi[5] and pi[0] not in NO_CAP_OR_ACT:
+    if (not pi[4]  # not capturing
+            and not pi[5]  # no action
+            and pi[0] not in NO_CAP_OR_ACT
+            and not captured_choice):
         pis[-1] = (*pi[:4], True, *pi[5:])
     else:
         pis.append(Instruction(NOOP, capturing=True))

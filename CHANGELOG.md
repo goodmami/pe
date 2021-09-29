@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased][unreleased]
+
+### Fixed
+
+* Capture choices properly in the machine parser ([#17])
+
 ## [v0.3.0][]
 
 **Release date: 2021-09-28**
@@ -79,3 +85,4 @@ descent parser and a work-in-progress state-machine parser.
 [#9]: https://github.com/goodmami/pe/issues/9
 [#12]: https://github.com/goodmami/pe/issues/12
 [#13]: https://github.com/goodmami/pe/issues/13
+[#17]: https://github.com/goodmami/pe/issues/17
