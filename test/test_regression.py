@@ -12,7 +12,7 @@ def test_capture_choice(parser):
 
 
 @pytest.mark.parametrize('parser', ['packrat', 'machine', 'machine-python'])
-def test_capture_multiple(parser):
+def test_multi_range_charclass(parser):
     p = pe.compile(
         r'''
         Start    <- ["] CHAR* ["]
