@@ -35,12 +35,12 @@ jobs:
         # exit-zero treats all errors as warnings. PEP-8 says 99 chars is a good width
         flake8 pe --count --exit-zero --max-complexity=10 --max-line-length=99 --statistics
     - name: Test with pytest including doctests
-      if: matrix.python-version == "3.9"
+      if: ${{ matrix.python-version == '3.9' }}
       run: |
         pip install pytest
         pytest --doctest-glob=\*.md
     - name: Test with pytest
-      if: matrix.python-version != "3.9"
+      if: ${{ matrix.python-version != '3.9' }}
       run: |
         pip install pytest
         pytest
