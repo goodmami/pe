@@ -39,7 +39,7 @@ def compile(source: Union[str, Grammar],
     p = parser_class(g, flags=flags)
 
     if (flags & Flag.DEBUG) and (flags & Flag.OPTIMIZE):
-        print('\n## Modified Grammar ##')
+        print('## Modified Grammar ##')
         print(p.modified_grammar)
 
     return p

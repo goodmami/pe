@@ -52,7 +52,7 @@ left and the current expression on the right. Expressions are indented
 to show nesting levels.
 
 ```pycon
->>> p.match('ab c')
+>>> p.match('ab c')  # doctest: +NORMALIZE_WHITESPACE
 ab c         |    (!" " .)+ (" "+ (!" " .)+)*
 ab c         |      (!" " .)+
 ab c         |        !" " .
