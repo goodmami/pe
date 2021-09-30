@@ -2,6 +2,11 @@
 
 ## [Unreleased][unreleased]
 
+
+## [v0.3.1][]
+
+**Release date: 2021-09-30**
+
 ### Added
 
 * `pe.Parser.modified_grammar` attribute
@@ -95,6 +100,7 @@ descent parser and a work-in-progress state-machine parser.
 [v0.1.0]: ../../releases/tag/v0.1.0
 [v0.2.0]: ../../releases/tag/v0.2.0
 [v0.3.0]: ../../releases/tag/v0.3.0
+[v0.3.1]: ../../releases/tag/v0.3.1
 
 [#7]: https://github.com/goodmami/pe/issues/7
 [#9]: https://github.com/goodmami/pe/issues/9
