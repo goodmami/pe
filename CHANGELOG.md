@@ -2,9 +2,18 @@
 
 ## [Unreleased][unreleased]
 
+### Added
+
+* `pe.Parser.modified_grammar` attribute
+
 ### Removed
 
 * `pe.scanners` is no longer part of the public API
+
+### Changed
+
+* Debug mode now prints the modified grammar when it has been
+  optimized
 
 ### Fixed
 

@@ -33,9 +33,14 @@ def compile(source: Union[str, Grammar],
         g = Grammar(defmap, actions=actions, start=start)
 
     if flags & Flag.DEBUG:
+        print('## Grammar ##')
         print(g)
 
     p = parser_class(g, flags=flags)
+
+    if (flags & Flag.DEBUG) and (flags & Flag.OPTIMIZE):
+        print('\n## Modified Grammar ##')
+        print(p.modified_grammar)
 
     return p
 

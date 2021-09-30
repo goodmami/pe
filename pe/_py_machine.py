@@ -103,6 +103,8 @@ class MachineParser(Parser):
                            regex=flags & Flag.REGEX)
         # if flags & Flag.DEBUG:
         #     grammar = debug(grammar)
+        self.modified_grammar = grammar
+
         pi, index = _make_program(grammar)
         self.pi: _Program = pi
         self._index = index

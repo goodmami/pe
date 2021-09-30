@@ -8,12 +8,17 @@ from pe._grammar import Grammar
 
 
 class Parser:
+    grammar: Grammar
+    modified_grammar: Grammar
+    flags: Flag
+
     def __init__(self,
                  grammar: Union[Grammar, Definition],
                  flags: Flag = Flag.NONE):
         if isinstance(grammar, Definition):
             grammar = Grammar({'Start': grammar})
         self.grammar = grammar
+        self.modified_grammar = grammar  # may be reassigned later
         self.flags = flags
 
     def match(self,
