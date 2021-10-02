@@ -5,6 +5,7 @@ from pe.operators import (
     Class,
     Regex,
     Sequence,
+    Choice,
     Nonterminal,
     Capture,
 )
@@ -88,14 +89,22 @@ def test_regex():
     assert (rload(r'A <- "a" B  B <- [bc]') ==
             grm({'A': Sequence(Regex('a'), Nonterminal('B')),
                  'B': Regex('[bc]')}))
+    assert (rload(r'A <- .* "a"') ==
+            grm({'A': Regex(r'(?=(?P<_1>(?s:.)*))(?P=_1)a')}))
     assert (rload(r'A <- "a"* [bc]+') ==
             grm({'A': Regex(
-                r'(?=(?P<_1>(?:a)*))(?P=_1)(?=(?P<_2>(?:[bc])+))(?P=_2)')}))
+                r'(?=(?P<_1>a*))(?P=_1)(?=(?P<_2>[bc]+))(?P=_2)')}))
     assert (rload(r'A <- "a" ~([bc] / "d")*') ==
             grm({'A': Sequence(
                 Regex(r'a'),
                 Capture(Regex(
                     r'(?=(?P<_2>(?:(?=(?P<_1>[bc]|d))(?P=_1))*))(?P=_2)')))}))
+    assert (rload(r'A <- "ab" / "abc"') ==
+            grm({'A': Regex(r'(?=(?P<_1>ab|abc))(?P=_1)')}))
+    assert (rload(r'A <- "a"* / ~"b"') ==
+            grm({'A': Choice(
+                Regex(r'(?=(?P<_1>a*))(?P=_1)'),
+                Capture(Regex(r'b')))}))
 
 
 def test_regex_values():
@@ -121,4 +130,4 @@ def test_regex_not_dot():
     assert (rload(r'A <- ![abc] .', common=True)
             == grm({'A': Regex(r'[^abc]')}))
     assert (rload(r'A <- (![abc] .)*', common=True)
-            == grm({'A': Regex(r'(?=(?P<_1>(?:[^abc])*))(?P=_1)')}))
+            == grm({'A': Regex(r'(?=(?P<_1>[^abc]*))(?P=_1)')}))

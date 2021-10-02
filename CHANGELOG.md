@@ -2,6 +2,10 @@
 
 ## [Unreleased][unreleased]
 
+### Fixed
+
+* Regex optimization avoids some superfluous groups ([#19])
+
 
 ## [v0.3.1][]
 
@@ -108,3 +112,4 @@ descent parser and a work-in-progress state-machine parser.
 [#13]: https://github.com/goodmami/pe/issues/13
 [#17]: https://github.com/goodmami/pe/issues/17
 [#18]: https://github.com/goodmami/pe/issues/18
+[#19]: https://github.com/goodmami/pe/issues/19

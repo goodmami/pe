@@ -178,7 +178,8 @@ def _regex_choice(defn, defs, grpid):
     items = [_regex(d, defs, grpid) for d in defn.args[0]]
     subdefs = []
     for k, grp in groupby(items, key=lambda d: d.op):
-        if k == RGX:
+        grp = list(grp)
+        if k == RGX and len(grp) > 1:
             gid = f'_{next(grpid)}'
             subdefs.append(
                 Regex(f'(?=(?P<{gid}>'
@@ -190,31 +191,33 @@ def _regex_choice(defn, defs, grpid):
 
 
 def _regex_optional(defn, defs, grpid):
+    subdef = defn.args[0]
     d = _regex(defn.args[0], defs, grpid)
     if d.op == RGX:
-        return Regex(f'(?:{d.args[0]})?')
+        subpat = d.args[0] if subdef.op in (DOT, LIT, CLS) else f'(?:{d.args[0]})'
+        return Regex(f'{subpat}?')
     else:
         return Optional(d)
 
 
 def _regex_star(defn, defs, grpid):
-    d = _regex(defn.args[0], defs, grpid)
+    subdef = defn.args[0]
+    d = _regex(subdef, defs, grpid)
     if d.op == RGX:
+        subpat = d.args[0] if subdef.op in (DOT, LIT, CLS) else f'(?:{d.args[0]})'
         gid = f'_{next(grpid)}'
-        return Regex(f'(?=(?P<{gid}>(?:'
-                     + d.args[0]
-                     + f')*))(?P={gid})')
+        return Regex(f'(?=(?P<{gid}>{subpat}*))(?P={gid})')
     else:
         return Star(d)
 
 
 def _regex_plus(defn, defs, grpid):
+    subdef = defn.args[0]
     d = _regex(defn.args[0], defs, grpid)
     if d.op == RGX:
+        subpat = d.args[0] if subdef.op in (DOT, LIT, CLS) else f'(?:{d.args[0]})'
         gid = f'_{next(grpid)}'
-        return Regex(f'(?=(?P<{gid}>(?:'
-                     + d.args[0]
-                     + f')+))(?P={gid})')
+        return Regex(f'(?=(?P<{gid}>{subpat}+))(?P={gid})')
     else:
         return Plus(d)
 
