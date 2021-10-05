@@ -2,6 +2,10 @@
 
 ## [Unreleased][unreleased]
 
+## [v0.3.2][]
+
+**Release date: 2021-10-05**
+
 ### Fixed
 
 * Regex optimization avoids some superfluous groups ([#19])
@@ -112,6 +116,7 @@ descent parser and a work-in-progress state-machine parser.
 [v0.2.0]: ../../releases/tag/v0.2.0
 [v0.3.0]: ../../releases/tag/v0.3.0
 [v0.3.1]: ../../releases/tag/v0.3.1
+[v0.3.2]: ../../releases/tag/v0.3.2
 
 [#7]: https://github.com/goodmami/pe/issues/7
 [#9]: https://github.com/goodmami/pe/issues/9
