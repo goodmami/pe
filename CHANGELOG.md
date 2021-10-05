@@ -6,6 +6,13 @@
 
 * Regex optimization avoids some superfluous groups ([#19])
 
+### Changed
+
+* Added more 'common' optimations: ([#20])
+  - Single-character classes become literals
+  - Sequence of literals becomes one literal
+  - Choice of non-negated character classes become one class
+
 
 ## [v0.3.1][]
 
@@ -113,3 +120,4 @@ descent parser and a work-in-progress state-machine parser.
 [#17]: https://github.com/goodmami/pe/issues/17
 [#18]: https://github.com/goodmami/pe/issues/18
 [#19]: https://github.com/goodmami/pe/issues/19
+[#20]: https://github.com/goodmami/pe/issues/20

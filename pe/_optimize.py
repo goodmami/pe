@@ -11,6 +11,7 @@ from pe._errors import Error
 from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
+    Literal,
     Class,
     Regex,
     Choice,
@@ -120,28 +121,71 @@ def _common(defn):
     elif make_op:
         defn = make_op(_common(defn.args[0]), *defn.args[1:])
 
-    # ![...] .  ->  [^...]
-    # !"." .    ->  [^.]
-    if op == SEQ:
-        subdefs = defn.args[0]
-        i = 0
-        while i < len(subdefs) - 1:
-            d = subdefs[i]
-            if (d.op == NOT and subdefs[i+1].op == DOT):
-                notd = d.args[0]
-                if notd.op == CLS:
-                    negated = not notd.args[1]
-                    subdefs[i:i+2] = [Class(notd.args[0], negate=negated)]
-                elif notd.op == LIT and len(notd.args[0]) == 1:
-                    subdefs[i:i+2] = [Class(notd.args[0], negate=True)]
-            i += 1
+    # [.]  ->  "."  (only 1-char class, not a range, not negated)
+    if op == CLS:
+        ranges = defn.args[0]
+        negated = defn.args[1]
+        if len(ranges) == 1 and ranges[0][1] is None and not negated:
+            defn = Literal(ranges[0][0])
 
-    # Sequence(x)  ->  x
-    if op == SEQ and len(defn.args[0]) == 1:
+    if op == SEQ:
+        _common_sequence(defn.args[0])
+
+    if op == CHC:
+        _common_choice(defn.args[0])
+
+    # Sequence(x)  ->  x  OR  Choice(x)  ->  x
+    if op in (SEQ, CHC) and len(defn.args[0]) == 1:
         defn = defn.args[0][0]
         op = defn.op
 
     return defn
+
+
+def _common_sequence(subdefs):
+    i = 0
+    while i < len(subdefs) - 1:
+        d = subdefs[i]
+        # ![...] .  ->  [^...]
+        # !"." .    ->  [^.]
+        if (d.op == NOT and subdefs[i+1].op == DOT):
+            notd = d.args[0]
+            if notd.op == CLS:
+                negated = not notd.args[1]
+                subdefs[i:i+2] = [Class(notd.args[0], negate=negated)]
+            elif notd.op == LIT and len(notd.args[0]) == 1:
+                subdefs[i:i+2] = [Class(notd.args[0], negate=True)]
+        # "." "."  -> ".."
+        elif d.op == LIT:
+            j = i + 1
+            while j < len(subdefs) and subdefs[j].op == LIT:
+                j += 1
+            if j - i > 1:
+                subdefs[i:j] = [Literal(''.join(x.args[0] for x in subdefs[i:j]))]
+        i += 1
+
+
+def _common_choice(subdefs):
+    i = 0
+    while i < len(subdefs) - 1:
+        d = subdefs[i]
+        # [..] / [..]  ->  [....]
+        # [..] / "."   ->  [...]
+        if (d.op == CLS and not d.args[1]) or (d.op == LIT and len(d.args[0]) == 1):
+            ranges = d.args[0] if d.op == CLS else [(d.args[0], None)]
+            j = i + 1
+            while j < len(subdefs):
+                d2 = subdefs[j]
+                if d2.op == CLS and not d2.args[1]:
+                    ranges.extend(d2.args[0])
+                elif d2.op == LIT and len(d2.args[0]) == 1:
+                    ranges.append((d2.args[0], None))
+                else:
+                    break
+                j += 1
+            if j - i > 1:
+                subdefs[i:j] = [Class(ranges)]
+        i += 1
 
 
 def _regex_dot(defn, defs, grpid):

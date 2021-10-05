@@ -69,6 +69,12 @@ def test_common():
             gload(r'A <- !"a"'))
     assert (cload(r'A <- !"a"') ==
             gload(r'A <- !"a"'))
+    # single-char classes to literals
+    assert (cload(r'A <- [a]') ==
+            gload(r'A <- "a"'))
+    # but not single-range
+    assert (cload(r'A <- [a-c]') ==
+            gload(r'A <- [a-c]'))
     # add "b" to avoid dropping the sequence
     assert (cload(r'A <- !"a" . "b"') ==
             cload(r'A <- ![a] . "b"') ==
@@ -77,6 +83,18 @@ def test_common():
     assert (cload(r'A <- !"a" .') ==
             cload(r'A <- ![a] .') ==
             grm({'A': Class('a', negate=True)}))
+    # sequence of literals to literal
+    assert (cload(r'A <- "a" "bc" "d"') ==
+            gload(r'A <- "abcd"'))
+    # but not sequence with classes
+    assert (cload(r'A <- "a" [bc] "d"') ==
+            gload(r'A <- "a" [bc] "d"'))
+    # choice of classes or single-char literals
+    assert (cload(r'A <- [ab] / "m" / [yz]') ==
+            gload(r'A <- [abmyz]'))
+    # not negated classes though
+    assert (cload(r'A <- (![ab] .) / "m" / [yz]') ==
+            grm({'A': Choice(Class('ab', negate=True), Class('myz'))}))
 
 
 def test_regex():
