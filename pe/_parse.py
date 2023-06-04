@@ -74,7 +74,7 @@ The syntax is defined as follows::
 from typing import Tuple, Dict, cast
 
 import pe
-from pe._errors import Error
+from pe._errors import Error, ParseError, GrammarError
 from pe._definition import Definition
 from pe._grammar import Grammar
 from pe.operators import (
@@ -246,7 +246,13 @@ _parser = PackratParser(PEG)
 
 def loads(source: str) -> Tuple[str, Dict[str, Definition]]:
     """Parse the PEG at *source* and return a list of definitions."""
-    m = _parser.match(source, flags=pe.STRICT | pe.MEMOIZE)
+    if not source.strip():
+        raise GrammarError("empty grammar")
+    try:
+        m = _parser.match(source, flags=pe.STRICT | pe.MEMOIZE)
+    except ParseError as exc:
+        raise GrammarError("invalid grammar") from exc
+
     if not m:
         raise Error('invalid grammar')
     defs = m.value()
