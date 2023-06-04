@@ -2,6 +2,12 @@
 
 ## [Unreleased][unreleased]
 
+### Python Support
+
+* Removed support for Python 3.6, 3.7 ([#23])
+* Added support for Python 3.10, 3.11 ([#23])
+
+
 ## [v0.3.2][]
 
 **Release date: 2021-10-05**
@@ -126,3 +132,4 @@ descent parser and a work-in-progress state-machine parser.
 [#18]: https://github.com/goodmami/pe/issues/18
 [#19]: https://github.com/goodmami/pe/issues/19
 [#20]: https://github.com/goodmami/pe/issues/20
+[#23]: https://github.com/goodmami/pe/issues/23
