@@ -2,6 +2,11 @@
 
 ## [Unreleased][unreleased]
 
+
+## [v0.4.0][]
+
+**Release date: 2023-06-04**
+
 ### Python Support
 
 * Removed support for Python 3.6, 3.7 ([#23])
@@ -127,6 +132,7 @@ descent parser and a work-in-progress state-machine parser.
 [v0.3.0]: ../../releases/tag/v0.3.0
 [v0.3.1]: ../../releases/tag/v0.3.1
 [v0.3.2]: ../../releases/tag/v0.3.2
+[v0.4.0]: ../../releases/tag/v0.4.0
 
 [#7]: https://github.com/goodmami/pe/issues/7
 [#9]: https://github.com/goodmami/pe/issues/9
