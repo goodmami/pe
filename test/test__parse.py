@@ -1,4 +1,6 @@
+import pytest
 
+from pe._errors import GrammarError
 from pe.operators import (
     Dot,
     Literal,
@@ -118,3 +120,12 @@ def test_loads_def():
         Bee <- "b"
     ''') == ('A', {'A': Sequence('a', Nonterminal('Bee')),
                    'Bee': Literal('b')})
+
+
+def test_loads_error():
+    with pytest.raises(GrammarError):
+        loads('')
+    with pytest.raises(GrammarError):
+        loads('A <- +"a"')
+    with pytest.raises(GrammarError):
+        loads('A <- "a"+*')
