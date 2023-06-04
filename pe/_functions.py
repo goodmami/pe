@@ -1,15 +1,18 @@
 
-from typing import Union, Dict, Callable
+from typing import Union, Dict, Callable, Optional
 
+from pe.actions import Action
 from pe._constants import Flag
 from pe._errors import Error
 from pe._parser import Parser
 from pe._grammar import Grammar
 from pe._parse import loads
 
+_FuncMap = Dict[str, Union[Action, Callable]]
+
 
 def compile(source: Union[str, Grammar],
-            actions: Dict[str, Callable] = None,
+            actions: Optional[_FuncMap] = None,
             parser: str = 'packrat',
             flags: Flag = Flag.OPTIMIZE) -> Parser:
     """Compile the parsing expression or grammar in *source*."""
@@ -47,7 +50,7 @@ def compile(source: Union[str, Grammar],
 
 def match(pattern: str,
           string: str,
-          actions: Dict[str, Callable] = None,
+          actions: Optional[_FuncMap] = None,
           parser: str = 'packrat',
           flags: Flag = Flag.MEMOIZE):
     """Compile *pattern* and match *string* against it.

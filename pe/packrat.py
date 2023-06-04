@@ -7,7 +7,7 @@ Packrat Parsing
 # NOTE: attempting to use exceptions instead of FAIL codes resulted in
 # almost a 2x slowdown, so it's probably not a good idea
 
-from typing import (Union, List, Dict, Callable, Iterable, Any)
+from typing import List, Dict, Callable, Iterable, Any, Optional
 from collections import defaultdict
 import re
 import inspect
@@ -60,8 +60,8 @@ class PackratParser(Parser):
     def match(self,
               s: str,
               pos: int = 0,
-              flags: Flag = Flag.MEMOIZE | Flag.STRICT) -> Union[Match, None]:
-        memo: Union[Memo, None] = None
+              flags: Flag = Flag.MEMOIZE | Flag.STRICT) -> Optional[Match]:
+        memo: Optional[Memo] = None
         if flags & Flag.MEMOIZE:
             memo = defaultdict(dict)
 
@@ -345,8 +345,8 @@ class Rule:
     """
     def __init__(self,
                  name: str,
-                 expression: _Matcher = None,
-                 action: Action = None):
+                 expression: Optional[_Matcher] = None,
+                 action: Optional[Action] = None):
         self.name = name
         self.expression = expression
         self.action = action
