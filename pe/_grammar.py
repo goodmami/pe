@@ -1,18 +1,21 @@
 
-from typing import Dict, Callable
+from typing import Union, Dict, Callable, Optional
 
+from pe.actions import Action
 from pe._constants import Operator
 from pe._errors import Error
 from pe._definition import Definition
 from pe.operators import Rule, Nonterminal
+
+_FuncMap = Dict[str, Union[Action, Callable]]
 
 
 class Grammar:
     """A parsing expression grammar definition."""
 
     def __init__(self,
-                 definitions: Dict[str, Definition] = None,
-                 actions: Dict[str, Callable] = None,
+                 definitions: Optional[Dict[str, Definition]] = None,
+                 actions: Optional[_FuncMap] = None,
                  start: str = 'Start'):
         self.definitions: Dict[str, Definition] = dict(definitions or [])
         self.actions = actions or {}

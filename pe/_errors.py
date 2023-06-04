@@ -1,4 +1,7 @@
 
+from typing import Optional
+
+
 class Error(Exception):
     """Exception raised for invalid parsing expressions."""
 
@@ -14,11 +17,11 @@ class GrammarError(Error):
 class ParseError(Error):
 
     def __init__(self,
-                 message: str = None,
-                 filename: str = None,
-                 lineno: int = None,
-                 offset: int = None,
-                 text: str = None):
+                 message: Optional[str] = None,
+                 filename: Optional[str] = None,
+                 lineno: Optional[int] = None,
+                 offset: Optional[int] = None,
+                 text: Optional[str] = None):
         self.message = message
         self.filename = filename
         self.lineno = lineno
@@ -29,8 +32,8 @@ class ParseError(Error):
     def from_pos(cls,
                  pos: int,
                  text: str,
-                 message: str = None,
-                 filename: str = None):
+                 message: Optional[str] = None,
+                 filename: Optional[str] = None):
         """Instantiate from a full *text* and a file position *pos*"""
 
         # this method should work for \n and \r\n newline sequences, which

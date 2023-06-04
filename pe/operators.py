@@ -154,7 +154,7 @@ def Bind(expression: _Def, name: str):
     return Definition(BND, (_validate(expression), name))
 
 
-def Rule(expression: _Def, action: Callable, name: str = ANONYMOUS):
+def Rule(expression: _Def, action: Union[Action, Callable], name: str = ANONYMOUS):
     if action and not isinstance(action, Action):
         action = Call(action)
     return Definition(RUL, (_validate(expression), action, name))
