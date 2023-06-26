@@ -19,6 +19,7 @@ NOT = Operator.NOT
 CAP = Operator.CAP
 BND = Operator.BND
 SEQ = Operator.SEQ
+IGN = Operator.IGN
 CHC = Operator.CHC
 RUL = Operator.RUL
 DEF = Operator.DEF
@@ -87,6 +88,7 @@ _format_decorators: Dict[Operator, Tuple[str, str, str]] = {
     CAP: ('~', '', ''),
     BND: ('{}:', '', ''),
     SEQ: ('', ' ', ''),
+    IGN: ('<', '', ''),
     CHC: ('', ' / ', ''),
     RUL: ('', '', '  -> {}'),
 }
@@ -126,6 +128,7 @@ _format_map: Dict[Operator, _Formatter] = {
     CAP: _format_recursive,
     BND: _format_recursive,
     SEQ: _format_recursive,
+    IGN: _format_recursive,
     CHC: _format_recursive,
     RUL: _format_recursive,
     DBG: _format_debug,

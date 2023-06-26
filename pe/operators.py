@@ -21,6 +21,7 @@ NOT = Operator.NOT
 CAP = Operator.CAP
 BND = Operator.BND
 SEQ = Operator.SEQ
+IGN = Operator.IGN
 CHC = Operator.CHC
 RUL = Operator.RUL
 DBG = Operator.DBG
@@ -162,6 +163,10 @@ def Rule(expression: _Def, action: Union[Action, Callable], name: str = ANONYMOU
 
 def Debug(expression: _Def):
     return Definition(DBG, (_validate(expression),))
+
+
+def AutoIgnore(expression: _Def):
+    return Definition(IGN, (_validate(expression),))
 
 
 class SymbolTable(Dict[str, Definition]):

@@ -28,6 +28,7 @@ class Operator(enum.Enum):
     NOT = (_auto(), 4, 'Valued')       # (NOT, (expr,))
     CAP = (_auto(), 4, 'Valued')       # (CAP, (expr,))
     BND = (_auto(), 4, 'Valued')       # (BND, (expr, name))
+    IGN = (_auto(), 4, 'Valued')       # (IGN, (expr,))
     SEQ = (_auto(), 3, 'Sequential')   # (SEQ, (exprs,))
     RUL = (_auto(), 2, 'Applicative')  # (RUL, (expr, action, name))
     CHC = (_auto(), 1, 'Prioritized')  # (CHC, (exprs,))

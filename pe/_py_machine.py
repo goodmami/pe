@@ -14,11 +14,14 @@ from pe._constants import FAIL as FAILURE, Operator, Flag
 from pe._errors import Error
 from pe._match import Match
 from pe._types import Memo
+from pe._definition import Definition
 from pe._grammar import Grammar
 from pe._parser import Parser
 from pe._optimize import optimize
+from pe._autoignore import autoignore
 from pe.actions import Action, Bind
 from pe.operators import Rule
+from pe.patterns import DEFAULT_IGNORE
 
 
 # Parser ###############################################################
@@ -94,8 +97,11 @@ def Instruction(
 class MachineParser(Parser):
 
     def __init__(self, grammar: Grammar,
+                 ignore: Optional[Definition] = DEFAULT_IGNORE,
                  flags: Flag = Flag.NONE):
         super().__init__(grammar, flags=flags)
+
+        grammar = autoignore(grammar, ignore)
 
         grammar = optimize(grammar,
                            inline=flags & Flag.INLINE,

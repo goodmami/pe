@@ -26,9 +26,11 @@ from pe._types import RawMatch, Memo
 from pe._grammar import Grammar
 from pe._parser import Parser
 from pe._optimize import optimize, regex
+from pe._autoignore import autoignore
 from pe._debug import debug
 from pe._misc import ansicolor
 from pe.actions import Action
+from pe.patterns import DEFAULT_IGNORE
 
 
 _Matcher = Callable[[str, int, Memo], RawMatch]
@@ -36,8 +38,15 @@ _Matcher = Callable[[str, int, Memo], RawMatch]
 
 class PackratParser(Parser):
 
-    def __init__(self, grammar: Grammar, flags: Flag = Flag.NONE):
+    def __init__(
+        self,
+        grammar: Grammar,
+        ignore: Optional[Definition] = DEFAULT_IGNORE,
+        flags: Flag = Flag.NONE
+    ):
         super().__init__(grammar, flags=flags)
+
+        grammar = autoignore(grammar, ignore)
 
         grammar = optimize(grammar,
                            inline=flags & Flag.INLINE,

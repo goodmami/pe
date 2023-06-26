@@ -15,6 +15,7 @@ from pe.operators import (
     Not,
     Capture,
     Bind,
+    AutoIgnore,
 )
 from pe._parse import loads
 
@@ -120,6 +121,13 @@ def test_loads_def():
         Bee <- "b"
     ''') == ('A', {'A': Sequence('a', Nonterminal('Bee')),
                    'Bee': Literal('b')})
+
+
+def test_loads_autoignore_def():
+    assert loads('A <  "a"') == ('A', {'A': AutoIgnore('a')})
+    assert loads('A <  ~"a"') == ('A', {'A': AutoIgnore(Capture('a'))})
+    assert loads('A <  "a"*') == ('A', {'A': AutoIgnore(Star('a'))})
+    assert loads('A <  "a" "b"') == ('A', {'A': AutoIgnore(Sequence('a', 'b'))})
 
 
 def test_loads_error():
