@@ -1,48 +1,32 @@
 
 import pe
 from pe.actions import Constant, Pack, Pair, Fail, Capture
+from pe.operators import Class, Star
 
 
 Json = pe.compile(
     r'''
-    Start    <- Spacing Value Spacing EOF
-    Value    <- Object / Array / String / Number / Constant / BADVALUE
-    Object   <- LBRACE (Member (COMMA Member)*)? BADCOMMA? RBRACE
-    Member   <- String COLON Value
-    Array    <- LBRACK (Value (COMMA Value)*)? BADCOMMA? RBRACK
+    Start    <- Value EOF
+    Value    <  Object / Array / String / Number / Constant / BADVALUE
+    Object   <  "{" (Member ("," Member)*)? BADCOMMA? "}"
+    Member   <  String ":" Value
+    Array    <  "[" (Value ("," Value)*)? BADCOMMA? "]"
     String   <- ["] ~( (!["\\] .)* ('\\' . / (!["\\] .)+)* ) ["]
-    Number   <- Integer / Float
-    Constant <- TRUE / FALSE / NULL
-    Integer  <- INTEGER ![.eE]
-    Float    <- INTEGER FRACTION? EXPONENT?
-    INTEGER  <- "-"? ("0" / [1-9] [0-9]*)
-    FRACTION <- "." [0-9]+
-    EXPONENT <- [eE] [-+]? [0-9]+
-    TRUE     <- "true"
-    FALSE    <- "false"
-    NULL     <- "null"
-    LBRACE   <- "{" Spacing
-    RBRACE   <- Spacing "}"
-    LBRACK   <- "[" Spacing
-    RBRACK   <- Spacing "]"
-    COMMA    <- Spacing "," Spacing
-    COLON    <- Spacing ":" Spacing
-    Spacing  <- [\t\n\f\r ]*
+    Number   <- "-"? ("0" / [1-9] [0-9]*) ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+    Constant <- ~( "true" / "false" / "null" )
     EOF      <- !.
     BADVALUE <- ![}\]] .
-    BADCOMMA <- ',' &(RBRACE / RBRACK)
+    BADCOMMA <  ',' &[}\]]
     ''',
     actions={
         'Object': Pair(dict),
         'Array': Pack(list),
-        'Integer': Capture(int),
-        'Float': Capture(float),
-        'TRUE': Constant(True),
-        'FALSE': Constant(False),
-        'NULL': Constant(None),
+        'Number': Capture(float),
+        'Constant': {'true': True, 'false': False, 'null': None}.__getitem__,
         'BADVALUE': Fail('unexpected JSON value'),
         'BADCOMMA': Fail('trailing commas are not allowed'),
-    }
+    },
+    ignore=Star(Class("\t\n\f\r ")),
 )
 
 
@@ -84,7 +68,7 @@ def test_arrays():
 
 
 def test_objects():
-    assert _match('{}') == {}
+    assert _match('{}') == _match(' { } ') == {}
     assert _match('{"key": true}') == {"key": True}
     assert (_match('{"true": true, "false": false}')
             == {"true": True, "false": False})
