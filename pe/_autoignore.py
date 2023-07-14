@@ -2,12 +2,15 @@ from typing import Optional
 
 from pe._constants import Operator
 from pe._definition import Definition
+from pe._disarm import disarm
 from pe._grammar import Grammar
 from pe.operators import Sequence
 
 
 def autoignore(grammar: Grammar, ignore: Optional[Definition]) -> Grammar:
     """Interleave ignore patterns around sequence items."""
+    if ignore is not None:
+        ignore = disarm(ignore)
     new = {
         name: _autoignore(defn, ignore)
         for name, defn
@@ -20,26 +23,9 @@ def autoignore(grammar: Grammar, ignore: Optional[Definition]) -> Grammar:
     )
 
 
-_single_expr_ops = {
-    Operator.OPT,
-    Operator.STR,
-    Operator.PLS,
-    Operator.AND,
-    Operator.NOT,
-    Operator.CAP,
-    Operator.BND,
-    Operator.RUL,
-    Operator.DEF,
-}
-
-_multi_expr_ops = {
-    Operator.SEQ,
-    Operator.CHC,
-}
-
-
 def _autoignore(defn: Definition, ignore: Optional[Definition]) -> Definition:
-    if defn.op == Operator.IGN:
+    op = defn.op
+    if op == Operator.IGN:
         subdef = _autoignore(defn.args[0], ignore)
         if ignore is not None:
             if subdef.op == Operator.SEQ:
@@ -51,14 +37,15 @@ def _autoignore(defn: Definition, ignore: Optional[Definition]) -> Definition:
                 items = [ignore, subdef, ignore]
             subdef = Sequence(*items)
         defn = subdef
-    elif defn.op in _single_expr_ops:
+    elif op.type == 'Primary':
+        pass
+    elif op.is_unary():
         args = defn.args
-        defn = Definition(defn.op, (_autoignore(args[0], ignore), *args[1:]))
-    elif defn.op in _multi_expr_ops:
+        defn = Definition(op, (_autoignore(args[0], ignore), *args[1:]))
+    else:
         args = defn.args
         defn = Definition(
-            defn.op,
+            op,
             ([_autoignore(arg, ignore) for arg in args[0]], *args[1:])
         )
-    # do nothing for primary expressions
     return defn

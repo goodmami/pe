@@ -43,6 +43,9 @@ class Operator(enum.Enum):
     def type(self):
         return self.value[2]
 
+    def is_unary(self):
+        return self.type not in {'Sequential', 'Prioritized'}
+
 
 class Flag(enum.Flag):
     NONE = 0
