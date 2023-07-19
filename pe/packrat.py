@@ -298,15 +298,16 @@ class PackratParser(Parser):
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             # for proper printing, only terminals can print after
             # knowing the result
+            snippet = f"{repr(s[pos:pos+10])[1:-2][:12]:<12}"
             if subdef.op.precedence == 6 and subdef.op != Operator.SYM:
                 end, args, kwargs = expression(s, pos, memo)
                 indent = ' ' * len(inspect.stack(0))
                 color = 'green' if end >= 0 else 'red'
                 defstr = ansicolor(color, str(subdef))
-                print(f'{s[pos:pos+10]:<12} | {indent}{defstr}')
+                print(f'{snippet} | {indent}{defstr}')
             else:
-                print('{:<12} | {}{!s}'.format(
-                    s[pos:pos+10],
+                print('{} | {}{!s}'.format(
+                    snippet,
                     ' ' * len(inspect.stack(0)),
                     str(subdef)))
                 end, args, kwargs = expression(s, pos, memo)
