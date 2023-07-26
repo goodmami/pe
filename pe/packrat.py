@@ -290,6 +290,23 @@ class PackratParser(Parser):
         subdef, action, name = definition.args
         expression = self._def_to_expr(subdef)
         return Rule(name, expression, action)
+    
+    @staticmethod
+    def _format_snippet(text: str) -> str:
+        """Escape any characters that create large amounts of whitespace,
+        mainly line breaking characters like newlines but also tabs.
+        """
+        offending_characters = str.maketrans({
+            "\n" : r"\n", # newline
+            "\r" : r"\r", # carriage return
+            "\v" : r"\v", # vertical tab
+            "\t" : r"\t", # horizontal tab
+            "\f" : r"\f", # form feed
+            "\u0085" : r"\u0085", # NEL next line
+            "\u2028" : r"\u2028", # \N{LINE SEPARATOR}
+            "\u2029" : r"\u2029", # \N{PARAGRAPH SEPARATOR}
+        })
+        return text.translate(offending_characters)
 
     def _debug(self, definition: Definition) -> _Matcher:
         subdef: Definition = definition.args[0]
@@ -298,7 +315,8 @@ class PackratParser(Parser):
         def _match(s: str, pos: int, memo: Memo) -> RawMatch:
             # for proper printing, only terminals can print after
             # knowing the result
-            snippet = s.encode("unicode_escape").decode("ascii")[:12].ljust(12)
+            snippet = self._format_snippet(s[pos:pos+10])[:10].ljust(12)
+
             if subdef.op.precedence == 6 and subdef.op != Operator.SYM:
                 end, args, kwargs = expression(s, pos, memo)
                 indent = ' ' * len(inspect.stack(0))
