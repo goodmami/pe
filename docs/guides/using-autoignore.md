@@ -39,7 +39,7 @@ Array    <  "[" Value ("," Value)* "]"
 
 Only grammar rules that use the `< ` rule operator will use
 autoignore. By default, the ignore pattern is
-[pe.patterns.DEFAULT_IGNORE](../api/pe.patterns#DEFAULT_IGNORE), but
+[pe.patterns.DEFAULT_IGNORE](../api/pe.patterns.md#DEFAULT_IGNORE), but
 it can be customized by changing the `ignore` parameter when compiling
 a grammar:
 
