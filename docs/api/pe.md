@@ -4,7 +4,7 @@
 ## Functions
 
 * pe.**<a id="compile" href="#compile">compile</a>**
-  (*source, actions=None, parser='packrat', flags=pe.OPTIMIZE*)
+  (*source, actions=None, parser='packrat', ignore=pe.patterns.DEFAULT_IGNORE, flags=pe.OPTIMIZE*)
 
   Compile the parsing expression or grammar defined in *source* and
   return the [Parser](#Parser) object. If *source* contains a grammar
@@ -21,6 +21,9 @@
   implementation. By default this is `'packrat'` for the
   [packrat](pe.packrat.md) *parser*, but it can be set to `"machine"`
   to use the state machine parser.
+
+  The *ignore* pattern is the definition used by autoignore. Set to
+  `None` to disable autoignore.
 
   The *flags* argument can be used to affect how the parser is
   initialized. By default it is [pe.OPTIMIZE](#OPTIMIZE), but
@@ -49,7 +52,7 @@
 
 
 * pe.**<a id="match" href="#match">match</a>**
-  (*pattern, string, actions=None, parser='packrat', flags=pe.MEMOIZE | pe.STRICT*)
+  (*pattern, string, actions=None, parser='packrat', ignore=pe.patterns.DEFAULT_IGNORE, flags=pe.MEMOIZE | pe.STRICT*)
 
   Match the parsing expression defined in *pattern* against the input
   *string*.
@@ -58,6 +61,9 @@
   *parser* is used. The *parser* parameter can be set to `"machine"`
   to use the state machine parser, but for more control over grammar
   compilation use the [compile()](#compile) function.
+
+  The *ignore* pattern is the definition used by autoignore. Set to
+  `None` to disable autoignore.
 
   The *flags* parameter is used to affect parsing behavior; by default
   it uses [pe.MEMOIZE](#MEMOIZE). Note that changing this value will

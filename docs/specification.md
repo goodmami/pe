@@ -45,7 +45,8 @@ following sections.
 | (none)   | [Rule]        | [Applicative] | Match sequential term `s`, apply the defined action       |
 | `a`      | (default)     | [Prioritized] | Match applicative term `a`                                |
 | `a / e`  | [Choice]      | [Prioritized] | Match prioritized term `e` only if `a` failed             |
-| `A <- e` | [Grammar]     | [Definitive]  | Match prioritized term `e` for start symbol `A`           |
+| `A <- e` | [Grammar]     | [Definitive]  | Define `A` as the prioritized term `e`                    |
+| `A <  e` | [Grammar]     | [Definitive]  | Define `A` as the prioritized term `e` with autoignore    |
 
 
 ## Grammar Syntax
@@ -60,11 +61,11 @@ describing itself. This PEG is based on Bryan Ford's original
 # Hierarchical syntax
 Start      <- Spacing (Grammar / Expression) EndOfFile
 Grammar    <- Definition+
-Definition <- Identifier Operator Expression
-Operator   <- LEFTARROW
+Definition <- Identifier defop:Operator Expression
+Operator   <- LEFTARROW / LEFTANGLE
 Expression <- Sequence (SLASH Sequence)*
-Sequence   <- Evaluated*
-Evaluated  <- (prefix:Prefix)? Quantified
+Sequence   <- Valued*
+Valued     <- (prefix:Prefix)? Quantified
 Prefix     <- AND / NOT / TILDE / Binding
 Binding    <- Identifier COLON
 Quantified <- Primary (quantifier:Quantifier)?
@@ -93,6 +94,7 @@ Oct        <- [0-7]
 Hex        <- [0-9a-fA-F]
 
 LEFTARROW  <- '<-' Spacing
+LEFTANGLE  <- '<' Space Spacing
 SLASH      <- '/' Spacing
 AND        <- '&' Spacing
 NOT        <- '!' Spacing
@@ -198,6 +200,7 @@ expressions compared to the equivalent in-situ expression.
 | (none)         | [Rule]     | 2          | [Applicative]   |
 | `e1 / e2`      | [Choice]   | 1          | [Prioritized]   |
 | `Abc <- e`     | [Grammar]  | 0          | [Definitive]    |
+| `Abc <  e`     | [Grammar]  | 0          | [Definitive]    |
 
 
 ## Expression Values and Behavior

@@ -4,6 +4,7 @@
 * [Specification](specification.md)
 * [Guides](guides/README.md)
   - [Matching strings with pe.match()](guides/basic-matching.md)
+  - [Ignoring whitespace by default](guides/using-autoignore.md)
   - [Transform results with semantic actions](guides/using-actions.md)
   - [Controlling parser behavior with flags](guides/using-flags.md)
   - [Common patterns](guides/common-patterns.md)
