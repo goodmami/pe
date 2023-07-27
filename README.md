@@ -193,7 +193,7 @@ The grammar can be defined such that some rules ignore occurrences of
 a pattern between sequence items. Most commonly, this is used to
 ignore whitespace, so the default ignore pattern is simple whitespace.
 
-```pycon
+```python
 >>> pe.match("X <- 'a' 'b'", "a b")  # regular rule does not match
 >>> pe.match("X <  'a' 'b'", "a b")  # auto-ignore rule matches
 <Match object; span=(0, 3), match='a b'>
