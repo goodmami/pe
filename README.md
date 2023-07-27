@@ -197,6 +197,7 @@ ignore whitespace, so the default ignore pattern is simple whitespace.
 >>> pe.match("X <- 'a' 'b'", "a b")  # regular rule does not match
 >>> pe.match("X <  'a' 'b'", "a b")  # auto-ignore rule matches
 <Match object; span=(0, 3), match='a b'>
+
 ```
 
 This feature can help to make grammars more readable.
