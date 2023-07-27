@@ -18,13 +18,13 @@ COMMA    <- "," Spacing
 Wherever whitespace may occur, it must be defined by the grammar.
 
 As an extension to standard PEG syntax, **pe** allows "autoignore"
-rules via the `< ` rule operator (inspired by the [space arrow][] from
-the [Pegged][] parser), which transforms the grammar to interleave a
-particular pattern around and between sequence items. The above
-grammar then becomes:
+rules via the `< ` rule operator (inspired by the [space arrow from
+the Pegged parser][space arrow]), which transforms the grammar to
+interleave a particular pattern around and between sequence items. The
+above grammar then becomes:
 
 ```peg
-Array    <- LBRACKET Value (COMMA Value)* RBRACKET
+Array    <  LBRACKET Value (COMMA Value)* RBRACKET
 
 LBRACKET <- "["
 RBRACKET <- "]"
@@ -39,7 +39,9 @@ Array    <  "[" Value ("," Value)* "]"
 
 Only grammar rules that use the `< ` rule operator will use
 autoignore. By default, the ignore pattern is
-[pe.patterns.DEFAULT_IGNORE](pe.patterns#DEFAULT_IGNORE), but it can be customized by changing the `ignore` parameter when compiling a grammar:
+[pe.patterns.DEFAULT_IGNORE](pe.patterns#DEFAULT_IGNORE), but it can
+be customized by changing the `ignore` parameter when compiling a
+grammar:
 
 ```python
 import pe
@@ -56,4 +58,3 @@ bindings, or actions, will be stripped out of the definition so there
 is no semantic effect of parsing the ignore pattern.
 
 [space arrow]: https://github.com/PhilippeSigaud/Pegged/wiki/Extended-PEG-Syntax#space-arrow-and-user-defined-spacing
-[Pegged]: https://github.com/PhilippeSigaud/Pegged
