@@ -3,6 +3,23 @@
 ## [Unreleased][unreleased]
 
 
+## [v0.5.0][]
+
+**Release date: 2023-07-26**
+
+### Added
+
+* `pe.operators.AutoIgnore` ([#6])
+* `pe.patterns` module ([#6])
+* `pe.patterns.DEFAULT_IGNORE` ([#6])
+* `ignore` parameter on `pe.compile()`, `pe.match()`,
+  `pe.packrat.PackratParser`, and `pe.machine.MachineParser` ([#6])
+
+### Changed
+
+* Line-breaking whitespace and tabs are escaped in debug context string ([#31])
+
+
 ## [v0.4.0][]
 
 **Release date: 2023-06-04**
@@ -133,7 +150,9 @@ descent parser and a work-in-progress state-machine parser.
 [v0.3.1]: ../../releases/tag/v0.3.1
 [v0.3.2]: ../../releases/tag/v0.3.2
 [v0.4.0]: ../../releases/tag/v0.4.0
+[v0.5.0]: ../../releases/tag/v0.5.0
 
+[#6]: https://github.com/goodmami/pe/issues/6
 [#7]: https://github.com/goodmami/pe/issues/7
 [#9]: https://github.com/goodmami/pe/issues/9
 [#12]: https://github.com/goodmami/pe/issues/12
@@ -144,3 +163,4 @@ descent parser and a work-in-progress state-machine parser.
 [#20]: https://github.com/goodmami/pe/issues/20
 [#21]: https://github.com/goodmami/pe/issues/21
 [#23]: https://github.com/goodmami/pe/issues/23
+[#31]: https://github.com/goodmami/pe/issues/31
