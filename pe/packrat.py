@@ -290,21 +290,21 @@ class PackratParser(Parser):
         subdef, action, name = definition.args
         expression = self._def_to_expr(subdef)
         return Rule(name, expression, action)
-    
+
     @staticmethod
     def _format_snippet(text: str) -> str:
         """Escape any characters that create large amounts of whitespace,
         mainly line breaking characters like newlines but also tabs.
         """
         offending_characters = str.maketrans({
-            "\n" : r"\n", # newline
-            "\r" : r"\r", # carriage return
-            "\v" : r"\v", # vertical tab
-            "\t" : r"\t", # horizontal tab
-            "\f" : r"\f", # form feed
-            "\u0085" : r"\u0085", # NEL next line
-            "\u2028" : r"\u2028", # \N{LINE SEPARATOR}
-            "\u2029" : r"\u2029", # \N{PARAGRAPH SEPARATOR}
+            "\n": r"\n",  # newline
+            "\r": r"\r",  # carriage return
+            "\v": r"\v",  # vertical tab
+            "\t": r"\t",  # horizontal tab
+            "\f": r"\f",  # form feed
+            "\u0085": r"\u0085",  # NEL next line
+            "\u2028": r"\u2028",  # \N{LINE SEPARATOR}
+            "\u2029": r"\u2029",  # \N{PARAGRAPH SEPARATOR}
         })
         return text.translate(offending_characters)
 

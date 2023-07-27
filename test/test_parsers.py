@@ -166,7 +166,8 @@ def test_exprs(parser, dfn, input, pos, end, match):
         assert m.groupdict() == groupdict
         assert m.value() == value
 
+
 def test_snippet_escaping():
-    input = "😊\nあ\rA\vB\tC\fD\u0085E\u2028F\u2029"       
-    output = r"😊\nあ\rA\vB\tC\fD\u0085E\u2028F\u2029"    
+    input = "😊\nあ\rA\vB\tC\fD\u0085E\u2028F\u2029"
+    output = r"😊\nあ\rA\vB\tC\fD\u0085E\u2028F\u2029"
     assert PackratParser._format_snippet(input) == output
