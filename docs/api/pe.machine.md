@@ -3,5 +3,5 @@
 
 
 *class* pe.machine.**<a id="MachineParser" href="#MachineParser">MachineParser</a>**
-(*grammar, flags=pe.NONE*)
+(*grammar, ignore=pe.patterns.DEFAULT_IGNORE, flags=pe.NONE*)
 

@@ -19,6 +19,7 @@ from pe.operators import (
     Sequence as Seq,
     Choice as Chc,
     Rule as Rul,
+    AutoIgnore as Ign,
 )
 from pe._grammar import Grammar
 from pe.actions import Pack
@@ -138,6 +139,17 @@ data = [  # noqa: E127
     ('Rgr1', Cap(Sym('abcs')), 'aaa',   0, 3,    (('aaa',), {}, 'aaa')),
     ('Rgr2', Seq(abc, Not(Dot())),
                               'a',      0, 1,    _blank),
+
+    ('Ign0', Ign(abc),        'a',      0, 1,    _blank),
+    ('Ign1', Ign(abc),        ' a  ',   0, 4,    _blank),
+    ('Ign2', Ign(abc),        ' x  ',   0, FAIL, None),
+    ('Ign3', Ign(abseq),      ' a b ',  0, 5,    _blank),
+    ('Ign4', Ign(Pls(xyz)),   ' xy ',   0, 4,    _blank),
+    ('Ign5', Ign(Pls(xyz)),   ' x y ',  0, 3,    _blank),
+    ('Ign6', Ign(Str(xyz)),   ' a ',    0, 1,    _blank),
+    ('Ign7', Ign(Pls(abseq)), ' abab ', 0, 6,    _blank),
+    ('Ign8', Ign(Pls(abseq)), ' ab ab', 0, 4,    _blank),
+    ('Ign9', Ign(Pls(abseq)), 'a ba b', 0, FAIL, None),
 
 ]
 

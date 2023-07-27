@@ -16,6 +16,7 @@ from pe.operators import (
     Not,
     Capture,
     Bind,
+    AutoIgnore,
 )
 
 
@@ -96,3 +97,8 @@ def test_Capture():
 def test_Bind():
     assert Bind(Dot(), name='x') == Def(Op.BND, (Dot(), 'x'))
     assert Bind('foo', name='bar') == Bind(Literal('foo'), name='bar')
+
+
+def test_AutoIgnore():
+    assert AutoIgnore(Dot()) == Def(Op.IGN, (Dot(),))
+    assert AutoIgnore('foo') == AutoIgnore(Literal('foo'))

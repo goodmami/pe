@@ -3,5 +3,5 @@
 
 
 *class* pe.packrat.**<a id="PackratParser" href="#PackratParser">PackratParser</a>**
-(*grammar, flags=pe.NONE*)
+(*grammar, ignore=pe.patterns.DEFAULT_IGNORE, flags=pe.NONE*)
 

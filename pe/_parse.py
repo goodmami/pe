@@ -19,11 +19,11 @@ The syntax is defined as follows::
   # Hierarchical syntax
   Start      <- Spacing (Grammar / Expression) EndOfFile
   Grammar    <- Definition+
-  Definition <- Identifier Operator Expression
-  Operator   <- LEFTARROW
+  Definition <- Identifier defop:Operator Expression
+  Operator   <- LEFTARROW / LEFTANGLE
   Expression <- Sequence (SLASH Sequence)*
-  Sequence   <- Evaluated*
-  Evaluated  <- (prefix:Prefix)? Quantified
+  Sequence   <- Valued*
+  Valued     <- (prefix:Prefix)? Quantified
   Prefix     <- AND / NOT / TILDE / Binding
   Binding    <- Identifier COLON
   Quantified <- Primary (quantifier:Quantifier)?
@@ -52,6 +52,7 @@ The syntax is defined as follows::
   Hex        <- [0-9a-fA-F]
 
   LEFTARROW  <- '<-' Spacing
+  LEFTANGLE  <- '<' Space Spacing
   SLASH      <- '/' Spacing
   AND        <- '&' Spacing
   NOT        <- '!' Spacing
@@ -91,6 +92,7 @@ from pe.operators import (
     Bind,
     Sequence,
     Choice,
+    AutoIgnore,
     SymbolTable,
 )
 from pe.packrat import PackratParser
@@ -141,12 +143,20 @@ def _make_prioritized(exprs):
         raise Error(f'empty choice: {exprs}')
 
 
+def _make_definition(identifier, expr, defop=None):
+    if defop is not None:
+        return (identifier, defop(expr))
+    return (identifier, expr)
+
+
 V = SymbolTable()
 
 # Hierarchical syntax
 V.Start = Sequence(V.Spacing, Choice(V.Grammar, V.Expression), V.EOF)
 V.Grammar = Plus(V.Definition)
-V.Definition = Sequence(V.Identifier, V.LEFTARROW, V.Expression)
+V.Definition = Sequence(
+    V.Identifier, Bind(V.Operator, name='defop'), V.Expression
+)
 V.Expression = Sequence(V.Sequence, Star(Sequence(V.SLASH, V.Sequence)))
 V.Sequence = Plus(V.Valued)
 V.Valued = Sequence(Optional(Bind(V.Prefix, name='prefix')), V.Quantified)
@@ -157,7 +167,7 @@ V.Quantified = Sequence(
 )
 V.Quantifier = Choice(V.QUESTION, V.STAR, V.PLUS)
 V.Primary = Choice(V.Name, V.Group, V.Literal, V.Class, V.DOT)
-V.Name = Sequence(V.Identifier, V.Spacing, Not(V.LEFTARROW))
+V.Name = Sequence(V.Identifier, V.Spacing, Not(V.Operator))
 V.Group = Sequence(V.OPEN, V.Expression, V.CLOSE)
 V.Literal = Sequence(
     Choice(
@@ -171,7 +181,7 @@ V.Class = Sequence(
 
 # Non-recursive patterns
 
-# V.Operator = Choice(V.LEFTARROW)
+V.Operator = Choice(V.LEFTARROW, V.LEFTANGLE)
 V.Special = Class('tnvfr"\'[]\\\\')
 V.Oct = Class('0-7')
 V.Hex = Class('0-9a-fA-F')
@@ -194,6 +204,7 @@ V.Identifier = Sequence(
 # Tokens
 
 V.LEFTARROW = Sequence('<-', V.Spacing)
+V.LEFTANGLE = Sequence('<', V.Space, V.Spacing)
 V.SLASH = Sequence('/', V.Spacing)
 V.AND = Sequence('&', V.Spacing)
 V.NOT = Sequence('!', V.Spacing)
@@ -217,7 +228,7 @@ PEG = Grammar(
     definitions=V,
     actions={
         'Grammar': Pack(tuple),
-        'Definition': Pack(tuple),
+        'Definition': _make_definition,
         'Expression': Pack(_make_prioritized),
         'Sequence': Pack(_make_sequential),
         'Valued': _make_valued,
@@ -232,6 +243,7 @@ PEG = Grammar(
         'Name': Nonterminal,
         'Literal': _make_literal,
         'Class': _make_class,
+        'LEFTANGLE': Constant(AutoIgnore),
         'DOT': Constant(Dot()),
         'RangeEndWarn': Warn(
             'The second character in a range may be an unescaped "]", '

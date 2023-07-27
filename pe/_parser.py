@@ -1,5 +1,5 @@
 
-from typing import Union
+from typing import Union, Optional
 
 from pe._constants import Flag
 from pe._match import Match
@@ -14,6 +14,7 @@ class Parser:
 
     def __init__(self,
                  grammar: Union[Grammar, Definition],
+                 ignore: Optional[Definition] = None,
                  flags: Flag = Flag.NONE):
         if isinstance(grammar, Definition):
             grammar = Grammar({'Start': grammar})

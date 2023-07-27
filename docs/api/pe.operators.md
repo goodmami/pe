@@ -109,3 +109,10 @@ the rest are described by the [specification](../specification.md).
   manually and it has no representation in the grammar notation, but
   rather it is inserted semi-automatically by compiling a grammar with
   the [pe.DEBUG](pe.md#DEBUG) flag.
+
+* pe.operators.**<a id="AutoIgnore" href="#AutoIgnore">AutoIgnore</a>**
+  (*expression*)
+
+  Interleave the "ignore" pattern around and between sequence items.
+  The ignore pattern is passed to the parser and defaults to
+  [pe.patterns.DEFAULT_IGNORE](pe.patterns#DEFAULT_IGNORE).

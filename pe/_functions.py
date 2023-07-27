@@ -3,10 +3,12 @@ from typing import Union, Dict, Callable, Optional
 
 from pe.actions import Action
 from pe._constants import Flag
+from pe._definition import Definition
 from pe._errors import Error
 from pe._parser import Parser
 from pe._grammar import Grammar
 from pe._parse import loads
+from pe.patterns import DEFAULT_IGNORE
 
 _FuncMap = Dict[str, Union[Action, Callable]]
 
@@ -14,6 +16,7 @@ _FuncMap = Dict[str, Union[Action, Callable]]
 def compile(source: Union[str, Grammar],
             actions: Optional[_FuncMap] = None,
             parser: str = 'packrat',
+            ignore: Optional[Definition] = DEFAULT_IGNORE,
             flags: Flag = Flag.OPTIMIZE) -> Parser:
     """Compile the parsing expression or grammar in *source*."""
     parsername = parser.lower()
@@ -39,7 +42,7 @@ def compile(source: Union[str, Grammar],
         print('## Grammar ##')
         print(g)
 
-    p = parser_class(g, flags=flags)
+    p = parser_class(g, ignore=ignore, flags=flags)
 
     if (flags & Flag.DEBUG) and (flags & Flag.OPTIMIZE):
         print('## Modified Grammar ##')
@@ -52,6 +55,7 @@ def match(pattern: str,
           string: str,
           actions: Optional[_FuncMap] = None,
           parser: str = 'packrat',
+          ignore: Optional[Definition] = DEFAULT_IGNORE,
           flags: Flag = Flag.MEMOIZE):
     """Compile *pattern* and match *string* against it.
 
@@ -63,5 +67,6 @@ def match(pattern: str,
     expr = compile(pattern,
                    actions=actions,
                    parser=parser,
+                   ignore=ignore,
                    flags=Flag.OPTIMIZE)
     return expr.match(string, flags=flags)

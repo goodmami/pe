@@ -106,6 +106,9 @@ name:e       # bind result of e to 'name'
 # grammars
 Name <- ...  # define a rule named 'Name'
 ... <- Name  # refer to rule named 'Name'
+
+# (extension) auto-ignore
+X <  e1 e2   # define a rule 'X' with auto-ignore
 ```
 
 ## Matching Inputs with Parsing Expressions
@@ -184,6 +187,20 @@ func(sep.join(match.groups()), **match.groupdict())
 [Pack]: docs/api/pe.actions.md#Pack
 [Join]: docs/api/pe.actions.md#Join
 
+### Auto-ignore
+
+The grammar can be defined such that some rules ignore occurrences of
+a pattern between sequence items. Most commonly, this is used to
+ignore whitespace, so the default ignore pattern is simple whitespace.
+
+```python
+>>> pe.match("X <- 'a' 'b'", "a b")  # regular rule does not match
+>>> pe.match("X <  'a' 'b'", "a b")  # auto-ignore rule matches
+<Match object; span=(0, 3), match='a b'>
+
+```
+
+This feature can help to make grammars more readable.
 
 ### Example
 
@@ -195,10 +212,10 @@ Here is one way to parse a list of comma-separated integers:
 ...   r'''
 ...     Start  <- "[" Values? "]"
 ...     Values <- Int ("," Int)*
-...     Int    <- ~( "-"? ("0" / [1-9] [0-9]*) )
+...     Int    <  ~( "-"? ("0" / [1-9] [0-9]*) )
 ...   ''',
 ...   actions={'Values': Pack(list), 'Int': int})
->>> m = p.match('[5,10,-15]')
+>>> m = p.match('[5, 10, -15]')
 >>> m.value()
 [5, 10, -15]
 
