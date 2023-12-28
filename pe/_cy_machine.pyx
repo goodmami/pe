@@ -123,6 +123,17 @@ cdef class Instruction:
         self.action = action
         self.name = name
 
+    def copy(self) -> Instruction:
+        return Instruction(
+            self.opcode,
+            self.oploc,
+            scanner=self.scanner,
+            marking=self.marking,
+            capturing=self.capturing,
+            action=self.action,
+            name=self.name,
+        )
+
 
 _Program = List[Instruction]
 
@@ -402,7 +413,7 @@ def _rpt(defn, mincount):
                             marking=pi.marking,
                             capturing=pi.capturing,
                             action=pi.action)]
-    return [*(pis * mincount),
+    return [*(pi.copy() for _ in range(mincount) for pi in pis),
             Instruction(BRANCH, len(pis) + 2),
             *pis,
             Instruction(UPDATE, -len(pis))]
