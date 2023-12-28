@@ -2,6 +2,10 @@
 
 ## [Unreleased][unreleased]
 
+### Fixed
+
+* Repetitions with mincount > 0 no longer reuse the instruction object ([#38])
+
 
 ## [v0.5.0][]
 
@@ -164,3 +168,4 @@ descent parser and a work-in-progress state-machine parser.
 [#21]: https://github.com/goodmami/pe/issues/21
 [#23]: https://github.com/goodmami/pe/issues/23
 [#31]: https://github.com/goodmami/pe/issues/31
+[#38]: https://github.com/goodmami/pe/issues/38
