@@ -2,9 +2,24 @@
 
 ## [Unreleased][unreleased]
 
+
+## [v0.5.1][]
+
+**Release date: 2023-12-31**
+
+### Python Support
+
+* Added support for Python 3.12
+
 ### Fixed
 
 * Repetitions with mincount > 0 no longer reuse the instruction object ([#38])
+
+### Maintenance
+
+* Use pyproject.toml instead of setup.cfg for project metadata
+* Use Ruff for linting ([#36])
+* Update CI workflows, including OIDC trusted publishing
 
 
 ## [v0.5.0][]
@@ -155,6 +170,7 @@ descent parser and a work-in-progress state-machine parser.
 [v0.3.2]: ../../releases/tag/v0.3.2
 [v0.4.0]: ../../releases/tag/v0.4.0
 [v0.5.0]: ../../releases/tag/v0.5.0
+[v0.5.1]: ../../releases/tag/v0.5.1
 
 [#6]: https://github.com/goodmami/pe/issues/6
 [#7]: https://github.com/goodmami/pe/issues/7
@@ -168,4 +184,5 @@ descent parser and a work-in-progress state-machine parser.
 [#21]: https://github.com/goodmami/pe/issues/21
 [#23]: https://github.com/goodmami/pe/issues/23
 [#31]: https://github.com/goodmami/pe/issues/31
+[#36]: https://github.com/goodmami/pe/issues/36
 [#38]: https://github.com/goodmami/pe/issues/38
