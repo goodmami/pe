@@ -139,5 +139,5 @@ class Warn(Action):
         self.arg = message
 
     def __call__(self, s, pos, end, args, kwargs):
-        warnings.warn(self.arg, GrammarWarning)
+        warnings.warn(self.arg, GrammarWarning, stacklevel=1)
         return args, kwargs

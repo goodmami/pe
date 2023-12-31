@@ -137,8 +137,8 @@ _format_map: Dict[Operator, _Formatter] = {
 
 def _format(defn: Definition,
             prev_op: Operator) -> str:
-    try:
-        func = _format_map[defn.op]
-    except KeyError:
+    op = defn.op
+    if op in _format_map:
+        return _format_map[op](defn, prev_op)
+    else:
         raise Error(f'invalid operation: {defn.op!r}')
-    return func(defn, prev_op)
