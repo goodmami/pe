@@ -446,9 +446,10 @@ _op_map = {
 
 
 def _parsing_instructions(defn):  # noqa: C901
-    try:
+    op = defn.op
+    if op in _op_map:
         return _op_map[defn.op](defn)
-    except KeyError:
+    else:
         raise Error(f'invalid definition: {defn!r}')
 
 

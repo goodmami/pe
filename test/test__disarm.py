@@ -1,4 +1,3 @@
-from pe._definition import Definition
 from pe.operators import Bind, Capture, Literal, Rule, Sequence, Debug
 from pe._disarm import disarm
 

@@ -1,0 +1,52 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+      - name: Install
+        run: python -m pip install ".[dev]"
+      - name: Lint
+        run: ruff .
+      - name: Type Check
+        run: mypy pe
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Build Dependencies
+        run: python -m pip install "Cython" "build"
+      - name: Cythonize Sources
+        run: cython -3 pe/*.pyx
+      - name: Build Package
+        run: python -m build --wheel
+      - name: Install Package and Dev Dependencies
+        run: python -m pip install ".[dev]"
+      - name: Run Tests and Doctests
+        if: ${{ matrix.python-version == '3.9' }}
+        run: pytest --doctest-glob=\*.md
+      - name: Run Tests
+        if: ${{ matrix.python-version != '3.9' }}
+        run: |
+          pip install pytest
+          pytest

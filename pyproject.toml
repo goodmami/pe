@@ -1,3 +1,56 @@
 [build-system]
 requires = ["setuptools>=67.8", "wheel", "Cython~=3.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pe"
+dynamic = ["version"]
+description = "Library for Parsing Expression Grammars (PEG)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+keywords = ["peg", "parsing", "text"]
+authors = [
+  {name = "Michael Wayne Goodman", email = "goodman.m.w@gmail.com"}
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Cython",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Text Processing",
+  "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/goodmami/pe"
+Documentation = "https://github.com/goodmami/pe/blob/main/docs/README.md"
+Changelog = "https://github.com/goodmami/pe/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+
+[tool.setuptools]
+packages = ["pe"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pe.__version__"}
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+indent-width = 4
+select = [
+  "B",      # flake8-bugbear
+  "E",      # pycodestyle
+  "F",      # Pyflakes
+  "W",      # pycodestyle
+]

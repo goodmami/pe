@@ -1,6 +1,6 @@
 
 import pe
-from pe.actions import Constant, Pack, Pair, Fail, Capture
+from pe.actions import Pack, Pair, Fail, Capture
 from pe.operators import Class, Star
 
 

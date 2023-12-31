@@ -124,12 +124,10 @@ class PackratParser(Parser):
             name = definition.args[0]
             return self._exprs.setdefault(name, Rule(name))
         else:
-            try:
-                meth = self._op_map[op]
-            except KeyError:
-                raise Error(f'invalid definition: {definition!r}')
+            if op in self._op_map:
+                return self._op_map[op](self, definition)
             else:
-                return meth(self, definition)
+                raise Error(f'invalid definition: {definition!r}')
 
     def _terminal(self, definition: Definition) -> _Matcher:
 
