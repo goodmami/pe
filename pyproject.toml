@@ -36,7 +36,7 @@ Documentation = "https://github.com/goodmami/pe/blob/main/docs/README.md"
 Changelog = "https://github.com/goodmami/pe/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "ruff", "mypy"]
 
 [tool.setuptools]
 packages = ["pe"]
