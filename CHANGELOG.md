@@ -5,6 +5,7 @@
 ### Fixed
 
 * Optimization returns new grammar instead of mutating original
+* Make union of choice of character classes
 
 
 ## [v0.5.1][]
