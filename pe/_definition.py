@@ -13,6 +13,7 @@ RGX = Operator.RGX
 SYM = Operator.SYM
 OPT = Operator.OPT
 STR = Operator.STR
+RPT = Operator.RPT
 PLS = Operator.PLS
 AND = Operator.AND
 NOT = Operator.NOT
@@ -79,10 +80,22 @@ def _format_nonterminal(defn: Definition, prev_op: Operator) -> str:
     return defn.args[0]
 
 
+def _format_repetition(defn: Definition, prev_op: Operator) -> str:
+    print('rec', defn.op, prev_op)
+    subdef, _min, _max = defn.args
+    if _min == _max:
+        body = str(_min)
+    else:
+        body = f"{'' if _min == 0 else _min},{'' if _max == -1 else _max}"
+    return f"{_format(subdef, defn.op)}{{{body}}}"
+
+
 _format_decorators: Dict[Operator, Tuple[str, str, str]] = {
+    # OP: (prefix, delim, suffix)
     OPT: ('', '', '?'),
     STR: ('', '', '*'),
     PLS: ('', '', '+'),
+    RPT: ('', '', ''),
     AND: ('&', '', ''),
     NOT: ('!', '', ''),
     CAP: ('~', '', ''),
@@ -123,6 +136,7 @@ _format_map: Dict[Operator, _Formatter] = {
     OPT: _format_recursive,
     STR: _format_recursive,
     PLS: _format_recursive,
+    RPT: _format_repetition,
     AND: _format_recursive,
     NOT: _format_recursive,
     CAP: _format_recursive,

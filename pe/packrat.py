@@ -195,7 +195,12 @@ class PackratParser(Parser):
 
         return _match
 
-    def _repeat(self, definition: Definition, min: int) -> _Matcher:
+    def _repetition(
+        self,
+        definition: Definition,
+        min: int,
+        max: int,
+    ) -> _Matcher:
 
         expression = self._def_to_expr(definition)
 
@@ -207,26 +212,36 @@ class PackratParser(Parser):
             ext = args.extend
             upd = kwargs.update
 
+            count = 0
             end, _args, _kwargs = expression(s, pos, memo)
             if end < 0 and min > 0:
                 return FAIL, _args, None
+
             while end >= 0 and guard > 0:
+                count += 1
                 ext(_args)
                 if _kwargs:
                     upd(_kwargs)
                 pos = end
-                guard -= 1
+                if count == max:
+                    break
                 end, _args, _kwargs = expression(s, pos, memo)
+                guard -= 1
+            if count < min:
+                return FAIL, _args, None
 
             return pos, tuple(args), kwargs
 
         return _match
 
+    def _repeat(self, definition: Definition) -> _Matcher:
+        return self._repetition(*definition.args)
+
     def _star(self, definition: Definition) -> _Matcher:
-        return self._repeat(definition.args[0], 0)
+        return self._repetition(definition.args[0], 0, -1)
 
     def _plus(self, definition: Definition) -> _Matcher:
-        return self._repeat(definition.args[0], 1)
+        return self._repetition(definition.args[0], 1, -1)
 
     def _optional(self, definition: Definition) -> _Matcher:
 
@@ -349,6 +364,7 @@ class PackratParser(Parser):
         Operator.OPT: _optional,
         Operator.STR: _star,
         Operator.PLS: _plus,
+        Operator.RPT: _repeat,
         Operator.AND: _and,
         Operator.NOT: _not,
         Operator.CAP: _capture,
