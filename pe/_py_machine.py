@@ -11,7 +11,7 @@ from enum import IntEnum
 import re
 
 from pe._constants import FAIL as FAILURE, Operator, Flag
-from pe._errors import Error
+from pe._errors import Error, ParseError
 from pe._match import Match
 from pe._types import Memo
 from pe._definition import Definition
@@ -132,6 +132,8 @@ class MachineParser(Parser):
         idx = self._index[self.start]
         end = _match(self.pi, idx, s, pos, args, kwargs, memo)
         if end < 0:
+            if flags & flags.STRICT:
+                raise ParseError()
             return None
         else:
             return Match(

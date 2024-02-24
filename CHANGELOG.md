@@ -4,8 +4,9 @@
 
 ### Fixed
 
-* Optimization returns new grammar instead of mutating original
-* Make union of choice of character classes
+* Optimization returns new grammar instead of mutating original ([#44])
+* Make union of choice of character classes ([#44])
+* `Flag.STRICT` now raises parsing errors in machine parser
 
 
 ## [v0.5.1][]
@@ -191,3 +192,4 @@ descent parser and a work-in-progress state-machine parser.
 [#31]: https://github.com/goodmami/pe/issues/31
 [#36]: https://github.com/goodmami/pe/issues/36
 [#38]: https://github.com/goodmami/pe/issues/38
+[#44]: https://github.com/goodmami/pe/issues/44

@@ -13,7 +13,7 @@ from enum import IntEnum
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
 from pe._constants import Operator, Flag, FAIL as FAILURE
-from pe._errors import Error
+from pe._errors import Error, ParseError
 from pe._match import Match
 from pe._types import Memo
 from pe._definition import Definition
@@ -176,6 +176,8 @@ class MachineParser(Parser):
         idx = self._index[self.start]
         end = self._parser.match(idx, s, pos, args, kwargs, memo)
         if end < 0:
+            if flags & Flag.STRICT:
+                raise ParseError()
             return None
         else:
             return Match(
