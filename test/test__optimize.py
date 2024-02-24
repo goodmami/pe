@@ -15,11 +15,16 @@ from pe._optimize import optimize
 
 
 def gload(s, inline=False, common=False, regex=False):
+    _, original = loads(s)
     start, defmap = loads(s)
-    return optimize(Grammar(defmap, start=start),
-                    inline=inline,
-                    common=common,
-                    regex=regex)
+    optimized = optimize(
+        Grammar(defmap, start=start),
+        inline=inline,
+        common=common,
+        regex=regex
+    )
+    assert original == defmap
+    return optimized
 
 
 def iload(s):

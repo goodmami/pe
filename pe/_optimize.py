@@ -128,22 +128,18 @@ def _common(defn):
         if len(ranges) == 1 and ranges[0][1] is None and not negated:
             defn = Literal(ranges[0][0])
 
-    if op == SEQ:
-        _common_sequence(defn.args[0])
+    elif op == SEQ:
+        defn = _common_sequence(defn)
 
-    if op == CHC:
-        _common_choice(defn.args[0])
-
-    # Sequence(x)  ->  x  OR  Choice(x)  ->  x
-    if op in (SEQ, CHC) and len(defn.args[0]) == 1:
-        defn = defn.args[0][0]
-        op = defn.op
+    elif op == CHC:
+        defn = _common_choice(defn)
 
     return defn
 
 
-def _common_sequence(subdefs):
+def _common_sequence(defn):
     i = 0
+    subdefs = list(defn.args[0])
     while i < len(subdefs) - 1:
         d = subdefs[i]
         # ![...] .  ->  [^...]
@@ -163,16 +159,18 @@ def _common_sequence(subdefs):
             if j - i > 1:
                 subdefs[i:j] = [Literal(''.join(x.args[0] for x in subdefs[i:j]))]
         i += 1
+    return Sequence(*subdefs)
 
 
-def _common_choice(subdefs):
+def _common_choice(defn):
     i = 0
+    subdefs = list(defn.args[0])
     while i < len(subdefs) - 1:
         d = subdefs[i]
         # [..] / [..]  ->  [....]
         # [..] / "."   ->  [...]
         if (d.op == CLS and not d.args[1]) or (d.op == LIT and len(d.args[0]) == 1):
-            ranges = d.args[0] if d.op == CLS else [(d.args[0], None)]
+            ranges = list(d.args[0]) if d.op == CLS else [(d.args[0], None)]
             j = i + 1
             while j < len(subdefs):
                 d2 = subdefs[j]
@@ -186,6 +184,7 @@ def _common_choice(subdefs):
             if j - i > 1:
                 subdefs[i:j] = [Class(ranges)]
         i += 1
+    return Choice(*subdefs)
 
 
 def _regex_dot(defn, defs, grpid):

@@ -2,6 +2,10 @@
 
 ## [Unreleased][unreleased]
 
+### Fixed
+
+* Optimization returns new grammar instead of mutating original
+
 
 ## [v0.5.1][]
 
