@@ -132,7 +132,7 @@ class MachineParser(Parser):
         idx = self._index[self.start]
         end = _match(self.pi, idx, s, pos, args, kwargs, memo)
         if end < 0:
-            if flags & flags.STRICT:
+            if flags & Flag.STRICT:
                 raise ParseError()
             return None
         else:

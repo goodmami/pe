@@ -187,9 +187,10 @@ def _common_choice(defn):
     return Choice(*subdefs)
 
 
-def _range_sort_key(range: list[tuple[str, str|None]]):
+def _range_sort_key(range):
     """Ensure single hyphen characters are the first."""
     return (range != ("-", None), range)
+
 
 def _regex_dot(defn, defs, grpid):
     return Regex('(?s:.)')
