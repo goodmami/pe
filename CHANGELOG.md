@@ -2,6 +2,11 @@
 
 ## [Unreleased][unreleased]
 
+
+## [v0.5.2][]
+
+**Release date: 2024-03-28**
+
 ### Fixed
 
 * Optimization returns new grammar instead of mutating original ([#44])
@@ -177,6 +182,7 @@ descent parser and a work-in-progress state-machine parser.
 [v0.4.0]: ../../releases/tag/v0.4.0
 [v0.5.0]: ../../releases/tag/v0.5.0
 [v0.5.1]: ../../releases/tag/v0.5.1
+[v0.5.2]: ../../releases/tag/v0.5.2
 
 [#6]: https://github.com/goodmami/pe/issues/6
 [#7]: https://github.com/goodmami/pe/issues/7
