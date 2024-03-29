@@ -15,11 +15,16 @@ from pe._optimize import optimize
 
 
 def gload(s, inline=False, common=False, regex=False):
+    _, original = loads(s)
     start, defmap = loads(s)
-    return optimize(Grammar(defmap, start=start),
-                    inline=inline,
-                    common=common,
-                    regex=regex)
+    optimized = optimize(
+        Grammar(defmap, start=start),
+        inline=inline,
+        common=common,
+        regex=regex
+    )
+    assert original == defmap
+    return optimized
 
 
 def iload(s):
@@ -67,12 +72,13 @@ def test_common():
             gload(r'A <- "a"'))
     assert (cload(r'A <- !"a"') ==
             gload(r'A <- !"a"'))
-    assert (cload(r'A <- !"a"') ==
-            gload(r'A <- !"a"'))
     # single-char classes to literals
     assert (cload(r'A <- [a]') ==
             gload(r'A <- "a"'))
-    # but not single-range
+    # but not multi-char class
+    assert (cload(r'A <- [ab]') ==
+            gload(r'A <- [ab]'))
+    # and not ranges
     assert (cload(r'A <- [a-c]') ==
             gload(r'A <- [a-c]'))
     # add "b" to avoid dropping the sequence
@@ -86,15 +92,24 @@ def test_common():
     # sequence of literals to literal
     assert (cload(r'A <- "a" "bc" "d"') ==
             gload(r'A <- "abcd"'))
-    # but not sequence with classes
+    # or sequence of literals or single-char classes
+    assert (cload(r'A <- "a" [b] "c"') ==
+            gload(r'A <- "abc"'))
+    # but not sequence with multi-char classes
     assert (cload(r'A <- "a" [bc] "d"') ==
             gload(r'A <- "a" [bc] "d"'))
-    # choice of classes or single-char literals
+    # choice of classes
+    assert (cload(r'A <- [ab] / [bc]') ==
+            gload(r'A <- [abc]'))
+    # or choice of classes or single-char literals
     assert (cload(r'A <- [ab] / "m" / [yz]') ==
             gload(r'A <- [abmyz]'))
     # not negated classes though
     assert (cload(r'A <- (![ab] .) / "m" / [yz]') ==
             grm({'A': Choice(Class('ab', negate=True), Class('myz'))}))
+    # hyphen characters are moved to start of class
+    assert (cload(r'A <- [(-,] / [-.]') ==
+            gload(r'A <- [-(-,.]'))
 
 
 def test_regex():

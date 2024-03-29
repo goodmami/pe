@@ -3,6 +3,17 @@
 ## [Unreleased][unreleased]
 
 
+## [v0.5.2][]
+
+**Release date: 2024-03-28**
+
+### Fixed
+
+* Optimization returns new grammar instead of mutating original ([#44])
+* Make union of choice of character classes ([#44])
+* `Flag.STRICT` now raises parsing errors in machine parser
+
+
 ## [v0.5.1][]
 
 **Release date: 2023-12-31**
@@ -171,6 +182,7 @@ descent parser and a work-in-progress state-machine parser.
 [v0.4.0]: ../../releases/tag/v0.4.0
 [v0.5.0]: ../../releases/tag/v0.5.0
 [v0.5.1]: ../../releases/tag/v0.5.1
+[v0.5.2]: ../../releases/tag/v0.5.2
 
 [#6]: https://github.com/goodmami/pe/issues/6
 [#7]: https://github.com/goodmami/pe/issues/7
@@ -186,3 +198,4 @@ descent parser and a work-in-progress state-machine parser.
 [#31]: https://github.com/goodmami/pe/issues/31
 [#36]: https://github.com/goodmami/pe/issues/36
 [#38]: https://github.com/goodmami/pe/issues/38
+[#44]: https://github.com/goodmami/pe/issues/44
