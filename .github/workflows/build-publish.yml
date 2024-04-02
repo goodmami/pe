@@ -48,7 +48,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.13.0
+        uses: pypa/cibuildwheel@v2.17.0
         env:
           CIBW_SKIP: "pp* *-win32 *linux_i686"  # skip PyPy, 32-bit
           CIBW_TEST_REQUIRES: pytest
