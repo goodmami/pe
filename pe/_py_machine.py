@@ -67,12 +67,13 @@ class Scanner:
         return FAILURE
 
 
-_State = Tuple[int, int, int, int, int]  # (opidx, pos, mark, argidx, kwidx)
+_State = Tuple[int, int, int, int, int, int]  # (opidx, pos, count, mark, argidx, kwidx)
 _Binding = Tuple[str, Any]
 _Instruction = Tuple[
     OpCode,
     int,                # index argument
     Optional[Scanner],  # scanner object or None
+    int,                # max count
     bool,               # marking
     bool,               # capturing
     Optional[Action],   # rule action
@@ -86,12 +87,13 @@ def Instruction(
     opcode: OpCode,
     oploc: int = 1,
     scanner: Optional[Scanner] = None,
+    maxcount: int = 1,
     marking: bool = False,
     capturing: bool = False,
     action: Optional[Action] = None,
     name: Optional[str] = None,
 ) -> _Instruction:
-    return (opcode, oploc, scanner, marking, capturing, action, name)
+    return (opcode, oploc, scanner, maxcount, marking, capturing, action, name)
 
 
 class MachineParser(Parser):
@@ -163,8 +165,8 @@ def _match(  # noqa: C901
         raise TypeError
 
     stack: List[_State] = [
-        (0, 0, -1, 0, 0),    # failure (top-level backtrack entry)
-        (-1, -1, -1, 0, 0),  # success
+        (0, 0, 0, -1, 0, 0),    # failure (top-level backtrack entry)
+        (-1, -1, 1, -1, 0, 0),  # success
     ]
 
     # lookup optimizations
@@ -175,10 +177,10 @@ def _match(  # noqa: C901
     while stack:
         # print(idx, pos, s[pos], len(stack))
         # print(pi[idx])
-        opcode, oploc, scanner, marking, capturing, action, name = pi[idx]
+        opcode, oploc, scanner, maxcount, marking, capturing, action, name = pi[idx]
 
         if marking:
-            push((0, -1, pos, len(args), len(kwargs)))
+            push((0, -1, 0, pos, len(args), len(kwargs)))
 
         if opcode == SCAN:
             assert scanner is not None
@@ -187,12 +189,12 @@ def _match(  # noqa: C901
                 idx = FAILURE
 
         elif opcode == BRANCH:
-            push((idx + oploc, pos, -1, len(args), len(kwargs)))
+            push((idx + oploc, pos, 0, -1, len(args), len(kwargs)))
             idx += 1
             continue
 
         elif opcode == CALL:
-            push((idx + 1, -1, -1, -1, -1))
+            push((idx + 1, -1, 0, -1, -1, -1))
             idx = oploc
             continue
 
@@ -202,9 +204,12 @@ def _match(  # noqa: C901
             continue
 
         elif opcode == UPDATE:
-            next_idx, _, prev_mark, _, _ = pop()
-            push((next_idx, pos, prev_mark, len(args), len(kwargs)))
-            idx += oploc
+            next_idx, _, count, prev_mark, _, _ = pop()
+            if maxcount == -1 or count < maxcount:
+                push((next_idx, pos, count + 1, prev_mark, len(args), len(kwargs)))
+                idx += oploc
+            else:
+                idx += 1
             continue
 
         elif opcode == RESTORE:
@@ -230,20 +235,20 @@ def _match(  # noqa: C901
             raise Error(f'invalid operation: {opcode}')
 
         if idx == FAILURE:
-            idx, pos, _, argidx, kwidx = pop()
+            idx, pos, _, _, argidx, kwidx = pop()
             while pos < 0:  # pos is >= 0 only for backtracking entries
-                idx, pos, _, argidx, kwidx = pop()
+                idx, pos, _, _, argidx, kwidx = pop()
             args[argidx:] = []
             if kwargs:
                 kwargs[kwidx:] = []
         else:
             if capturing:
-                _, _, mark, argidx, kwidx = pop()
+                _, _, _,  mark, argidx, kwidx = pop()
                 args[argidx:] = [s[mark:pos]]
                 kwargs[kwidx:] = []
 
             if action:
-                _, _, mark, argidx, kwidx = pop()
+                _, _, _, mark, argidx, kwidx = pop()
                 _args, _kwargs = action(
                     s,
                     mark,
@@ -283,7 +288,7 @@ def _make_program(grammar) -> Tuple[_Program, _Index]:
         pis.extend(_pis)
         pis.append(Instruction(RETURN))
     # replace call symbols with locations
-    pis = [(pi[0], index[pi[6]], *pi[2:]) if pi[0] == CALL else pi
+    pis = [(pi[0], index[pi[7]], *pi[2:]) if pi[0] == CALL else pi
            for pi in pis]
     pis.append(Instruction(PASS))  # success condition
 
@@ -320,33 +325,37 @@ def _opt(defn):
             Instruction(COMMIT, 1)]
 
 
-def _str(defn): return _rpt(defn, 0)
+def _str(defn): return _loop(defn, 0, -1)
 
 
-def _pls(defn): return _rpt(defn, 1)
+def _pls(defn): return _loop(defn, 1, -1)
 
 
-def _rpt(defn, mincount):
+def _rpt(defn): return _loop(defn, defn.args[1], defn.args[2])
+
+
+def _loop(defn, mincount: int, maxcount: int):
     pis = _parsing_instructions(defn.args[0])
     if (
         len(pis) == 1
         and pis[0][0] == SCAN
         and isinstance(pis[0][2], CharacterClass)
-        and not (pis[0][3] or pis[0][4])
-        and pis[0][5] is None
+        and not (pis[0][4] or pis[0][5])
+        and pis[0][6] is None
     ):
         pi = pis[0]
         pi[2].mincount = mincount
-        pi[2].maxcount = -1
+        pi[2].maxcount = maxcount
         return [Instruction(SCAN,
                             scanner=pi[2],
-                            marking=pi[3],
-                            capturing=pi[4],
-                            action=pi[5])]
-    return [*(pis * mincount),
+                            maxcount=1,  # scanner has maxcount
+                            marking=pi[4],
+                            capturing=pi[5],
+                            action=pi[6])]
+    return [*(pis * mincount),  # risk of billion laughs attack
             Instruction(BRANCH, len(pis) + 2),
             *pis,
-            Instruction(UPDATE, -len(pis))]
+            Instruction(UPDATE, -len(pis), maxcount=maxcount)]
 
 
 def _sym(defn):
@@ -371,16 +380,16 @@ def _not(defn):
 def _cap(defn):
     captured_choice = defn.args[0].op == Operator.CHC
     pis = _parsing_instructions(defn.args[0])
-    if not pis[0][3]:
-        pis[0] = (*pis[0][:3], True, *pis[0][4:])
+    if not pis[0][4]:
+        pis[0] = (*pis[0][:4], True, *pis[0][5:])
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if (not pi[4]  # not capturing
-            and not pi[5]  # no action
+    if (not pi[5]  # not capturing
+            and not pi[6]  # no action
             and pi[0] not in NO_CAP_OR_ACT
             and not captured_choice):
-        pis[-1] = (*pi[:4], True, *pi[5:])
+        pis[-1] = (*pi[:5], True, *pi[6:])
     else:
         pis.append(Instruction(NOOP, capturing=True))
     return pis
@@ -416,13 +425,13 @@ def _rul(defn):
     if action is None:
         return pis
     pi = pis[0]
-    if not pi[3]:
-        pis[0] = (*pi[:3], True, *pi[4:])
+    if not pi[4]:
+        pis[0] = (*pi[:4], True, *pi[5:])
     else:
         pis.insert(0, Instruction(NOOP, marking=True))
     pi = pis[-1]
-    if not pi[5] and pi[0] not in NO_CAP_OR_ACT:
-        pis[-1] = (*pi[:5], action, *pi[6:])
+    if not pi[6] and pi[0] not in NO_CAP_OR_ACT:
+        pis[-1] = (*pi[:6], action, *pi[7:])
     else:
         pis.append(Instruction(NOOP, action=action))
     return pis
@@ -435,6 +444,7 @@ _op_map = {
     Operator.RGX: _rgx,
     Operator.OPT: _opt,
     Operator.STR: _str,
+    Operator.RPT: _rpt,
     Operator.PLS: _pls,
     Operator.SYM: _sym,
     Operator.AND: _and,

@@ -49,6 +49,8 @@ version = {attr = "pe.__version__"}
 target-version = "py38"
 line-length = 88
 indent-width = 4
+
+[tool.ruff.lint]
 select = [
   "B",      # flake8-bugbear
   "E",      # pycodestyle

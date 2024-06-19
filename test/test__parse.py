@@ -10,6 +10,7 @@ from pe.operators import (
     Optional,
     Star,
     Plus,
+    Repeat,
     Nonterminal,
     And,
     Not,
@@ -76,6 +77,19 @@ def test_loads_star():
 def test_loads_plus():
     assert eloads('"a"+') == Plus('a')
     assert eloads('"a"+  # comment') == Plus('a')
+
+
+def test_loads_repeat():
+    assert eloads('"a"{2}') == Repeat('a', count=2)
+    assert eloads('"a"{2}  # comment') == Repeat('a', count=2)
+    assert eloads('"a"{ # comment\n 2 # comment\n}') == Repeat('a', count=2)
+    assert eloads('"a"{1,2}') == Repeat('a', min=1, max=2)
+    assert eloads('"a"{1,}') == Repeat('a', min=1)
+    assert eloads('"a"{,2}') == Repeat('a', max=2)
+    assert eloads('"a"{,}') == Repeat('a')
+    assert eloads(
+        '"a"{ # abc \n 1 # def \n , # ghi\n 2 # jkl\n}'
+    ) == Repeat('a', min=1, max=2)
 
 
 def test_loads_sequence():

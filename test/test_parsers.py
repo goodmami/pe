@@ -12,6 +12,7 @@ from pe.operators import (
     Optional as Opt,
     Star as Str,
     Plus as Pls,
+    Repeat as Rpt,
     And,
     Not,
     Bind as Bnd,
@@ -82,6 +83,14 @@ data = [  # noqa: E127
 
     ('Pls0', Pls(abc,),       '',       0, FAIL, None),
     ('Pls1', Pls(abc,),       'aabbc',  0, 5,    _blank),
+
+    ('Rpt0', Rpt(abc),        'aabbcc', 0, 6,    _blank),
+    ('Rpt1', Rpt(abc, count=3),
+                              'aabbcc', 0, 3,    _blank),
+    ('Rpt2', Rpt(abc, min=2, max=3),
+                              'aabbcc', 0, 3,    _blank),
+    ('Rpt3', Rpt(abc, min=3), 'aaxx',   0, FAIL, None),
+    ('Rpt4', Rpt(abc, max=1), 'aabbcc', 0, 1,    _blank),
 
     ('And0', And(abc),        'a',      0, 0,    _blank),
     ('And1', And(abc),        'd',      0, FAIL, None),

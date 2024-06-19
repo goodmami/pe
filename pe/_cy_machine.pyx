@@ -46,6 +46,7 @@ cdef enum OpCode:
 cdef struct State:
     int opidx
     int pos
+    int count
     int mark
     int argidx
     int kwidx
@@ -55,6 +56,7 @@ cdef struct State:
 cdef State* push(
     int opidx,
     int pos,
+    int count,
     int mark,
     int argidx,
     int kwidx,
@@ -65,6 +67,7 @@ cdef State* push(
         raise MemoryError()
     state.opidx = opidx
     state.pos = pos
+    state.count = count
     state.mark = mark
     state.argidx = argidx
     state.kwidx = kwidx
@@ -100,6 +103,7 @@ cdef class Instruction:
         OpCode opcode
         short oploc
         Scanner scanner
+        short maxcount
         bint marking
         bint capturing
         object action
@@ -110,6 +114,7 @@ cdef class Instruction:
         OpCode opcode,
         short oploc=1,
         Scanner scanner=None,
+        short maxcount=1,
         bint marking=False,
         bint capturing=False,
         object action=None,
@@ -118,6 +123,7 @@ cdef class Instruction:
         self.opcode = opcode
         self.oploc = oploc
         self.scanner = scanner
+        self.maxcount = maxcount
         self.marking = marking
         self.capturing = capturing
         self.action = action
@@ -128,6 +134,7 @@ cdef class Instruction:
             self.opcode,
             self.oploc,
             scanner=self.scanner,
+            maxcount=self.maxcount,
             marking=self.marking,
             capturing=self.capturing,
             action=self.action,
@@ -207,8 +214,8 @@ cdef class _Parser:
     ) except -2:
         cdef State* state
         cdef int retval = -1
-        state = push(0, 0, -1, 0, 0, NULL)     # failure (top backtrack entry)
-        state = push(-1, -1, -1, 0, 0, state)  # success
+        state = push(0, 0, 0, -1, 0, 0, NULL)     # failure (top backtrack entry)
+        state = push(-1, -1, 1, -1, 0, 0, state)  # success
         try:
             state = self._match(idx, s, pos, args, kwargs, memo, state)
             retval = state.pos
@@ -242,7 +249,7 @@ cdef class _Parser:
             instr = pi[idx]
 
             if instr.marking:
-                state = push(0, -1, pos, len(args), len(kwargs), state)
+                state = push(0, -1, 0, pos, len(args), len(kwargs), state)
 
             if instr.opcode == SCAN:
                 pos = instr.scanner._scan(s, pos, slen)
@@ -250,12 +257,12 @@ cdef class _Parser:
                     idx = FAILURE
 
             elif instr.opcode == BRANCH:
-                state = push(idx + instr.oploc, pos, -1, len(args), len(kwargs), state)
+                state = push(idx + instr.oploc, pos, 0, -1, len(args), len(kwargs), state)
                 idx += 1
                 continue
 
             elif instr.opcode == CALL:
-                state = push(idx + 1, -1, -1, -1, -1, state)
+                state = push(idx + 1, -1, 0, -1, -1, -1, state)
                 idx = instr.oploc
                 continue
 
@@ -265,10 +272,14 @@ cdef class _Parser:
                 continue
 
             elif instr.opcode == UPDATE:
-                state.pos = pos
-                state.argidx = len(args)
-                state.kwidx = len(kwargs)
-                idx += instr.oploc
+                if instr.maxcount == -1 or state.count < instr.maxcount:
+                    state.pos = pos
+                    state.argidx = len(args)
+                    state.kwidx = len(kwargs)
+                    idx += instr.oploc
+                else:
+                    state = pop(state)
+                    idx += 1
                 continue
 
             elif instr.opcode == RESTORE:
@@ -330,7 +341,7 @@ cdef class _Parser:
                 idx += 1
 
         if not state:
-            state = push(0, -1, -1, 0, 0, NULL)
+            state = push(0, -1, 0, -1, 0, 0, NULL)
         else:
             state.pos = pos
         return state
@@ -395,11 +406,12 @@ def _opt(defn):
             Instruction(COMMIT, 1)]
 
 
-def _str(defn): return _rpt(defn, 0)
-def _pls(defn): return _rpt(defn, 1)
+def _str(defn): return _loop(defn, 0, -1)
+def _pls(defn): return _loop(defn, 1, -1)
+def _rpt(defn): return _loop(defn, defn.args[1], defn.args[2])
 
 
-def _rpt(defn, mincount):
+def _loop(defn, mincount, maxcount):
     pis = _parsing_instructions(defn.args[0])
     if (len(pis) == 1
         and pis[0].opcode == SCAN
@@ -409,16 +421,20 @@ def _rpt(defn, mincount):
     ):
         pi = pis[0]
         pi.scanner.mincount = mincount
-        pi.scanner.maxcount = -1
+        pi.scanner.maxcount = maxcount
         return [Instruction(SCAN,
                             scanner=pi.scanner,
+                            maxcount=1,  # scanner has maxcount
                             marking=pi.marking,
                             capturing=pi.capturing,
                             action=pi.action)]
-    return [*(pi.copy() for _ in range(mincount) for pi in pis),
-            Instruction(BRANCH, len(pis) + 2),
-            *pis,
-            Instruction(UPDATE, -len(pis))]
+    return [
+        # risk of billion laughs attack
+        *(pi.copy() for _ in range(mincount) for pi in pis),
+        Instruction(BRANCH, len(pis) + 2),
+        *pis,
+        Instruction(UPDATE, -len(pis), maxcount=maxcount)
+    ]
 
 
 def _sym(defn):
@@ -508,6 +524,7 @@ _op_map = {
     Operator.OPT: _opt,
     Operator.STR: _str,
     Operator.PLS: _pls,
+    Operator.RPT: _rpt,
     Operator.SYM: _sym,
     Operator.AND: _and,
     Operator.NOT: _not,
@@ -639,6 +656,7 @@ cdef class Regex(Scanner):
 #         print(i,
 #               _OpCodeNames[pi.opcode],
 #               f'{pi.oploc:+}',
+#               f'{pi.maxcount=}',
 #               'marking' if pi.marking else '',
 #               'capturing' if pi.capturing else '',
 #               'name' if pi.name else '')
@@ -648,8 +666,8 @@ cdef class Regex(Scanner):
 #     states = []
 #     while state:
 #         states.append(
-#             f'<State (opidx={state.opidx}, pos={state.pos}, mark={state.mark},'
-#             f' argidx={state.argidx}, kwidx={state.kwidx})>'
+#             f'<State (opidx={state.opidx}, pos={state.pos}, count={state.count},'
+#             f' mark={state.mark}, argidx={state.argidx}, kwidx={state.kwidx})>'
 #         )
 #         state = state.prev
 #     print(f'stack ({len(states)} entries):')

@@ -16,6 +16,7 @@ SYM = Operator.SYM
 OPT = Operator.OPT
 STR = Operator.STR
 PLS = Operator.PLS
+RPT = Operator.RPT
 AND = Operator.AND
 NOT = Operator.NOT
 CAP = Operator.CAP
@@ -132,6 +133,19 @@ def Plus(expression: _Def):
     if expression.op in (OPT, STR, PLS):
         raise GrammarError('multiple repeat operators')
     return Definition(PLS, (expression,))
+
+
+def Repeat(expression: _Def, count: int = -1, min: int = 0, max: int = -1):
+    if count > -1:
+        if (min, max) != (0, -1):
+            raise ValueError('count is incompatible with min or max')
+        min = max = count
+    if min < 0:
+        raise ValueError('min must be 0 or greater')
+    expression = _validate(expression)
+    if expression.op in (OPT, STR, PLS):
+        raise GrammarError('multiple repeat operators')
+    return Definition(RPT, (expression, min, max))
 
 
 def Nonterminal(name: str):

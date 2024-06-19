@@ -24,6 +24,7 @@ class Operator(enum.Enum):
     OPT = (_auto(), 5, 'Quantified')   # (OPT, (expr,))
     STR = (_auto(), 5, 'Quantified')   # (STR, (expr,))
     PLS = (_auto(), 5, 'Quantified')   # (PLS, (expr,))
+    RPT = (_auto(), 5, 'Quantified')   # (RPT, (expr, min, max))
     AND = (_auto(), 4, 'Valued')       # (AND, (expr,))
     NOT = (_auto(), 4, 'Valued')       # (NOT, (expr,))
     CAP = (_auto(), 4, 'Valued')       # (CAP, (expr,))

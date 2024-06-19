@@ -27,7 +27,10 @@ The syntax is defined as follows::
   Prefix     <- AND / NOT / TILDE / Binding
   Binding    <- Identifier COLON
   Quantified <- Primary (quantifier:Quantifier)?
-  Quantifier <- QUESTION / STAR / PLUS
+  Quantifier <- QUESTION / STAR / PLUS / Repeat
+  Repeat     <- LEFTBRACE RepeatSpec RIGHTBRACE
+  RepeatSpec <- (min:Integer)? COMMA (max:Integer)?
+              / count:Integer
   Primary    <- Name / Group / Literal / Class / DOT
   Name       <- Identifier !Operator
   Group      <- OPEN Expression CLOSE
@@ -51,8 +54,12 @@ The syntax is defined as follows::
   Oct        <- [0-7]
   Hex        <- [0-9a-fA-F]
 
+  Integer    <- ~( [0-9]+ ) Spacing
+
   LEFTARROW  <- '<-' Spacing
   LEFTANGLE  <- '<' Space Spacing
+  LEFTBRACE  <- '{' Spacing
+  RIGHTBRACE <- '}' Spacing
   SLASH      <- '/' Spacing
   AND        <- '&' Spacing
   NOT        <- '!' Spacing
@@ -63,6 +70,7 @@ The syntax is defined as follows::
   PLUS       <- '+' Spacing
   OPEN       <- '(' Spacing
   CLOSE      <- ')' Spacing
+  COMMA      <- ',' Spacing
   DOT        <- '.' Spacing
 
   Spacing    <- (Space / Comment)*
@@ -72,6 +80,7 @@ The syntax is defined as follows::
   EndOfFile  <- !.
 """
 
+from functools import partial
 from typing import Tuple, Dict, cast
 
 import pe
@@ -86,6 +95,7 @@ from pe.operators import (
     Optional,
     Star,
     Plus,
+    Repeat,
     And,
     Not,
     Capture,
@@ -165,7 +175,16 @@ V.Binding = Sequence(V.Identifier, ':', V.Spacing)
 V.Quantified = Sequence(
     V.Primary, Optional(Bind(V.Quantifier, name='quantifier'))
 )
-V.Quantifier = Choice(V.QUESTION, V.STAR, V.PLUS)
+V.Quantifier = Choice(V.QUESTION, V.STAR, V.PLUS, V.Repeat)
+V.Repeat = Sequence(V.LEFTBRACE, V.RepeatSpec, V.RIGHTBRACE)
+V.RepeatSpec = Choice(
+    Sequence(
+        Optional(Bind(V.Integer, name="min")),
+        V.COMMA,
+        Optional(Bind(V.Integer, name="max"))
+    ),
+    Bind(V.Integer, name="count")
+)
 V.Primary = Choice(V.Name, V.Group, V.Literal, V.Class, V.DOT)
 V.Name = Sequence(V.Identifier, V.Spacing, Not(V.Operator))
 V.Group = Sequence(V.OPEN, V.Expression, V.CLOSE)
@@ -200,11 +219,14 @@ V.IdentCont = Class('a-zA-Z_0-9')
 V.Identifier = Sequence(
     Capture(Sequence(V.IdentStart, Star(V.IdentCont))), V.Spacing
 )
+V.Integer = Sequence(Capture(Plus(Class('0-9'))), V.Spacing)
 
 # Tokens
 
 V.LEFTARROW = Sequence('<-', V.Spacing)
 V.LEFTANGLE = Sequence('<', V.Space, V.Spacing)
+V.LEFTBRACE = Sequence('{', V.Spacing)
+V.RIGHTBRACE = Sequence('}', V.Spacing)
 V.SLASH = Sequence('/', V.Spacing)
 V.AND = Sequence('&', V.Spacing)
 V.NOT = Sequence('!', V.Spacing)
@@ -214,6 +236,7 @@ V.STAR = Sequence('*', V.Spacing)
 V.PLUS = Sequence('+', V.Spacing)
 V.OPEN = Sequence('(', V.Spacing)
 V.CLOSE = Sequence(')', V.Spacing)
+V.COMMA = Sequence(',', V.Spacing)
 V.DOT = Sequence('.', V.Spacing)
 
 # Whitespace and comments
@@ -240,6 +263,8 @@ PEG = Grammar(
         'QUESTION': Constant(Optional),
         'STAR': Constant(Star),
         'PLUS': Constant(Plus),
+        'Repeat': lambda **kwargs: partial(Repeat, **kwargs),
+        'Integer': int,
         'Name': Nonterminal,
         'Literal': _make_literal,
         'Class': _make_class,

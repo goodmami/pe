@@ -1,3 +1,4 @@
+import pytest
 
 from pe._constants import Operator as Op
 from pe._definition import Definition as Def
@@ -11,6 +12,7 @@ from pe.operators import (
     Optional,
     Star,
     Plus,
+    Repeat,
     Nonterminal,
     And,
     Not,
@@ -73,6 +75,19 @@ def test_Star():
 def test_Plus():
     assert Plus(Dot()) == Def(Op.PLS, (Dot(),))
     assert Plus('foo') == Plus(Literal('foo'))
+
+
+def test_Repeat():
+    assert Repeat(Dot()) == Def(Op.RPT, (Dot(), 0, -1))
+    assert Repeat(Dot(), 2) == Def(Op.RPT, (Dot(), 2, 2))
+    assert Repeat(Dot(), count=2) == Def(Op.RPT, (Dot(), 2, 2))
+    assert Repeat(Dot(), min=1) == Def(Op.RPT, (Dot(), 1, -1))
+    assert Repeat(Dot(), max=1) == Def(Op.RPT, (Dot(), 0, 1))
+    assert Repeat(Dot(), min=1, max=2) == Def(Op.RPT, (Dot(), 1, 2))
+    with pytest.raises(ValueError):
+        Repeat(Dot(), min=-1)
+    with pytest.raises(ValueError):
+        Repeat(Dot(), count=2, max=3)
 
 
 def test_Nonterminal():
