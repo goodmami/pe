@@ -73,7 +73,7 @@ _Instruction = Tuple[
     OpCode,
     int,                # index argument
     Optional[Scanner],  # scanner object or None
-    Optional[int],      # max count
+    int,                # max count
     bool,               # marking
     bool,               # capturing
     Optional[Action],   # rule action
@@ -87,7 +87,7 @@ def Instruction(
     opcode: OpCode,
     oploc: int = 1,
     scanner: Optional[Scanner] = None,
-    maxcount: Optional[int] = None,
+    maxcount: int = 1,
     marking: bool = False,
     capturing: bool = False,
     action: Optional[Action] = None,
