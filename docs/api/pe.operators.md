@@ -80,6 +80,9 @@ the rest are described by the [specification](../specification.md).
 * pe.operators.**<a id="Plus" href="#Plus">Plus</a>**
   (*expression*)
 
+* pe.operators.**<a id="Repeat" href="#Repeat">Repeat</a>**
+  (*expression, count=-1, min=0, max=-1*)
+
 * pe.operators.**<a id="Nonterminal" href="#Nonterminal">Nonterminal</a>**
   (*name*)
 

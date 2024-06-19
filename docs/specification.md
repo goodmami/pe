@@ -34,6 +34,10 @@ following sections.
 | `p?`     | [Optional]    | [Quantified]  | Match `p` zero or one times                               |
 | `p*`     | [Star]        | [Quantified]  | Match `p` zero or more times                              |
 | `p+`     | [Plus]        | [Quantified]  | Match `p` one or more times                               |
+| `p{n}`   | [Repeat]      | [Quantified]  | Match `p` exactly *n* times                               |
+| `p{m,n}` | [Repeat]      | [Quantified]  | Match `p` from *m* to *n* times                           |
+| `p{,n}`  | [Repeat]      | [Quantified]  | Match `p` up to *n* times                                 |
+| `p{m,}`  | [Repeat]      | [Quantified]  | Match `p` at least *m* times                              |
 | `q`      | (default)     | [Valued]      | Match quantified term `q`; consume input; pass up values  |
 | `&q`     | [And]         | [Valued]      | Succeed if `q` matches; consume no input; suppress values |
 | `!q`     | [Not]         | [Valued]      | Fail if `q` matches; consume no input; suppress values    |
@@ -69,7 +73,10 @@ Valued     <- (prefix:Prefix)? Quantified
 Prefix     <- AND / NOT / TILDE / Binding
 Binding    <- Identifier COLON
 Quantified <- Primary (quantifier:Quantifier)?
-Quantifier <- QUESTION / STAR / PLUS
+Quantifier <- QUESTION / STAR / PLUS / Repeat
+Repeat     <- LEFTBRACE RepeatSpec RIGHTBRACE
+RepeatSpec <- (min:Integer)? COMMA (max:Integer)?
+            / count:Integer
 Primary    <- Name / Group / Literal / Class / DOT
 Name       <- Identifier !Operator
 Group      <- OPEN Expression CLOSE
@@ -93,8 +100,12 @@ Char       <- '\\' [tnvfr"'-\[\\\]]
 Oct        <- [0-7]
 Hex        <- [0-9a-fA-F]
 
+Integer    <- ~( [0-9]+ ) Spacing
+
 LEFTARROW  <- '<-' Spacing
 LEFTANGLE  <- '<' Space Spacing
+LEFTBRACE  <- '{' Spacing
+RIGHTBRACE <- '}' Spacing
 SLASH      <- '/' Spacing
 AND        <- '&' Spacing
 NOT        <- '!' Spacing
@@ -105,6 +116,7 @@ STAR       <- '*' Spacing
 PLUS       <- '+' Spacing
 OPEN       <- '(' Spacing
 CLOSE      <- ')' Spacing
+COMMA      <- ',' Spacing
 DOT        <- '.' Spacing
 
 Spacing    <- (Space / Comment)*
@@ -133,8 +145,8 @@ the only expression type that may be quantified.
 
 Quantified expressions indicate how many times they must occur for the
 expression to match. The default (unannotated) quantified expression
-must occur exactly once. The [Optional], [Star], and [Plus] operators
-change this number.
+must occur exactly once. The [Optional], [Star], [Plus], and [Repeat]
+operators change this number.
 
 ##### Valued
 [Valued]: #valued
@@ -192,6 +204,8 @@ expressions compared to the equivalent in-situ expression.
 | `e?`           | [Optional] | 5          | [Quantified]    |
 | `e*`           | [Star]     | 5          | [Quantified]    |
 | `e+`           | [Plus]     | 5          | [Quantified]    |
+| `e{n}`         | [Repeat]   | 5          | [Quantified]    |
+| `e{m,n}`       | [Repeat]   | 5          | [Quantified]    |
 | `&e`           | [And]      | 4          | [Valued]        |
 | `!e`           | [Not]      | 4          | [Valued]        |
 | `~e`           | [Capture]  | 4          | [Valued]        |
@@ -278,7 +292,7 @@ The following ASCII punctuation characters, in addition to
 not necessarily inside [string literals](#literal) or [character
 classes](#class); for these see below):
 
-    ! " # & ' ( ) * + . / : ? [ \ ] _ ~
+    ! " # & ' ( ) * + . / : ? [ \ ] _ { } ~
 
 Special characters inside [string literals](#literal) and [character
 classes](#class) are different. For both, the `\` character is used
@@ -293,7 +307,7 @@ escaped:
 The other ASCII punctuation characters are currently unused but are
 reserved in expressions for potential future uses:
 
-    $ % , - ; < = > @ ` { | }
+    $ % , - ; < = > @ ` |
 
 
 ### Whitespace
@@ -536,6 +550,26 @@ The Plus operator succeeds if the given expression succeeds one or
 more times. Emitted values of the given expression are accumulated
 while bound values get overwritten (therefore only the value bound by
 the last match is passed up).
+
+
+### Repeat
+[Repeat]: #repeat
+
+- Notation: `e{n}` or `e{m,n}`
+- Function: [Repeat](api/pe.operators.md#Repeat)(*expression, count=-1, min=0, max=-1*)
+- Type: [Quantified]
+
+The Repeat operator succeeds if the given expression succeeds exactly
+*n* times in the `e{n}` form, or between *m* and *n* times (inclusive)
+in the `e{m,n}` form. Emitted values of the given expression are
+accumulated while bound values get overwritten (therefore only the
+value bound by the last match is passed up).
+
+It is a more general quantifier than those above as it can replace
+[Optional](#optional) (`e{0,1}`), [Star](#star) (`e{0,}`), and
+[Plus](#plus) (`e{1,}`) while also allowing for bounded repetition
+with minimum and maximum counts greater than one as well as fixed
+count repetitions.
 
 
 ### And

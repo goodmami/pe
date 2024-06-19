@@ -87,6 +87,8 @@ e            # exactly one
 e?           # zero or one (optional)
 e*           # zero or more
 e+           # one or more
+e{5}         # exactly 5
+e{3,5}       # three to five
 
 # combining expressions
 e1 e2        # sequence of e1 and e2
