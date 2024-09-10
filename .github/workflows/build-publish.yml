@@ -28,7 +28,7 @@ jobs:
       - name: Test source distribution
         run: pytest test/
       - name: Store the source distribution
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/*.tar.gz
@@ -53,7 +53,7 @@ jobs:
           CIBW_SKIP: "pp* *-win32 *linux_i686"  # skip PyPy, 32-bit
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: "pytest {project}/test/"
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: ./wheelhouse/*.whl
