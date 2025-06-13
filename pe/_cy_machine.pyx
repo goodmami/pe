@@ -272,7 +272,8 @@ cdef class _Parser:
                 continue
 
             elif instr.opcode == UPDATE:
-                if instr.maxcount == -1 or state.count < instr.maxcount:
+                state.count += 1
+                if instr.maxcount < 0 or state.count < instr.maxcount:
                     state.pos = pos
                     state.argidx = len(args)
                     state.kwidx = len(kwargs)
@@ -433,7 +434,7 @@ def _loop(defn, mincount, maxcount):
         *(pi.copy() for _ in range(mincount) for pi in pis),
         Instruction(BRANCH, len(pis) + 2),
         *pis,
-        Instruction(UPDATE, -len(pis), maxcount=maxcount)
+        Instruction(UPDATE, -len(pis), maxcount=(maxcount - mincount))
     ]
 
 
