@@ -40,3 +40,36 @@ def test_capture_repeated(parser):
     m3 = pe.match('(~"a")+', 'aaa', parser=parser)
     assert m3.group() == 'aaa'
     assert m3.groups() == ('a', 'a', 'a')
+
+
+@pytest.mark.parametrize('parser', ['packrat', 'machine', 'machine-python'])
+def test_regex_optimized_quantified_literal(parser):
+    """https://github.com/goodmami/pe/issues/54"""
+
+    p = pe.compile("Start <- 'ab'? 'c'", parser=parser, flags=pe.REGEX)
+    assert p.match("c", flags=pe.NONE).group(0) == "c"
+    assert p.match("abc", flags=pe.NONE).group(0) == "abc"
+    assert p.match("ababc", flags=pe.NONE) is None
+    assert p.match("ac", flags=pe.NONE) is None
+    assert p.match("abac", flags=pe.NONE) is None
+
+    p = pe.compile("Start <- 'ab'* 'c'", parser=parser, flags=pe.REGEX)
+    assert p.match("c", flags=pe.NONE).group(0) == "c"
+    assert p.match("abc", flags=pe.NONE).group(0) == "abc"
+    assert p.match("ababc", flags=pe.NONE).group(0) == "ababc"
+    assert p.match("ac", flags=pe.NONE) is None
+    assert p.match("abac", flags=pe.NONE) is None
+
+    p = pe.compile("Start <- 'ab'+ 'c'", parser=parser, flags=pe.REGEX)
+    assert p.match("c", flags=pe.NONE) is None
+    assert p.match("abc", flags=pe.NONE).group(0) == "abc"
+    assert p.match("ababc", flags=pe.NONE).group(0) == "ababc"
+    assert p.match("ac", flags=pe.NONE) is None
+    assert p.match("abac", flags=pe.NONE) is None
+
+    p = pe.compile("Start <- 'ab'{2} 'c'", parser=parser, flags=pe.REGEX)
+    assert p.match("c", flags=pe.NONE) is None
+    assert p.match("abc", flags=pe.NONE) is None
+    assert p.match("ababc", flags=pe.NONE).group(0) == "ababc"
+    assert p.match("ac", flags=pe.NONE) is None
+    assert p.match("abac", flags=pe.NONE) is None

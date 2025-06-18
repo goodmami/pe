@@ -2,6 +2,10 @@
 
 ## [Unreleased][unreleased]
 
+### Fixed
+
+* Group quantized 2+ char literals in regex optimization ([#54])
+
 
 ## [v0.5.3][]
 
@@ -215,3 +219,4 @@ descent parser and a work-in-progress state-machine parser.
 [#38]: https://github.com/goodmami/pe/issues/38
 [#44]: https://github.com/goodmami/pe/issues/44
 [#46]: https://github.com/goodmami/pe/issues/46
+[#54]: https://github.com/goodmami/pe/issues/54
