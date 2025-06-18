@@ -2,6 +2,11 @@
 
 ## [Unreleased][unreleased]
 
+### Python Support
+
+* Removed support for Python 3.8
+* Added support for Python 3.13
+
 ### Fixed
 
 * Properly bound repetitions for machine parsers ([#53])
