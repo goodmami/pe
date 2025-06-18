@@ -1,11 +1,12 @@
 
 import enum
+from typing import Final
 
 _auto = enum.auto
 
 # Basic constants
 
-FAIL = -1  # TODO: Use typing.Final from Python 3.8
+FAIL: Final = -1
 
 ANONYMOUS = '<anonymous>'  # name for unnamed rules
 
