@@ -242,7 +242,7 @@ def _regex_optional(defn, defs, grpid):
     subdef = defn.args[0]
     d = _regex(defn.args[0], defs, grpid)
     if d.op == RGX:
-        subpat = d.args[0] if subdef.op in (DOT, LIT, CLS) else f'(?:{d.args[0]})'
+        subpat = _regex_maybe_group(subdef.op, d.args[0])
         return Regex(f'{subpat}?')
     else:
         return Optional(d)
@@ -252,7 +252,7 @@ def _regex_star(defn, defs, grpid):
     subdef = defn.args[0]
     d = _regex(subdef, defs, grpid)
     if d.op == RGX:
-        subpat = d.args[0] if subdef.op in (DOT, LIT, CLS) else f'(?:{d.args[0]})'
+        subpat = _regex_maybe_group(subdef.op, d.args[0])
         gid = f'_{next(grpid)}'
         return Regex(f'(?=(?P<{gid}>{subpat}*))(?P={gid})')
     else:
@@ -263,11 +263,17 @@ def _regex_plus(defn, defs, grpid):
     subdef = defn.args[0]
     d = _regex(defn.args[0], defs, grpid)
     if d.op == RGX:
-        subpat = d.args[0] if subdef.op in (DOT, LIT, CLS) else f'(?:{d.args[0]})'
+        subpat = _regex_maybe_group(subdef.op, d.args[0])
         gid = f'_{next(grpid)}'
         return Regex(f'(?=(?P<{gid}>{subpat}+))(?P={gid})')
     else:
         return Plus(d)
+
+
+def _regex_maybe_group(op: Operator, arg: str) -> str:
+    if op in (DOT, CLS) or (op == LIT and len(arg) == 1):
+        return arg
+    return f'(?:{arg})'
 
 
 def _regex_and(defn, defs, grpid):
