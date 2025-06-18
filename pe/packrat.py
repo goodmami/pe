@@ -87,7 +87,7 @@ class PackratParser(Parser):
             else:
                 return None
 
-        args = tuple(args or ())
+        args = list(args or ())
         if kwargs is None:
             kwargs = {}
 
