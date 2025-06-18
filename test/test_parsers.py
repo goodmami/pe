@@ -91,6 +91,7 @@ data = [  # noqa: E127
                               'aabbcc', 0, 3,    _blank),
     ('Rpt3', Rpt(abc, min=3), 'aaxx',   0, FAIL, None),
     ('Rpt4', Rpt(abc, max=1), 'aabbcc', 0, 1,    _blank),
+    ('Rpt5', Rpt('a', max=2), 'aaaaaa', 0, 2,    _blank),
 
     ('And0', And(abc),        'a',      0, 0,    _blank),
     ('And1', And(abc),        'd',      0, FAIL, None),

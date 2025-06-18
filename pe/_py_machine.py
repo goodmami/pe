@@ -205,8 +205,9 @@ def _match(  # noqa: C901
 
         elif opcode == UPDATE:
             next_idx, _, count, prev_mark, _, _ = pop()
-            if maxcount == -1 or count < maxcount:
-                push((next_idx, pos, count + 1, prev_mark, len(args), len(kwargs)))
+            count += 1
+            if maxcount < 0 or count < maxcount:
+                push((next_idx, pos, count, prev_mark, len(args), len(kwargs)))
                 idx += oploc
             else:
                 idx += 1
@@ -355,7 +356,7 @@ def _loop(defn, mincount: int, maxcount: int):
     return [*(pis * mincount),  # risk of billion laughs attack
             Instruction(BRANCH, len(pis) + 2),
             *pis,
-            Instruction(UPDATE, -len(pis), maxcount=maxcount)]
+            Instruction(UPDATE, -len(pis), maxcount=(maxcount - mincount))]
 
 
 def _sym(defn):

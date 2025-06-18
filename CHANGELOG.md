@@ -4,6 +4,7 @@
 
 ### Fixed
 
+* Properly bound repetitions for machine parsers ([#53])
 * Group quantized 2+ char literals in regex optimization ([#54])
 
 
@@ -219,4 +220,5 @@ descent parser and a work-in-progress state-machine parser.
 [#38]: https://github.com/goodmami/pe/issues/38
 [#44]: https://github.com/goodmami/pe/issues/44
 [#46]: https://github.com/goodmami/pe/issues/46
+[#53]: https://github.com/goodmami/pe/issues/53
 [#54]: https://github.com/goodmami/pe/issues/54
