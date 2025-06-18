@@ -30,7 +30,7 @@ jobs:
       - name: Store the source distribution
         uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: cibw-sdist
           path: dist/*.tar.gz
           retention-days: 4
 
@@ -48,14 +48,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.17.0
+        uses: pypa/cibuildwheel@v3.0.0
         env:
           CIBW_SKIP: "pp* *-win32 *linux_i686"  # skip PyPy, 32-bit
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: "pytest {project}/test/"
       - uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
   publish:
@@ -74,8 +74,9 @@ jobs:
       - name: Download all the dists
         uses: actions/download-artifact@v4
         with:
-          name: dist
+          pattern: cibw-*
           path: dist/
+          merge-multiple: true
       - name: To be published
         run: ls -l dist
       - name: Publish
